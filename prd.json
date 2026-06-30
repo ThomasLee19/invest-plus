@@ -1,0 +1,69 @@
+{
+  "title": "Phase 1: Agent Loop Architecture Upgrade",
+  "sourcePlan": ".omc/plans/finance-agent-migration-plan.md",
+  "scope": "Phase 1 only (steps 1-5). Does not touch finance tools, FinReportRAG, prompts, or frontend.",
+  "stories": [
+    {
+      "id": "US-1",
+      "title": "Extract should_continue() with structured LLM-judgment contract",
+      "description": "Refactor reflection(query, memory) in backend/app/service/agent/agent.py into should_continue(query, memory), whose LLM prompt requires a structured JSON response {\"sufficient\": bool, \"rationale\": str, \"actions\": [...]}, parsed into that exact dict shape. The function remains the LLM-calling boundary (not a hardcoded heuristic) - the continue/stop judgment comes from the LLM's own output every time.",
+      "acceptanceCriteria": [
+        "should_continue(query, memory) exists in agent.py and returns a dict with keys 'sufficient' (bool), 'rationale' (str), 'actions' (list)",
+        "The LLM prompt explicitly requires the model to output sufficient/rationale/actions as JSON, not the old bare list-or-null contract",
+        "On JSON parse failure, should_continue returns a safe default of {'sufficient': True, 'rationale': '<parse error note>', 'actions': []} rather than raising or returning None",
+        "No call site still references the old reflection() name or its list|None return contract"
+      ],
+      "passes": true
+    },
+    {
+      "id": "US-2",
+      "title": "Replace single hardcoded reflection call with bounded LLM-driven while-loop",
+      "description": "In final_answer(), replace the single reflect_plan = reflection(query, memory) call with a while loop (safety cap, e.g. 5 iterations) that repeatedly calls should_continue(), executes any requested actions via process_actions(), appends results to memory, and stops only when should_continue() signals sufficient=True or the safety cap is hit. Cap-stops must be logged/markered distinctly from LLM-signaled stops.",
+      "acceptanceCriteria": [
+        "final_answer() contains a while loop (not a single if-block) driving the reflection/act cycle",
+        "The loop calls should_continue() each iteration and reads its 'sufficient' field to decide whether to continue",
+        "A safety cap (explicit constant, e.g. MAX_REFLECTION_ITERATIONS = 5) bounds the loop",
+        "When the cap is hit without an LLM sufficient=True signal, a distinct log/marker is emitted (e.g. a different log message or a flag) than when the LLM itself signals sufficient",
+        "A mocked-dependency test drives final_answer()'s generator through at least 2 reflection iterations before stopping, proving the loop iterates more than once when should_continue() keeps requesting actions",
+        "A separate mocked-dependency test proves the cap path is hit and distinctly logged when should_continue() never signals sufficient"
+      ],
+      "passes": true
+    },
+    {
+      "id": "US-3",
+      "title": "Propagate tool execution errors into memory instead of swallowing them",
+      "description": "In process_actions(), when a tool call raises an Exception, append a structured error entry to the memory list (not just print/traceback) so that should_continue()'s LLM call can observe the failure and react (retry, fall back, or flag incompleteness) on the next iteration.",
+      "acceptanceCriteria": [
+        "process_actions() appends an entry to memory on tool exception (e.g. {'提问': prompt, '结果': '<error summary>', '错误': True} or equivalent structured shape)",
+        "The exception is still logged via print/traceback for operator visibility (no silent regression of existing logging)",
+        "A unit test simulates a tool raising an exception and asserts the returned memory list contains an entry reflecting that failure, distinguishable from a successful result"
+      ],
+      "passes": true
+    },
+    {
+      "id": "US-4",
+      "title": "Stream reflection rationale into existing SSE content field",
+      "description": "When the while-loop (US-2) executes a reflection-triggered action, the SSE message yielded to the frontend must include should_continue()'s stated rationale in the existing 'content' string (role: 'agent' event), not just the action name/prompt as before. No new SSE schema field is added unless this approach proves insufficient.",
+      "acceptanceCriteria": [
+        "The yielded SSE message for reflection-triggered actions includes the rationale text from should_continue()'s 'rationale' field in its 'content' string",
+        "The SSE event still uses the existing {'role': 'agent', 'content': ...} shape (no new top-level field added)",
+        "A test inspects the yielded event payloads from a mocked-dependency run of final_answer() and confirms the rationale text appears in the content string of at least one reflection-stage message"
+      ],
+      "passes": true
+    },
+    {
+      "id": "US-5",
+      "title": "Unit test suite for should_continue() against mocked LLM responses, no live network calls",
+      "description": "Add backend/tests/test_agent_loop.py with unittest-based tests that stub the openai/pokeapi_tool imports (so the test suite runs with zero installed third-party dependencies and zero network access) and mock the LLM-calling boundary to drive should_continue() through representative scenarios using Pokemon-domain memory fixtures (rag_search/pokeapi_query/web_search), per the plan's instruction to validate against existing Pokemon tools since the finance tool doesn't exist yet.",
+      "acceptanceCriteria": [
+        "backend/tests/test_agent_loop.py exists and is runnable via `python3 -m unittest backend.tests.test_agent_loop` (or equivalent invocation) with zero installed third-party packages and zero network access",
+        "Test: memory with a clear/sufficient answer present → should_continue() returns sufficient=True with empty/no further actions",
+        "Test: memory with an empty/error tool result → should_continue() returns sufficient=False with at least one retry-style action",
+        "Test: malformed/non-JSON LLM output → should_continue() falls back to the safe default (sufficient=True, empty actions) rather than raising",
+        "Test: process_actions() error-propagation (US-3) produces a memory entry distinguishable from success",
+        "Full test run output captured and all tests pass (fresh evidence, not assumed)"
+      ],
+      "passes": true
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+import * as api from '@/api'
+import IconUpload from '@/assets/repository/upload.svg'
+import { useLang } from '@/i18n'
+import { Upload, UploadFile, UploadProps } from 'antd'
+import { forwardRef, useImperativeHandle, useState } from 'react'
+import styles from './upload.module.scss'
+
+export type RepositoryUploadRef = {
+  submit: () => Promise<void>
+}
+
+export default forwardRef(function RepositoryUpload(
+  props: UploadProps,
+  ref?: React.Ref<RepositoryUploadRef>,
+) {
+  const { ...otherProps } = props
+  const { t } = useLang()
+
+  const [fileList, setFileList] = useState<UploadFile[]>([])
+
+  useImperativeHandle(ref, () => {
+    return {
+      submit: async () => {
+        let hasError = false
+
+        for (const file of fileList) {
+          if (file.status === 'done') continue
+
+          setFileList((prev) =>
+            prev.map((item) => {
+              if (item.uid === file.uid) {
+                return {
+                  ...item,
+                  status: 'uploading',
+                }
+              }
+              return item
+            }),
+          )
+          try {
+            // 检查文件大小
+            if ((file.size ?? 0) > 5 * 1024 * 1024) {
+              throw new Error(t.fileTooLarge)
+            }
+
+            await api.session.upload({ files: file.originFileObj as File })
+
+            setFileList((prev) =>
+              prev.map((item) => {
+                if (item.uid === file.uid) {
+                  return {
+                    ...item,
+                    status: 'done',
+                    url: '#',
+                  }
+                }
+                return item
+              }),
+            )
+          } catch (error: any) {
+            window.$app.message.error(error?.message || t.uploadFailed)
+            hasError = true
+            setFileList((prev) =>
+              prev.map((item) => {
+                if (item.uid === file.uid) {
+                  return {
+                    ...item,
+                    status: 'error',
+                    response: error?.message,
+                  }
+                }
+                return item
+              }),
+            )
+          }
+        }
+
+        if (hasError) {
+          throw new Error('Upload failed')
+        } else {
+          window.$app.message.success(t.uploadSuccess)
+        }
+      },
+    }
+  })
+
+  return (
+    <div className={styles['repository-upload']}>
+      <Upload.Dragger
+        {...otherProps}
+        showUploadList={false}
+        maxCount={10}
+        fileList={fileList}
+        onChange={(info) => setFileList(info.fileList)}
+      >
+        <img src={IconUpload} />
+        <p
+          className="ant-upload-text"
+          style={{
+            color: '#666',
+          }}
+        >
+          Drag file here or{' '}
+          <span style={{ color: '#3266f3' }}>click to upload</span>
+        </p>
+      </Upload.Dragger>
+
+      <p className={styles['repository-upload__desc']}>
+        Supports single or bulk file upload. Files must not exceed 5M each,with
+        a maximum of 10 files.
+      </p>
+
+      {/*
+        这个 Upload 不是多余的：上面的 Dragger 设了 showUploadList={false}，
+        已选/上传中文件列表（文件名、状态图标、删除按钮）由此组件渲染，
+        与 Dragger 共享同一 fileList。scss 中 .ant-upload-list-item-progress
+        即针对此处列表隐藏进度条。删除会导致用户看不到已选文件。
+      */}
+      <Upload
+        fileList={fileList}
+        onChange={(info) => setFileList(info.fileList)}
+      />
+    </div>
+  )
+})

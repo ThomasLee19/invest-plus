@@ -1,0 +1,47 @@
+services:
+  es01:
+    container_name: investplus-es
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    volumes:
+      - investplus_esdata:/usr/share/elasticsearch/data
+    ports:
+      - "1200:9200"
+    env_file: .env
+    environment:
+      - node.name=es01
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+      - TZ=${TIMEZONE}
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    restart: on-failure
+
+  pg:
+    container_name: investplus-pg
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pg123456
+      - POSTGRES_DB=investplus
+    volumes:
+      - investplus_pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: on-failure
+
+volumes:
+  investplus_esdata:
+    driver: local
+  investplus_pgdata:
+    driver: local

@@ -1,0 +1,89 @@
+RALPH PROGRESS LOG — Phase 1: Agent Loop Architecture Upgrade
+================================================================
+
+[init] Source plan: .omc/plans/finance-agent-migration-plan.md (Phase 1, steps 1-5)
+[init] Target file: backend/app/service/agent/agent.py (450 lines, read in full)
+
+ENVIRONMENT NOTE (important for future iterations):
+- This sandbox has NO Python deps installed (no pip, no openai, no pytest) and the
+  __pycache__ shows the real dev env uses cpython-3.11, while this sandbox's
+  python3 is 3.14. The real runtime environment is NOT available here.
+- Decision: tests must stub sys.modules for 'openai' and
+  'app.service.pokeapi.pokeapi_tool' before importing agent.py, so the test suite
+  runs with zero installed third-party packages and zero network access. This is
+  also the textbook-correct way to unit test "should_continue() with mocked
+  memory, no live LLM calls" per the plan's own wording.
+
+DESIGN NOTE on should_continue():
+- should_continue(query, memory) is NOT a hardcoded heuristic - it still calls the
+  LLM internally (it's the refactored reflection()). "No live LLM call" in the
+  unit tests means the test suite mocks the LLM-calling boundary (_llm_json),
+  not that should_continue() itself avoids calling the LLM in production. This
+  preserves Principle 2 (continue/stop must be LLM-driven), confirmed against
+  the plan's RALPLAN-DR Principle 2 and the deep-interview spec's success
+  criteria (no hardcoded branching deciding the next action).
+
+PLANNED STORY ORDER: US-1 -> US-2 -> US-3 -> US-4 -> US-5 (US-3 could run parallel
+to US-1/2 since process_actions() error handling is independent, but doing it
+in sequence keeps agent.py edits coherent in one pass).
+
+[done] All 5 stories implemented in a single coherent edit pass to agent.py
+(US-3 error propagation, US-1 should_continue() extraction with structured
+{sufficient, rationale, actions} contract, US-2 bounded while-loop with
+explicit cap-stop vs llm-stop vs no-actions-stop distinction, US-4 rationale
+streamed into existing {role:'agent', content} SSE shape - no schema change).
+
+Files changed:
+- backend/app/service/agent/agent.py (process_actions error propagation;
+  reflection() replaced by should_continue() with structured contract;
+  final_answer()'s single reflection call replaced by bounded while-loop)
+- backend/tests/test_agent_loop.py (new, 11 unit tests)
+
+Test run: `cd backend && python3 -m unittest tests.test_agent_loop -v`
+Result: Ran 11 tests in 0.005s — OK (all passed). Verified no remaining
+references to the old reflection()/reflect_plan names via grep.
+
+Key implementation decisions for future iterations / Phase 2 context:
+- should_continue() still calls the LLM in production (it IS the refactored
+  reflection() function) - "no live LLM call" in tests means the test suite
+  mocks _llm_json, not that the function itself is heuristic-only. This
+  preserves genuine LLM-driven continue/stop decisions (Principle 2).
+- MAX_REFLECTION_ITERATIONS = 5 is a safety cap, not a target iteration count;
+  hitting it logs "触达安全上限" distinctly from "LLM 判定信息已足够".
+- Tool errors now land in memory as {"提问", "结果": "[工具调用失败] ...", "错误": True}
+  so should_continue()'s LLM call can see and react to failures.
+- Test suite stubs `openai` and `app.service.pokeapi.pokeapi_tool` via
+  sys.modules before importing agent.py, since this sandbox has zero Python
+  deps installed and the real dev env (cpython-3.11, per __pycache__) isn't
+  present here. Phase 2/5 work that needs a real running backend will need to
+  address this environment gap (confirm with user whether a dev venv exists
+  outside this sandbox, or whether deps need installing here).
+
+[done] Architect reviewer verification (Step 7): APPROVED. Verified should_continue()
+is genuinely LLM-driven with no hardcoded heuristic in the judgment itself,
+the while/else cap-stop vs llm-stop distinction is correct including the
+last-iteration edge case, error propagation reaches should_continue(), no
+leftover reflection()/reflect_plan references, and all 11 tests are
+behavioral (not tautological). Fresh test re-run by architect: 11/11 pass.
+
+[done] Deslop pass (Step 7.5): removed the unused `stop_reason` local variable
+in final_answer() (assigned in all 4 branches, never read — the print
+statements already satisfy the "distinct cap-stop vs llm-stop log" PRD
+requirement on their own). No other slop found: _extract_json_object vs
+_extract_json_list are legitimately separate (different bracket shapes,
+different callers), no unused imports in the test file, no TODO/FIXME
+leftovers.
+
+[done] Regression re-verification (Step 7.6): re-ran `python3 -m unittest
+tests.test_agent_loop -v` after the deslop edit — 11/11 still pass, syntax
+re-checked with py_compile. No regression from the cleanup.
+
+PHASE 1 COMPLETE. All 5 PRD stories pass, architect-approved, deslopped,
+regression-verified. Per the project's phased-conversation-handoff plan
+(agreed with the user before launch), Phase 2 should start in a FRESH
+conversation, handed: this progress.txt, prd.json (all passes:true - can be
+archived/reset for Phase 2's own PRD), the plan file
+.omc/plans/finance-agent-migration-plan.md, and the environment note above
+(no Python deps installed in this sandbox; confirm with user whether a real
+dev venv exists elsewhere for Phase 2/5 work that needs the actual backend
+running).

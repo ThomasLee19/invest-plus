@@ -20,7 +20,7 @@ the answer and the model's thinking chain.
 ## Subdirectories
 | Directory | Purpose |
 |-----------|---------|
-| `pages/` | Route targets: `index/`, `chat/`, `repository/`, `pricing/`, `404.tsx` |
+| `pages/` | Route targets: `index/`, `chat/`, `repository/`, `404.tsx` |
 | `components/` | Reusable UI: `header-bar`, `home-banner`, `hot-questions`, `markdown`, `page-layout`, `sender`, `icons` |
 | `layout/` | `base/` app shell + nav |
 | `router/` | `routes.tsx` (route table), `index.tsx` (browser router), `hook.ts`, `context.ts` |
@@ -34,7 +34,7 @@ the answer and the model's thinking chain.
 
 ### Working In This Directory
 - **Routes** (`router/routes.tsx`): `/` (Index), `/chat/:id` (Chat),
-  `/repository`, `/pricing`; everything else → 404. All wrapped in `BaseLayout`.
+  `/repository`; everything else → 404. All wrapped in `BaseLayout`.
 - **SSE shape** consumed by `pages/chat/index.tsx`:
   `{ role: 'agent' | 'assistant', content, thinking?: boolean }`.
   The frontend has **dead branches** for `documents`, `recommended_questions`,

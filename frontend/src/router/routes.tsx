@@ -2,7 +2,6 @@ import { BaseLayout } from '@/layout/base'
 import NotFound from '@/pages/404'
 import Chat from '@/pages/chat'
 import Index from '@/pages/index'
-import Pricing from '@/pages/pricing'
 import Repository from '@/pages/repository'
 import {
   Outlet,
@@ -31,10 +30,6 @@ export const routes: IRouteObject[] = [
   {
     path: '/repository',
     Component: Repository,
-  },
-  {
-    path: '/pricing',
-    Component: Pricing,
   },
 ]
 

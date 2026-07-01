@@ -23,7 +23,7 @@ domain — that's Phase 4 of the migration, not yet done; see root AGENTS.md.
 | Directory | Purpose |
 |-----------|---------|
 | `src/` | Application source (see `src/AGENTS.md`) |
-| `public/` | Static assets served as-is (incl. `pricing/`) |
+| `public/` | Static assets served as-is |
 | `mock/` | mockjs fixtures for the (disabled) vite-plugin-mock |
 
 ## For AI Agents

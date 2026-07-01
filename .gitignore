@@ -18,7 +18,8 @@ legacy/index_pokemon.py
 
 salespilot-main
 
-**/*.png
+/logo.png
+/logo_fa.png
 /jd
 
 .env

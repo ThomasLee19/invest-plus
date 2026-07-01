@@ -77,8 +77,10 @@ uvicorn app_main:app --reload --port 8000
 ```
 
 ### 6. Start the frontend
+Copy `frontend/.env.example` to `frontend/.env`:
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
 ```

@@ -168,3 +168,131 @@ backend/app/service/core/9b5ad71b2ce5302211f9c61530b329a4922fc6a4 (looks
 like a raw tokenizer vocab dump) sits in the working tree, unrelated to
 Phase 4 - flagged for the user to decide whether to delete or .gitignore,
 not touched by this run.
+
+================================================================
+RALPH PROGRESS LOG — Phase 5: End-to-End Verification (2026-07-01)
+================================================================
+
+[init] Source plan: .omc/plans/finance-agent-migration-plan.md (Phase 5, steps 14-17)
+[init] Active PRD: .omc/state/sessions/dfc594af-64d6-4919-8f15-0aff2ed58294/prd.json
+       (overwrote a stale leftover Phase 4 PRD from an earlier interrupted "start
+       phase 4" invocation in this same session - Phase 4 was already committed/
+       pushed before this run started)
+
+ENVIRONMENT SETUP:
+- Elasticsearch (investplus-es) and PostgreSQL (investplus-pg) containers were
+  already running (docker ps confirmed, 4h uptime). finance_kb index confirmed
+  populated: 1026 docs.
+- Python deps: NOT installed in the base miniconda env, but ARE installed in
+  the "main" conda env (conda activate main) - this is the env to use for this
+  project, not base or "finreportrag".
+- Backend run convention (from backend/AGENTS.md): `cd backend/app && uvicorn
+  app_main:app --port 8000` (must run from backend/app, imports are flat, not
+  package-qualified). Ran with PYTHONUNBUFFERED=1 for reliable log evidence.
+
+DESIGN NOTE on "through the chat UI" (plan step 15):
+- No browser-automation tool was available in this session. Verified via the
+  actual production HTTP+SSE code path (POST /chat, the same endpoint the
+  React frontend calls) instead of a literal browser click-through. The
+  frontend does no transformation of the SSE payload that would change the
+  tool-selection narrative - it renders exactly the agent/assistant role
+  messages inspected here. Documented this as an explicit, defensible
+  deviation in .omc/eval/phase5_e2e_verification.md rather than silently
+  reinterpreting the acceptance criterion.
+
+[done] US-1: Live stack verification. uvicorn started clean ("Application
+startup complete"), /create_session returned 200, a trivial /chat round trip
+streamed and terminated with event: end. Confirmed ES/PG connectivity via a
+real rag_search-touching request in US-2 (a "hello" trivial query correctly
+triggered NO tool calls per agent_plan's own rules, so had to use the US-2
+run instead to prove ES connectivity - noted and corrected mid-run rather
+than papering over it).
+
+[done] US-2: AAPL complex query ("What is AAPL's current stock price, and
+what recent news or 10-K risk factors might explain its recent
+performance?") driven live. Result: 4 initial parallel actions
+(finance_query x2, rag_search x2), then 5 full reflection iterations (hit
+MAX_REFLECTION_ITERATIONS - a cap-stop, not an LLM-signaled stop, because
+the query effectively asks for a single definitive cause of a 0.12% price
+move, which doesn't exist as a clean answer - expected/correct behavior,
+not a bug). Tools used across the run: finance_query, rag_search,
+web_search (3 distinct). Every reflection-triggered action carried an
+LLM-stated rationale string in the SSE content field (not a hardcoded
+label). Final answer (2780 chars) cited real price data ($289.36, +0.12%),
+real 10-K/10-Q risk-factor language, and real news items. Raw trace saved:
+.omc/eval/phase5_traces/us2_aapl_complex_query.txt
+
+[done] US-3: MSFT simple query ("What is MSFT's current stock price?")
+driven live. Result: exactly 1 tool call (finance_query MSFT price),
+should_continue() returned sufficient=true on iteration 1 (LLM-signaled
+stop, not cap-stop), final answer correctly reported $373.02/-0.67%. Raw
+trace saved: .omc/eval/phase5_traces/us3_msft_simple_query.txt
+
+[done] US-4: Invalid ticker query ("What is ZZZZINVALID's current stock
+price?") driven live. finance_tool's _is_valid_ticker guard returned a
+graceful "未找到股票代码" string (NOT a raised exception - this is the
+soft-error path in finance_tool.py, distinct from process_actions()'s
+hard-exception "错误":true path from Phase 1). should_continue()'s
+rationale explicitly recognized this as an invalid-ticker signal without
+any hardcoded error flag - genuine LLM comprehension of unstructured error
+text. HTTP 200 throughout, no traceback in server log, stream reached
+event: end normally, final answer explicitly told the user the ticker was
+invalid rather than fabricating data. Raw trace saved:
+.omc/eval/phase5_traces/us4_invalid_ticker_query.txt
+
+[done] US-5: Created backend/tests/test_e2e_finance.py (live smoke-test
+script, same "not CI-automated" convention as test_agent.py, run via
+`python backend/tests/test_e2e_finance.py` against a running backend) that
+encodes the three scenarios' assertions programmatically. Ran it
+independently (fresh sessions, fresh LLM calls, not reusing the manual
+curl runs) - all 3 PASS. Caught and fixed an operator-precedence bug in my
+own first draft of the AAPL test's assertion (a trailing `or "289" in
+answer` clause would have short-circuited the whole check regardless of
+HTTP status - fixed before relying on the script's output as evidence).
+Wrote .omc/eval/phase5_e2e_verification.md documenting all three runs with
+real captured data. Updated README.md: migration-status Phase 5 line
+(⏳→✅... actually added fresh since it didn't exist before), lead
+paragraph now says "verified live", Roadmap Phase 5 struck through
+matching the ~~Phase 2~~/~~Phase 3~~/~~Phase 4~~ pattern, "Beyond Phase 4"
+renumbered to "Beyond Phase 5".
+
+INCIDENTAL FINDING (not fixed, out of Phase 5 scope): README.md links to
+.omc/plans/finance-agent-migration-plan.md and .omc/eval/finance_eval_set.md,
+but .omc/ is gitignored - these links are dead for anyone cloning from
+GitHub. Predates Phase 5 (introduced during Phase 2), follows an existing
+"all .omc/ content is local/session-scoped" convention. Flagged in the
+findings doc and here for a future session/the user to decide whether to
+fix (e.g. by moving these into a tracked docs/ location).
+
+PHASE 5 COMPLETE (final phase of the 5-phase migration plan). All 5 PRD
+stories pass with fresh live evidence, not assumed. Ready for architect
+reviewer verification (Step 7).
+
+[done] Architect reviewer verification (Step 7): APPROVED. Re-ran
+backend/tests/test_e2e_finance.py itself with fresh live API calls (not
+just reading saved traces) - all 3 scenarios passed independently. Audited
+every line of the script's assertion logic (ok = (...) expressions) for
+the operator-precedence bug class I'd already caught once - confirmed no
+recurrence. Verified README markdown integrity (blank lines before
+headings intact - the class of mistake from the Phase 4 review didn't
+recur here either). Confirmed the .omc/ dead-link disclosure in the
+findings doc is accurately scoped as pre-existing/out-of-scope.
+
+[done] Deslop pass (Step 7.5): reviewed backend/tests/test_e2e_finance.py,
+README.md, and .omc/eval/phase5_e2e_verification.md against the slop
+checklist. No duplication, dead code, needless abstraction, or boundary
+violations found. No edits made.
+
+[done] Regression re-verification (Step 7.6): re-ran
+backend/tests/test_e2e_finance.py one more time (yet another fresh
+independent live run, since deslop made no changes) - all 3 scenarios
+PASS, exit 0.
+
+PHASE 5 COMPLETE. All 5 PRD stories pass, architect-approved with fresh
+live re-execution (not rubber-stamped), deslop reviewed (no changes
+needed), regression-verified twice independently. This was the final
+phase of the 5-phase finance-agent migration plan
+(.omc/plans/finance-agent-migration-plan.md) - Phases 1-5 are now all
+complete. Stopped the uvicorn dev server that was started for this
+session's live verification (not something the user asked to keep
+running indefinitely).

@@ -28,10 +28,18 @@ first use case.
   (tagline, banner, hot questions spanning filing/news/price/educational
   queries against AAPL/MSFT/GOOGL) — copy-only change, no layout/component
   edits.
+- ✅ **Phase 5 — End-to-end verification.** Drove the live stack (real LLM,
+  yfinance, and `finance_kb` calls) through three scenarios: an AAPL
+  multi-tool query showing runtime-decided tool sequencing with LLM-stated
+  rationale, an MSFT single-fact query resolving in exactly one tool call,
+  and an invalid-ticker query showing the agent observe and report a tool
+  failure instead of crashing or fabricating data. All three passed; see
+  [`.omc/eval/phase5_e2e_verification.md`](.omc/eval/phase5_e2e_verification.md).
 
-**The full stack now answers finance questions end to end** (tools, RAG
-corpus, prompts, and frontend copy are all finance-domain) — the sections
-below describe the current finance-domain state.
+**The full stack now answers finance questions end to end, verified live**
+(tools, RAG corpus, prompts, frontend copy, and the runtime agent loop are
+all finance-domain and confirmed working against the real stack) — the
+sections below describe the current finance-domain state.
 
 ## Highlights
 
@@ -233,7 +241,8 @@ InvestPlus/
 1. ~~**Phase 2 — Finance data & tools**~~ ✅ done: live market-data tool (price/fundamentals/news) replacing PokeAPI; ported FinReportRAG's table-aware document parser for financial filings; finance RAG corpus (filings + news + educational content).
 2. ~~**Phase 3 — Prompt retargeting**~~ ✅ done: plan/reflect/final-answer prompts rewritten for finance terminology, preserving the Phase 1 iterative loop structure.
 3. ~~**Phase 4 — Frontend re-skin**~~ ✅ done: UI copy, i18n strings, and example questions updated to finance (tagline, banner, hot questions).
-4. **Beyond Phase 4** — the MVP (single-ticker stock/market analysis) is architecturally a foundation for a broader investing research copilot (portfolio-level reasoning, multi-asset comparison), reusing the same tool/RAG layer.
+4. ~~**Phase 5 — End-to-end verification**~~ ✅ done: live-stack scenarios for multi-tool sequencing, single-tool-call simple queries, and invalid-ticker error adaptation, all passed; see [`.omc/eval/phase5_e2e_verification.md`](.omc/eval/phase5_e2e_verification.md).
+5. **Beyond Phase 5** — the MVP (single-ticker stock/market analysis) is architecturally a foundation for a broader investing research copilot (portfolio-level reasoning, multi-asset comparison), reusing the same tool/RAG layer.
 
 Full plan, acceptance criteria, and architecture decisions: [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md).
 

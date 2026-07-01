@@ -23,13 +23,15 @@ first use case.
 - ✅ **Phase 3 — Prompt retargeting.** Plan/reflect/final-answer prompts
   rewritten for finance terminology (tickers, filings, P/E ratio, risk
   factors), preserving the Phase 1 loop structure unchanged.
-- ⏳ **Phase 4 — Frontend re-skin.** Swap UI copy/examples from Pokemon to
-  finance (not yet started — see [`frontend/src/i18n.tsx`](frontend/src/i18n.tsx)).
+- ✅ **Phase 4 — Frontend re-skin.** Swapped UI copy/examples in
+  [`frontend/src/i18n.tsx`](frontend/src/i18n.tsx) from Pokemon to finance
+  (tagline, banner, hot questions spanning filing/news/price/educational
+  queries against AAPL/MSFT/GOOGL) — copy-only change, no layout/component
+  edits.
 
-**The backend now fully answers finance questions** (tools, RAG corpus, and
-prompts are all finance-domain). Only the frontend's example copy/i18n
-strings (Phase 4) still reference Pokemon — the sections below describe the
-current finance-domain backend state.
+**The full stack now answers finance questions end to end** (tools, RAG
+corpus, prompts, and frontend copy are all finance-domain) — the sections
+below describe the current finance-domain state.
 
 ## Highlights
 
@@ -38,7 +40,7 @@ current finance-domain backend state.
 - **Bilingual, streaming, full-stack** — SSE streaming with a visible reasoning chain; auto language detection; shipped end-to-end (FastAPI + React + ES + PostgreSQL + Docker).
 - **Finance RAG corpus** — SEC filings (10-K/10-Q/8-K), news, and educational content for AAPL/MSFT/GOOGL, plus PDF upload support via a ported table-aware DeepDoc parser.
 
-## Features (finance domain — Phases 1-3 complete)
+## Features (finance domain — Phases 1-4 complete)
 
 - **Autonomous Agent Pipeline** — Plan → Act → Reflect → Answer; no manual tool selection needed; the Reflect stage loops until the LLM itself judges the answer complete (Phase 1).
 - **Three Tools**
@@ -225,13 +227,12 @@ InvestPlus/
 
 - **Finance KB retrieval gaps** — a fixed 9-query eval (`.omc/eval/finance_eval_set.md`) against the live `finance_kb` index measured 7/9 (78%) recall; the 2 misses are thin filings (e.g. a 7-chunk 8-K) or generically-phrased queries getting crowded out by much larger filings in the same shared, un-filtered-by-ticker index. Documented as a real retrieval-quality gap, not a bug.
 - **File upload PDF parsing** — the DeepDoc PDF pipeline is wired for user-uploaded filings via `/upload_files`, but the bulk corpus indexer (`scripts/index_finance.py`) parses SEC EDGAR filings from their native HTML (iXBRL) form directly rather than through the PDF pipeline, since EDGAR doesn't serve modern filings as PDF (see the module docstring in `index_finance.py`).
-- **Frontend still Pokemon-themed** — `frontend/src/i18n.tsx` example questions/copy are unchanged pending Phase 4.
 
 ## Roadmap
 
 1. ~~**Phase 2 — Finance data & tools**~~ ✅ done: live market-data tool (price/fundamentals/news) replacing PokeAPI; ported FinReportRAG's table-aware document parser for financial filings; finance RAG corpus (filings + news + educational content).
 2. ~~**Phase 3 — Prompt retargeting**~~ ✅ done: plan/reflect/final-answer prompts rewritten for finance terminology, preserving the Phase 1 iterative loop structure.
-3. **Phase 4 — Frontend re-skin** (not started): UI copy, i18n strings, and example questions updated to finance.
+3. ~~**Phase 4 — Frontend re-skin**~~ ✅ done: UI copy, i18n strings, and example questions updated to finance (tagline, banner, hot questions).
 4. **Beyond Phase 4** — the MVP (single-ticker stock/market analysis) is architecturally a foundation for a broader investing research copilot (portfolio-level reasoning, multi-asset comparison), reusing the same tool/RAG layer.
 
 Full plan, acceptance criteria, and architecture decisions: [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md).

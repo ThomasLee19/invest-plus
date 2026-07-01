@@ -87,3 +87,84 @@ archived/reset for Phase 2's own PRD), the plan file
 (no Python deps installed in this sandbox; confirm with user whether a real
 dev venv exists elsewhere for Phase 2/5 work that needs the actual backend
 running).
+
+================================================================
+RALPH PROGRESS LOG — Phase 4: Frontend Re-skin (2026-07-01)
+================================================================
+
+[init] Source plan: .omc/plans/finance-agent-migration-plan.md (Phase 4, steps 12-13)
+[init] Active PRD: .omc/state/sessions/dfc594af-64d6-4919-8f15-0aff2ed58294/prd.json
+       (root prd.json/this progress.txt are the legacy Phase 1 artifacts kept for
+       history; Phase 4 tracked stories live in the session-scoped PRD per current
+       ralph convention)
+[init] Confirmed via commit aed00d8 + README status lines that Phases 1-3 are
+       already complete and committed; only frontend/src/i18n.tsx still had
+       Pokemon-domain copy (grep confirmed no other Pokemon/Smogon/PokeAPI
+       references anywhere else in frontend/src).
+
+DESIGN NOTE on hotQuestions content:
+- Picked 5 example questions per plan step 12 spanning the actual query types
+  in .omc/eval/finance_eval_set.md (filing lookup, news, educational) plus the
+  finance_query tool (price/fundamentals) and web_search (general market
+  moves), against the actually-indexed tickers (AAPL/MSFT/GOOGL) rather than
+  inventing new ones. This keeps the demo copy honest against what the backend
+  can actually answer.
+
+[done] US-1: Rewrote i18n.tsx zh+en blocks (tagline, bannerTitle,
+bannerSubtitle, hotQuestions x5) to finance domain. Left attachment/
+navNewChat/repoTitle/etc. untouched (domain-agnostic UI chrome, out of
+Phase 4's copy-swap scope).
+
+[done] US-2: grep -rniE 'pokemon|pokémon|宝可梦|smogon|pokeapi|garchomp|dragapult'
+frontend/src → zero matches. git diff --stat confirms only i18n.tsx changed
+under frontend/ (no component/layout files touched).
+
+[done] US-3: Updated README.md — migration-status Phase 4 line ⏳→✅, Features
+heading "Phases 1-3"→"Phases 1-4", removed the "Frontend still
+Pokemon-themed" Known Limitations bullet, struck through Roadmap item 3
+matching the ~~Phase 2~~/~~Phase 3~~ pattern. (Caught and fixed a lost blank
+line before the "## Roadmap" heading introduced by one of these edits.)
+
+[done] US-4: `cd frontend && npx tsc -b` → 3 pre-existing TS6133 (unused var)
+errors in hot-questions/index.tsx, sender/index.tsx, chat/index.tsx — verified
+via `git stash` that these are identical before and after the i18n.tsx edit,
+i.e. pre-existing baseline issues unrelated to this change, not a regression
+introduced by Phase 4.
+
+NOTE (untracked artifact, not touched): backend/app/service/core/9b5ad71b2ce...
+is an untracked stray file (looks like a raw BPE/tokenizer vocab dump, ASCII,
+100k+ lines) sitting in the repo working tree. Unrelated to Phase 4 scope —
+flagged for the user/next session to decide whether to delete or .gitignore.
+
+PHASE 4 COMPLETE. All 4 PRD stories pass. Diff limited to frontend/src/i18n.tsx
+(content-only) and README.md (status markers). No backend changes. Ready for
+reviewer verification (Step 7).
+
+[done] Architect reviewer verification (Step 7): APPROVED. Verified US-1
+through US-4 with fresh evidence (grep, tsc diff/stash comparison, rendered
+README section read). Confirmed hotQuestions cover 4 distinct query types
+(filing, price/fundamentals, news, educational) against exactly the indexed
+tickers (AAPL/MSFT/GOOGL), domain-agnostic i18n keys untouched, and the 3
+tsc errors are provably pre-existing (byte-identical with i18n.tsx stashed).
+
+[done] Deslop pass (Step 7.5): reviewed frontend/src/i18n.tsx and README.md
+against the slop checklist (duplication, dead code, needless abstraction,
+boundary violations, missing tests, UI/design defaults). This is a pure
+copy/status change with no logic - nothing to clean. No edits made.
+
+[done] Regression re-verification (Step 7.6): re-ran grep (zero Pokemon
+matches) and `npx tsc -b` (same 3 pre-existing errors, unrelated files) -
+no regression from the (no-op) deslop pass.
+
+PHASE 4 COMPLETE. All 4 PRD stories pass, architect-approved, deslop
+reviewed (no changes needed), regression-verified. Migration (Phases 1-4)
+is now fully complete per the finance-agent-migration-plan.md. Only
+remaining plan item is Phase 5 (end-to-end verification / demo trace
+inspection), which is out of scope for this run (user asked for Phase 4
+only).
+
+NOTE for future session: an untracked stray file
+backend/app/service/core/9b5ad71b2ce5302211f9c61530b329a4922fc6a4 (looks
+like a raw tokenizer vocab dump) sits in the working tree, unrelated to
+Phase 4 - flagged for the user to decide whether to delete or .gitignore,
+not touched by this run.

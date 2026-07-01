@@ -1,6 +1,10 @@
 **/__pycache__/
 **/*.pyc
 
+# tiktoken cache blobs (TIKTOKEN_CACHE_DIR points at backend/app/service/core; see
+# backend/app/service/core/rag/utils/__init__.py) — sha1-named, no extension
+backend/app/service/core/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+
 jd_advice.md
 JD.md
 overview.md

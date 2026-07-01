@@ -40,6 +40,12 @@ def query_quote(ticker: str) -> str:
         fast_info = t.fast_info
         last_price = fast_info["lastPrice"]
         prev_close = fast_info["previousClose"]
+        if last_price is None or prev_close is None:
+            # fast_info can report a ticker as present with null price fields
+            # (e.g. "SPX" - a colloquial name yfinance half-recognizes but has
+            # no real quote for). Route into the same history-based fallback
+            # below instead of subtracting None - None later.
+            raise ValueError("fast_info has no price data")
         currency = fast_info.get("currency", "USD")
         day_high = fast_info.get("dayHigh")
         day_low = fast_info.get("dayLow")

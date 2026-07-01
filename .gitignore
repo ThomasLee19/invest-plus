@@ -26,3 +26,12 @@ salespilot-main
 
 settings.local.json
 storage/.claude/settings.local.json
+
+# Fetched finance corpus (regenerable via scripts/fetch_*.py + index_finance.py);
+# committing it (esp. raw SEC EDGAR .htm filings) was inflating the repo and
+# skewing GitHub's language stats toward HTML.
+/data/
+
+# Local codegraph tool cache symlink, points outside the repo (not portable,
+# shouldn't have been committed).
+.codegraph

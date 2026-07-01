@@ -4,13 +4,12 @@ Plan → Act → Reflect → Answer 架构，沿用 SalesPilot 原始命名。
 
 迁移说明：本项目由 Pokemon 对战助手（PokemonRA）重构而来，复用同一套
 Agent 架构（本文件）与 RAG 检索基础设施，目标域改为金融研究助手。
-工具层与 prompt 内容仍是迁移前的 Pokemon 领域实现，将在后续阶段替换为
-金融领域工具（详见 .omc/plans/finance-agent-migration-plan.md）。
+工具层与 prompt 已完成向金融领域的迁移（详见 .omc/plans/finance-agent-migration-plan.md）。
 
-三个工具（当前仍为 Pokemon 领域实现，迁移中）：
-  rag_search    - Smogon 攻略知识库（ES hybrid search）
-  pokeapi_query - 精确数值查询（实时调用 PokeAPI）
-  web_search    - 最新 meta / 知识库未覆盖内容（Serper）
+三个工具：
+  rag_search     - 金融知识库（filings/news/教育内容，ES hybrid search）
+  finance_query  - 精确数值查询（实时调用 yfinance：行情/基本面/新闻）
+  web_search     - 最新 meta / 知识库未覆盖内容（Serper）
 """
 
 import json
@@ -18,6 +17,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 from openai import OpenAI
 
 # 路径处理：支持直接运行和作为模块导入
@@ -25,15 +25,19 @@ _backend_dir = Path(__file__).parent.parent.parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-from app.service.pokeapi.pokeapi_tool import pokeapi_query as _pokeapi_query
-from app.service.pokeapi.pokeapi_tool import resolve_pokemon_name as _resolve_pokemon_name
+from app.service.finance.finance_tool import finance_query as _finance_query
+
+# 显式加载 .env，不依赖调用方（如 chat_rt.py）恰好先 import 了其他会触发
+# load_dotenv() 的模块——这里独立运行（脚本/测试）时也能正确拿到 DASHSCOPE_API_KEY，
+# 否则 embedding 请求会静默失败，rag_search 降级为纯 BM25（曾在 eval 脚本中触发过）。
+load_dotenv()
 
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
     "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 )
-ES_INDEX = "pokemon_kb"
+ES_INDEX = "finance_kb"
 
 
 # ── LLM 客户端 ────────────────────────────────────────────────────────────────
@@ -80,10 +84,10 @@ _KNN_BOOST = 8.0
 
 
 def rag_search(query: str, user_id: str = "1") -> list[dict]:
-    """查询 ES pokemon_kb，返回 Smogon 攻略 + 用户上传文档的 chunks。
+    """查询 ES finance_kb，返回 filings/news/教育内容 + 用户上传文档的 chunks。
 
     Hybrid 检索（ES 8.11 原生 knn + query，自实现，无 RAGFlow 依赖）：
-    - BM25 路：content_ltks 全文匹配，擅长精确关键词（招式名、精灵名）
+    - BM25 路：content_ltks 全文匹配，擅长精确关键词（ticker、财务术语）
     - kNN 路：q_1024_vec 向量近邻，擅长语义/跨语言（中文口语化提问）
     两路分数相加排序。embedding 不可用时自动降级为纯 BM25。
     """
@@ -97,9 +101,10 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
             request_timeout=30,
         )
 
-        # 来源过滤：仅 Smogon 攻略 或 当前用户上传的文档（BM25 与 kNN 两路共用）
+        # 来源过滤：finance_kb 语料（filings/news/教育内容）或当前用户上传的文档
+        # （BM25 与 kNN 两路共用）
         source_filter = [
-            {"term": {"source_kwd": "smogon"}},
+            {"terms": {"source_kwd": ["sec_filing", "news", "educational"]}},
             {"term": {"user_id": user_id}},
         ]
 
@@ -142,32 +147,32 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
         return []
 
 
-def pokeapi_tool(query: str) -> str:
+_TICKER_RE = re.compile(r"\b[A-Z]{1,5}\b")
+_NEWS_KEYWORDS = ("news", "新闻", "headline", "最新消息")
+_FUNDAMENTALS_KEYWORDS = (
+    "fundamental", "基本面", "市盈率", "pe ratio", "p/e", "市值", "market cap",
+    "eps", "dividend", "股息", "beta", "行业", "sector",
+)
+
+
+def finance_tool(query: str) -> str:
     """
-    解析自然语言查询，调用 PokeAPI。
-    支持：精灵信息查询、属性克制查询。
+    解析自然语言查询，调用 finance_query（yfinance）。
+    支持：实时行情、基本面数据、近期新闻。
+
+    ticker 提取：query 中大写的 1-5 个字母词（如 "AAPL"）；子问题按 agent_plan/
+    should_continue 的规则必须带上大写 ticker。
+    查询类型按关键词判断：news 关键词 → 新闻；基本面关键词 → 基本面；否则默认行情。
     """
+    tickers = _TICKER_RE.findall(query)
+    ticker = tickers[0] if tickers else query.split()[0].upper() if query.split() else ""
+
     query_lower = query.lower()
-
-    # 属性克制查询（包含 "vs"、"对"、"克制"、"弱点" 等关键词）
-    if any(kw in query_lower for kw in ["vs", "对", "克制", "弱点", "matchup", "against"]):
-        # 尝试提取属性名（简单规则：找 type 相关词）
-        types = re.findall(
-            r"\b(fire|water|grass|electric|ice|fighting|poison|ground|flying|"
-            r"psychic|bug|rock|ghost|dragon|dark|steel|fairy|normal)\b",
-            query_lower
-        )
-        if len(types) >= 2:
-            return _pokeapi_query("type_matchup", attacking_type=types[0], defending_types="/".join(types[1:]))
-        elif len(types) == 1:
-            return _pokeapi_query("type_matchup", attacking_type=types[0], defending_types=types[0])
-
-    # 精灵信息查询：解析出 PokeAPI slug（支持 iron-valiant/great-tusk 等多词名）。
-    # 解析失败时回退到第一个词，让 query_pokemon 返回友好的“未找到”提示。
-    name = _resolve_pokemon_name(query_lower)
-    if not name:
-        name = query_lower.split()[0] if query_lower.split() else query_lower
-    return _pokeapi_query("pokemon", name=name)
+    if any(kw in query_lower for kw in _NEWS_KEYWORDS):
+        return _finance_query("news", ticker=ticker)
+    elif any(kw in query_lower for kw in _FUNDAMENTALS_KEYWORDS):
+        return _finance_query("fundamentals", ticker=ticker)
+    return _finance_query("quote", ticker=ticker)
 
 
 def web_search(query: str, language: str = "en") -> list[str]:
@@ -187,35 +192,35 @@ def web_search(query: str, language: str = "en") -> list[str]:
 
 def agent_plan(query: str) -> list[dict] | None:
     prompt = """
-# PokemonRA Agent — Plan 模块
+# Invest+ Agent — Plan 模块
 
-你是宝可梦对战问答助手的规划模块。分析用户查询，决定调用哪些工具，并将查询拆解为 1-3 个子问题。
+你是金融研究助手的规划模块。分析用户查询，决定调用哪些工具，并将查询拆解为 1-3 个子问题。
 
 ## 用户查询
 {query}
 
 ## 可用工具
 
-1. **rag_search**：搜索 Smogon 攻略知识库
-   - 适用场景：对战策略、队伍搭配建议、招式组合、道具选择、赛季 meta、具体精灵的竞技用法
-   - 示例："烈咬陆鲨怎么配招"、"铁荆棘适合什么队伍"
+1. **rag_search**：搜索金融知识库（filings/news/教育内容）
+   - 适用场景：财报/招股书内容、风险因素、近期新闻解读、金融概念解释
+   - 示例："AAPL 最新 10-K 的风险因素"、"什么是市盈率"
 
-2. **pokeapi_query**：查询精灵精确数据（实时调用 PokeAPI）
-   - 适用场景：种族值、技能池、进化链、属性克制关系、特性
-   - 示例："garchomp speed stat"、"fire vs grass/poison matchup"
-   - **重要：子问题必须使用英文精灵名（如 "garchomp speed stat"），不能使用中文**
+2. **finance_query**：查询股票精确数据（实时调用 yfinance）
+   - 适用场景：实时行情、涨跌幅、市值、市盈率、基本面数据、近期新闻标题
+   - 示例："AAPL stock price"、"MSFT fundamentals"
+   - **重要：子问题必须包含大写的股票代码（ticker），如 "AAPL price"**
 
 3. **web_search**：网络搜索
-   - 适用场景：最新版本变化、赛季排名数据、知识库未覆盖的冷门精灵
-   - 示例："SV赛季12 top tier 精灵"
+   - 适用场景：最新市场动态、知识库未覆盖的内容
+   - 示例："美联储最新利率决议"
 
 ## 工具选择规则
-- 精确数值（种族值/技能/克制）→ pokeapi_query
-- 策略/攻略/搭配建议 → rag_search
-- 最新 meta/赛季数据 → web_search
+- 精确数值（行情/市值/市盈率）→ finance_query
+- 财报内容/新闻解读/概念解释 → rag_search
+- 最新市场动态 → web_search
 - 复合问题可同时使用多个工具
 - 日常问候（你好、谢谢等）→ 不调用任何工具，输出 null
-- 与宝可梦完全无关的问题（数学、地理、历史等）→ 不调用任何工具，输出 null
+- 与金融完全无关的问题（数学、地理、历史等）→ 不调用任何工具，输出 null
 
 ## 输出格式
 JSON 列表，每项包含 action_name 和 prompts（子问题列表）：
@@ -226,7 +231,7 @@ JSON 列表，每项包含 action_name 和 prompts（子问题列表）：
   }}
 ]
 
-工具名称必须是：rag_search、pokeapi_query、web_search 之一。
+工具名称必须是：rag_search、finance_query、web_search 之一。
 不需要调用工具时输出：null
 
 只输出 JSON，不要输出任何其他内容。
@@ -263,8 +268,8 @@ def process_actions(actions: list[dict], language: str = "en") -> list[dict]:
         try:
             if action_name == "rag_search":
                 result = rag_search(prompt)
-            elif action_name == "pokeapi_query":
-                result = pokeapi_tool(prompt)
+            elif action_name == "finance_query":
+                result = finance_tool(prompt)
             elif action_name == "web_search":
                 result = web_search(prompt, language)
             else:
@@ -272,7 +277,7 @@ def process_actions(actions: list[dict], language: str = "en") -> list[dict]:
 
             # 去重：仅当「同一子问题 + 完全相同结果」时才算重复。
             # 用完整 result（不截断）做 key，避免不同查询因前 200 字符相同被误丢
-            # （如宝可梦信息卡表头格式统一、或 rag 命中同一篇文章首块时撞前缀）。
+            # （如行情卡表头格式统一、或 rag 命中同一篇文章首块时撞前缀）。
             result_key = (prompt, str(result))
             if result_key in seen:
                 continue
@@ -314,7 +319,7 @@ def should_continue(query: str, memory: list[dict]) -> dict:
       判定足够"在 rationale 文案上可区分，便于排查。
     """
     prompt = """
-# PokemonRA Agent — Reflect 模块
+# Invest+ Agent — Reflect 模块
 
 用户问题：{query}
 
@@ -325,15 +330,15 @@ def should_continue(query: str, memory: list[dict]) -> dict:
 判断已有信息是否足以回答用户问题。如果不足，补充至多 2 个查询。
 
 ## 可用工具
-- rag_search：Smogon 攻略（策略/搭配）
-- pokeapi_query：精灵精确数据（数值/技能/克制）【子问题必须用英文精灵名】
-- web_search：网络搜索，适用于：1）最新 meta/赛季数据；2）rag_search 没有返回任何对战策略内容时，用于补充竞技用法
+- rag_search：金融知识库（filings/news/教育内容）
+- finance_query：股票精确数据（行情/基本面/新闻）【子问题必须包含大写 ticker】
+- web_search：网络搜索，适用于：1）最新市场动态；2）rag_search 没有返回任何相关内容时，用于补充信息
 
 ## 判断规则
-- 如果用户问的是对战策略/搭配建议，但 rag_search 结果为空或没有相关策略内容 → 必须补充 web_search
+- 如果用户问的是财报内容/新闻解读，但 rag_search 结果为空或没有相关内容 → 必须补充 web_search
 - 如果某次工具调用失败（已收集信息中标记了"错误": true）→ 判断是否需要换一种查询方式重试，或改用其他工具，或在 rationale 中说明该信息缺口
-- 如果已有完整的策略内容（招式/道具/EV建议）→ sufficient 为 true
-- pokeapi_query 的数值数据不能替代对战策略，两者都需要时要分别补充
+- 如果已有完整的分析所需信息（行情/基本面/财报要点）→ sufficient 为 true
+- finance_query 的实时数值数据不能替代财报/新闻的定性分析，两者都需要时要分别补充
 
 ## 输出格式
 必须输出 JSON 对象（不是列表），包含三个字段：
@@ -455,18 +460,19 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 
     if language == "zh":
         lang_instruction = (
-            '请全程使用中文回答。所有招式名、道具名、特性名必须使用中文（如"地震"而非"Earthquake"，'
-            '"龙爪"而非"Dragon Claw"，"剑舞"而非"Swords Dance"，"讲究头带"而非"Choice Band"）。'
-            '所有宝可梦名称必须使用中文（如"烈咬陆鲨"而非"Garchomp"，"铁荆棘"而非"Iron Valiant"，'
-            '"黄金怪"而非"Gholdengo"）。参考信息中出现的英文名称，请在回答时全部翻译为中文。'
+            '请全程使用中文回答。所有金融术语必须使用中文（如"市盈率"而非"P/E ratio"，'
+            '"每股收益"而非"EPS"，"资产负债表"而非"balance sheet"，"现金流量表"而非'
+            '"cash flow statement"）。股票代码（如 AAPL、MSFT）保持英文缩写不变。'
+            '参考信息中出现的英文金融术语，请在回答时翻译为中文。'
         )
     else:
         lang_instruction = (
-            "Please answer entirely in English. Use English names for all moves, items, abilities, "
-            "and Pokémon (e.g. 'Earthquake', 'Choice Band', 'Garchomp'). "
-            "Translate any Chinese terms in the references to English. "
+            "Please answer entirely in English. Use English financial terminology "
+            "(e.g. 'P/E ratio', 'EPS', 'balance sheet', 'cash flow statement'). "
+            "Ticker symbols (e.g. AAPL, MSFT) stay as-is. "
+            "Translate any Chinese financial terms in the references to English. "
             "Do NOT output any Chinese characters under any circumstances — "
-            "the reference data may contain Chinese field labels and names, "
+            "the reference data may contain Chinese field labels and terms, "
             "translate every one of them into English."
         )
 
@@ -476,7 +482,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         for turn in history:
             history_str += f"用户：{turn['user']}\n助手：{turn['assistant']}\n\n"
 
-    final_prompt = f"""你是专业的宝可梦对战顾问，基于第九世代（朱/紫）数据回答用户问题。
+    final_prompt = f"""你是专业的金融研究助手，基于财报（10-K/10-Q/8-K）、新闻与实时行情数据回答用户的投资研究问题。
 
 {lang_instruction}
 {history_str}
@@ -487,12 +493,12 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 {query}
 
 ## 回答要求
-- 如果用户问题与宝可梦完全无关（如数学、地理等），只回复"我只能回答宝可梦相关的问题。" / "I can only answer Pokémon-related questions."，不要尝试回答
+- 如果用户问题与金融/投资完全无关（如宝可梦、地理等），只回复"我只能回答金融/投资相关的问题。" / "I can only answer finance/investing-related questions."，不要尝试回答
 - 如果用户询问对话历史（如"我之前问过什么"），根据对话历史如实回答，这属于正常的对话交互
 - 优先使用参考信息中的数据，参考信息不足时结合自身知识补充
-- 回答要专业、准确，适当引用具体数值
-- 对战建议要实用，给出具体的招式/道具/EV推荐
-- 如果问题超出第九世代范围，明确告知
+- 回答要专业、准确，适当引用具体数值（行情、财务指标、财报原文）
+- 分析要基于参考信息中的行情/财报/新闻数据给出具体依据，不要给出买卖建议
+- 如果问题涉及知识库未覆盖的公司或数据范围，明确告知该局限性
 """
 
     completion = client.chat.completions.create(

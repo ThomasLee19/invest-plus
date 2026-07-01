@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-07-01 | Updated: 2026-07-01 -->
+<!-- Generated: 2026-07-01 | Updated: 2026-07-01 (post finance-migration Phase 1-3 pass) -->
 
 # app
 
@@ -19,7 +19,7 @@ running uvicorn is **this directory**.
 | Directory | Purpose |
 |-----------|---------|
 | `router/` | HTTP endpoints (chat/SSE, file upload, session & message history) |
-| `service/` | Agent pipeline + the three tools (see `service/AGENTS.md`) |
+| `service/` | Agent pipeline + the three tools, finance domain (`rag_search`, `finance_query`, `web_search` — see `service/AGENTS.md`) |
 | `models/` | SQLAlchemy declarative models (`Session`, `Message`) |
 | `schemas/` | Pydantic request bodies (`ChatRequest`) |
 | `database/` | Knowledgebase table helpers (raw SQL) |
@@ -61,6 +61,11 @@ running uvicorn is **this directory**.
 ### Common Patterns
 - All persistence is raw SQL via `db.execute(text(...), params)` + explicit
   `commit()` / `rollback()`. Match this; don't introduce ORM query style.
+
+### Testing Requirements
+See [`backend/AGENTS.md`](../AGENTS.md#testing-requirements) — there is now a
+unit suite at `backend/tests/test_agent_loop.py` (11 tests, zero external
+deps/network, run via `python -m unittest tests.test_agent_loop` from `backend/`).
 
 ## Dependencies
 

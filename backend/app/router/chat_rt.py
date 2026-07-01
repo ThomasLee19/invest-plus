@@ -13,7 +13,7 @@ from service.core.file_parse import execute_insert_process
 from database.knowledgebase_operations import insert_knowledgebase
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../../storage/file")
-ALLOWED_EXTENSIONS = {".txt", ".md"}
+ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
 
 router = APIRouter()
 
@@ -117,7 +117,7 @@ async def upload_files(
         if suffix not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"{file.filename} 不支持，仅支持 .txt 和 .md 文件",
+                detail=f"{file.filename} 不支持，仅支持 .txt、.md 和 .pdf 文件",
             )
 
         save_dir = os.path.join(STORAGE_DIR, session_id)
@@ -151,7 +151,7 @@ async def get_files():
             request_timeout=30,
         )
         resp = es.search(
-            index="pokemon_kb",
+            index="finance_kb",
             body={
                 "query": {"term": {"source_kwd": "user_upload"}},
                 "collapse": {"field": "docnm_kwd"},
@@ -189,7 +189,7 @@ async def delete_file(file_name: str = Query(...)):
         # refresh=True：删除后立即刷新，确保前端紧接着的 /get_files/ 查询
         # 不再返回已删文件（与上传端 refresh="wait_for" 对称）。
         result = es.delete_by_query(
-            index="pokemon_kb",
+            index="finance_kb",
             body={"query": {"term": {"docnm_kwd": file_name}}},
             refresh=True,
         )

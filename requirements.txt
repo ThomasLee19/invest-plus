@@ -1,0 +1,50 @@
+# Python dependencies for backend/ and scripts/. Target: Python 3.11 (conda env recommended).
+# Captured from the environment where `backend/app_main.py` and `scripts/index_finance.py`
+# were verified to import cleanly end-to-end (see .omc/eval/finance_eval_set.md for the
+# retrieval-quality run against this exact dependency set).
+#
+# Install: pip install -r requirements.txt
+
+# ── Web framework / API (backend/app) ──────────────────────────────────────
+fastapi==0.138.2
+uvicorn==0.49.0
+pydantic==2.13.4
+python-multipart==0.0.32
+
+# ── Database (backend/app/utils, database) ─────────────────────────────────
+SQLAlchemy==2.0.51
+psycopg2-binary==2.9.12
+
+# ── LLM / embeddings / search clients (agent.py, file_parse.py, scripts) ───
+openai==2.44.0
+elasticsearch==8.19.3
+requests==2.34.2
+python-dotenv==1.2.2
+
+# ── Finance data tool (service/finance/finance_tool.py) ────────────────────
+yfinance==1.5.1
+
+# ── Filings fetch/index (scripts/fetch_filings.py, scripts/index_finance.py) ─
+beautifulsoup4==4.15.0
+lxml==6.1.1
+xxhash==3.8.0
+
+# ── DeepDoc PDF parsing pipeline (service/core/deepdoc, service/core/rag) ──
+onnxruntime==1.27.0
+opencv-python-headless==4.13.0.92
+xgboost==2.0.3
+torch==2.5.1
+pillow==12.2.0
+pdfplumber==0.11.10
+pypdf==6.14.2
+pyclipper==1.4.0
+shapely==2.1.2
+tiktoken==0.13.0
+huggingface_hub==1.21.0
+
+# ── Tokenizer (service/core/rag/nlp/rag_tokenizer.py) ───────────────────────
+nltk==3.9.4
+datrie==0.8.3
+hanziconv==0.3.2
+chardet==7.4.3
+six==1.17.0

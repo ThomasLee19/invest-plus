@@ -3,17 +3,22 @@ Unit tests for the agent loop's LLM-driven decision logic (should_continue),
 the bounded reflection while-loop in final_answer(), and tool-error propagation.
 
 Design constraint: this suite must run with ZERO installed third-party packages
-and ZERO network access, so the real `openai` SDK and the real pokeapi_tool
-module (which itself reaches out to PokeAPI) are stubbed via sys.modules
-*before* agent.py is imported. Within each test, the actual LLM-calling
-boundary (_llm_json) is mocked with unittest.mock so should_continue()'s own
-parsing/decision logic is exercised against controlled, deterministic
-responses rather than a live model.
+and ZERO network access, so the real `openai` SDK and the real `dotenv` package
+(agent.py calls load_dotenv() at import time as of the fix for the load-order
+bug where DASHSCOPE_API_KEY was only populated by accident via chat_rt.py's
+import order) are stubbed via sys.modules *before* agent.py is imported. Within
+each test, the actual LLM-calling boundary (_llm_json) is mocked with
+unittest.mock so should_continue()'s own parsing/decision logic is exercised
+against controlled, deterministic responses rather than a live model.
 
-Test fixtures use the existing Pokemon-domain tools (rag_search, pokeapi_query,
-web_search) per the plan: the finance tool does not exist until Phase 2, so
-Phase 1's loop-mechanism tests intentionally validate against the current
-domain rather than inventing finance fixtures here.
+These tests were originally written in Phase 1, before the finance tool
+existed, so the mocked memory fixtures still use Pokemon-domain strings
+(garchomp, pokeapi_query) as arbitrary example content. That's harmless: the
+functions under test (should_continue, process_actions, the reflection loop
+in final_answer) are exercised entirely via mocks/patches, so the literal
+domain words in the fixture data don't affect what's being verified — the
+loop-mechanism and error-propagation behavior is domain-agnostic by
+construction. Finance-domain end-to-end scenarios belong in Phase 5.
 """
 import json
 import sys
@@ -37,11 +42,10 @@ if "openai" not in sys.modules:
     _fake_openai.OpenAI = _FakeOpenAI
     sys.modules["openai"] = _fake_openai
 
-if "app.service.pokeapi.pokeapi_tool" not in sys.modules:
-    _fake_pokeapi_tool = types.ModuleType("app.service.pokeapi.pokeapi_tool")
-    _fake_pokeapi_tool.pokeapi_query = lambda *a, **kw: "[stub] pokeapi_query not exercised in this test"
-    _fake_pokeapi_tool.resolve_pokemon_name = lambda *a, **kw: None
-    sys.modules["app.service.pokeapi.pokeapi_tool"] = _fake_pokeapi_tool
+if "dotenv" not in sys.modules:
+    _fake_dotenv = types.ModuleType("dotenv")
+    _fake_dotenv.load_dotenv = lambda *a, **kw: False
+    sys.modules["dotenv"] = _fake_dotenv
 
 from app.service.agent import agent  # noqa: E402  (import after stubbing)
 

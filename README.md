@@ -1,12 +1,12 @@
-# Invest+ — Finance Research Agent (migrating from a Pokemon battle-advisor)
+# Invest+ — Finance Research Agent (migrated from a Pokemon battle-advisor)
 
-Invest+ is a RAG + agent system being repurposed from a Gen 9 Pokémon
-competitive battle Q&A agent into a finance research assistant, **reusing the
-same agent architecture, retrieval infrastructure, and backend/frontend
-shell** — only the domain layer (tools, RAG corpus, prompts) is being
-replaced. The migration itself is the interesting part: it's a live test of
-how much of an agent system is genuinely domain-agnostic versus how much was
-secretly coupled to its first use case.
+Invest+ is a RAG + agent system repurposed from a Gen 9 Pokémon competitive
+battle Q&A agent into a finance research assistant, **reusing the same agent
+architecture, retrieval infrastructure, and backend/frontend shell** — only
+the domain layer (tools, RAG corpus, prompts) changed. The migration itself
+was the interesting part: it was a live test of how much of an agent system
+is genuinely domain-agnostic versus how much was secretly coupled to its
+first use case.
 
 **Migration status** (see [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md) for the full plan):
 - ✅ **Phase 1 — Agent loop architecture upgrade.** The original loop ran a
@@ -15,38 +15,40 @@ secretly coupled to its first use case.
   (the model itself decides when to call another tool, retry a failed one, or
   stop) with a bounded safety cap distinguishable from a real LLM-signaled
   stop. Verified with 11 unit tests, architect-reviewed.
-- ⏳ **Phase 2 — Finance data & tools.** Replace the PokeAPI tool with a live
-  market-data tool; port a second project's (FinReportRAG) table-aware
-  document parser for financial filings into this RAG pipeline.
-- ⏳ **Phase 3 — Prompt retargeting.** Rewrite the agent's tool-selection and
-  reasoning prompts for finance terminology.
+- ✅ **Phase 2 — Finance data & tools.** Replaced the PokeAPI tool with a live
+  yfinance-backed market-data tool (`finance_query`: quote/fundamentals/news);
+  ported FinReportRAG's DeepDoc table-aware PDF parser into the upload
+  pipeline; built a finance RAG corpus (SEC filings + news + educational
+  content) indexed into the renamed `finance_kb` ES index.
+- ✅ **Phase 3 — Prompt retargeting.** Plan/reflect/final-answer prompts
+  rewritten for finance terminology (tickers, filings, P/E ratio, risk
+  factors), preserving the Phase 1 loop structure unchanged.
 - ⏳ **Phase 4 — Frontend re-skin.** Swap UI copy/examples from Pokemon to
-  finance.
+  finance (not yet started — see [`frontend/src/i18n.tsx`](frontend/src/i18n.tsx)).
 
-**Until Phases 2-4 land, the system still functionally answers Pokémon
-questions** — the sections below describing tools, prompts, and the UI
-reflect that current, pre-migration state. The architecture sections
-(agent loop, hybrid retrieval) describe the domain-agnostic core that
-carries forward unchanged.
+**The backend now fully answers finance questions** (tools, RAG corpus, and
+prompts are all finance-domain). Only the frontend's example copy/i18n
+strings (Phase 4) still reference Pokemon — the sections below describe the
+current finance-domain backend state.
 
 ## Highlights
 
-- **Self-designed agent loop** — Plan → Act → Reflect → Answer, hand-built (no LangChain), with autonomous tool selection, self-correction, and (as of Phase 1) a genuinely LLM-driven continue/stop/retry decision at every step.
+- **Self-designed agent loop** — Plan → Act → Reflect → Answer, hand-built (no LangChain), with autonomous tool selection, self-correction, and a genuinely LLM-driven continue/stop/retry decision at every step.
 - **Cross-lingual hybrid retrieval** — a Chinese conversational query scores **0% effective recall with BM25-only → 100% with hybrid (BM25 + vector kNN)** against an English-source corpus.
 - **Bilingual, streaming, full-stack** — SSE streaming with a visible reasoning chain; auto language detection; shipped end-to-end (FastAPI + React + ES + PostgreSQL + Docker).
-- **Architecture-reuse migration in progress** — same codebase, two domains. See migration status above.
+- **Finance RAG corpus** — SEC filings (10-K/10-Q/8-K), news, and educational content for AAPL/MSFT/GOOGL, plus PDF upload support via a ported table-aware DeepDoc parser.
 
-## Features (current — Pokemon domain, pre-Phase-2)
+## Features (finance domain — Phases 1-3 complete)
 
 - **Autonomous Agent Pipeline** — Plan → Act → Reflect → Answer; no manual tool selection needed; the Reflect stage loops until the LLM itself judges the answer complete (Phase 1).
 - **Three Tools**
-  - `rag_search` — Smogon strategy articles (ES hybrid search: BM25 + vector kNN)
-  - `pokeapi_query` — Real-time Pokémon data: base stats, learnsets, type matchups (PokeAPI)
-  - `web_search` — Latest meta / season rankings (Serper API)
+  - `rag_search` — Finance knowledge base: SEC filings, news, educational content (ES hybrid search: BM25 + vector kNN)
+  - `finance_query` — Real-time market data: quote, fundamentals, news (yfinance)
+  - `web_search` — Latest market moves / knowledge-base gaps (Serper API)
 - **Streaming Output** — SSE streaming with visible agent reasoning chain (qwq-plus thinking tokens).
 - **Multi-turn Conversation** — Session-scoped history; each new session starts fresh.
 - **Bilingual** — Auto-detects input language; responds in Chinese or English; UI supports 中/EN toggle.
-- **File Upload & Management** — Upload `.txt` / `.md` strategy docs (indexed into ES); view and delete via the Docs page.
+- **File Upload & Management** — Upload `.txt` / `.md` / `.pdf` filings (PDFs parsed with the ported DeepDoc layout/table pipeline, indexed into ES); view and delete via the Docs page.
 
 ## Tech Stack
 
@@ -54,9 +56,10 @@ carries forward unchanged.
 |---|---|---|
 | LLM | Qwen — qwq-plus (final answer), qwen-plus (plan/reflection) via DashScope | Reasoning + tool decisions |
 | Agent Framework | Custom Plan→Act→Reflect→Answer pipeline (no LangChain) | Tool orchestration + self-correction |
-| Knowledge Base | Elasticsearch (Smogon chunks + user uploads, pre-migration) | Hybrid retrieval (BM25 + vector) |
-| Real-time Data | PokeAPI REST (pre-migration — Phase 2 replaces with finance data) | Stats / learnsets / type matchups |
-| Web Search | Serper API | Latest meta / fallback |
+| Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads) | Hybrid retrieval (BM25 + vector) |
+| Real-time Data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
+| Document Parsing | DeepDoc (ported from FinReportRAG: layout/table-transformer/OCR, onnxruntime) | PDF filing uploads → table-aware chunks |
+| Web Search | Serper API | Latest market moves / fallback |
 | Backend | FastAPI + PostgreSQL | API, SSE, sessions & messages |
 | Frontend | React + TypeScript + Vite + Ant Design + Valtio | Chat UI, streaming render, doc mgmt |
 | Infrastructure | Docker Compose (ES + PG) | Local dependencies |
@@ -68,8 +71,8 @@ User question
       ↓
   agent_plan()         ── LLM decides which tools to call, breaks into sub-questions
       ↓
-  process_actions()    ── calls rag_search / pokeapi_query / web_search; tool errors
-      ↓                    are now surfaced to the LLM, not swallowed (Phase 1)
+  process_actions()    ── calls rag_search / finance_query / web_search; tool errors
+      ↓                    are surfaced to the LLM, not swallowed (Phase 1)
   should_continue()     ── LOOPS: LLM judges if info is sufficient; if not, decides what
       ↓  (bounded loop)    to call next — the loop body, not the LLM, only caps runaway
       ↓                    iterations as a safety net
@@ -78,11 +81,11 @@ User question
   Frontend renders thinking chain + final answer
 ```
 
-**Tool selection rules (current — Pokemon domain):**
-- Base stats / learnsets / type matchups → `pokeapi_query`
-- Strategy / team building / item recommendations → `rag_search`
-- Latest meta / season data / obscure Pokémon → `web_search`
-- Off-topic questions (non-Pokémon) → rejected
+**Tool selection rules (finance domain):**
+- Real-time quote / market cap / P-E ratio / fundamentals / news headlines → `finance_query`
+- Filing content / risk factors / news analysis / concept explanations → `rag_search`
+- Latest market-wide events not covered by the knowledge base → `web_search`
+- Off-topic questions (non-finance) → rejected
 
 ## Core Technical Deep-Dive
 
@@ -144,10 +147,19 @@ DATABASE_URL=postgresql://postgres:pg123456@localhost:5432/investplus
 docker-compose up -d
 ```
 
-### 3. Index Smogon Data (current Pokemon-domain corpus, pre-Phase-2)
+### 2b. Install Python Dependencies
 ```bash
-python legacy/index_smogon.py
+pip install -r requirements.txt
 ```
+
+### 3. Fetch and Index the Finance Corpus
+```bash
+python scripts/fetch_filings.py       # SEC EDGAR filings (10-K/10-Q/8-K) -> data/filings/
+python scripts/fetch_news.py          # recent news per ticker -> data/news/
+python scripts/fetch_educational.py   # curated reference articles -> data/educational/
+python scripts/index_finance.py       # chunk + embed + index all three into ES `finance_kb`
+```
+(The pre-migration Pokemon-domain corpus/scripts are quarantined under `legacy/` for reference only.)
 
 ### 4. Start Backend
 ```bash
@@ -172,17 +184,21 @@ InvestPlus/
 │   └── app/
 │       ├── app_main.py              # FastAPI entry point
 │       ├── router/
-│       │   ├── chat_rt.py           # /chat SSE, /upload_files, /get_files, /delete_file
+│       │   ├── chat_rt.py           # /chat SSE, /upload_files (.txt/.md/.pdf), /get_files, /delete_file
 │       │   └── history_rt.py        # /sessions, /messages
 │       ├── service/
-│       │   ├── agent/agent.py       # Agent pipeline (Plan→Act→Reflect→Answer, Phase 1 rework)
-│       │   ├── pokeapi/             # PokeAPI tool (live — Phase 2 replaces with finance data tool)
+│       │   ├── agent/agent.py       # Agent pipeline (Plan→Act→Reflect→Answer, finance-retargeted)
+│       │   ├── finance/              # finance_tool.py — live yfinance quote/fundamentals/news
+│       │   ├── pokeapi/             # dead code, no longer imported (pre-migration PokeAPI tool)
 │       │   ├── web_search/          # Serper web search tool
-│       │   └── core/file_parse.py   # .txt/.md chunker + ES indexer
+│       │   └── core/
+│       │       ├── file_parse.py    # .txt/.md chunker + .pdf DeepDoc pipeline -> ES indexer
+│       │       ├── deepdoc/         # Ported FinReportRAG PDF parser (layout/table/OCR)
+│       │       └── rag/             # Ported tokenizer/nlp utils + res/deepdoc model weights
 │       ├── schemas/chat.py
 │       └── utils/database.py
 │   └── tests/
-│       └── test_agent_loop.py       # Phase 1 unit tests (should_continue, error propagation)
+│       └── test_agent_loop.py       # Loop-mechanism unit tests (should_continue, error propagation)
 ├── frontend/
 │   └── src/
 │       ├── i18n.tsx                 # Bilingual text (zh/en) — still Pokemon examples, Phase 4
@@ -192,28 +208,30 @@ InvestPlus/
 │       └── pages/
 │           ├── chat/                # Chat page with SSE streaming
 │           └── repository/          # Document management
-├── legacy/                          # Quarantined Pokemon-domain data/scripts (Phase 2 reference only)
+├── scripts/                          # Finance corpus fetch/index scripts (fetch_filings/news/educational, index_finance)
+├── data/                             # Fetched finance corpus (filings/news/educational), indexed into `finance_kb`
+├── legacy/                          # Quarantined pre-migration Pokemon-domain data/scripts (reference only)
 │   ├── fetch_pokemon_data.py
 │   ├── scrape_smogon.py
 │   ├── index_smogon.py
 │   ├── index_pokemon.py
 │   ├── pokemon-data/                # 1025 PokeAPI species dumps (debug cache, not indexed)
-│   └── smogon-data/                 # ~20 curated Smogon strategy articles (the live RAG corpus)
+│   └── smogon-data/                 # ~20 curated Smogon strategy articles (retired RAG corpus)
 ├── docker-compose.yml               # ES + PostgreSQL
 └── .env                             # API keys and config
 ```
 
 ## Known Limitations
 
-- **Pokémon name translation** — Chinese names for Pokémon/moves/items are generated by the LLM from English source data (PokeAPI + Smogon are English). Accurate for popular Pokémon but may be wrong for obscure ones; a local Chinese name lookup table would be more reliable. (Moot once Phase 3 retargets prompts to finance.)
-- **Smogon coverage** — The KB has strategy articles for ~20 popular Gen 9 Pokémon. For uncovered Pokémon, the agent falls back to `web_search` automatically.
-- **File upload format** — Only `.txt` / `.md` (no PDF/Word) for user uploads; Phase 2's ported FinReportRAG parser adds PDF/table-aware parsing specifically for the finance corpus ingestion path.
+- **Finance KB retrieval gaps** — a fixed 9-query eval (`.omc/eval/finance_eval_set.md`) against the live `finance_kb` index measured 7/9 (78%) recall; the 2 misses are thin filings (e.g. a 7-chunk 8-K) or generically-phrased queries getting crowded out by much larger filings in the same shared, un-filtered-by-ticker index. Documented as a real retrieval-quality gap, not a bug.
+- **File upload PDF parsing** — the DeepDoc PDF pipeline is wired for user-uploaded filings via `/upload_files`, but the bulk corpus indexer (`scripts/index_finance.py`) parses SEC EDGAR filings from their native HTML (iXBRL) form directly rather than through the PDF pipeline, since EDGAR doesn't serve modern filings as PDF (see the module docstring in `index_finance.py`).
+- **Frontend still Pokemon-themed** — `frontend/src/i18n.tsx` example questions/copy are unchanged pending Phase 4.
 
 ## Roadmap
 
-1. **Phase 2 — Finance data & tools**: live market-data tool (price/fundamentals/news) replacing PokeAPI; port FinReportRAG's table-aware document parser for financial filings; finance RAG corpus (filings + news + educational content).
-2. **Phase 3 — Prompt retargeting**: rewrite plan/reflect/final-answer prompts for finance terminology, preserving the Phase 1 iterative loop structure.
-3. **Phase 4 — Frontend re-skin**: UI copy, i18n strings, and example questions updated to finance.
+1. ~~**Phase 2 — Finance data & tools**~~ ✅ done: live market-data tool (price/fundamentals/news) replacing PokeAPI; ported FinReportRAG's table-aware document parser for financial filings; finance RAG corpus (filings + news + educational content).
+2. ~~**Phase 3 — Prompt retargeting**~~ ✅ done: plan/reflect/final-answer prompts rewritten for finance terminology, preserving the Phase 1 iterative loop structure.
+3. **Phase 4 — Frontend re-skin** (not started): UI copy, i18n strings, and example questions updated to finance.
 4. **Beyond Phase 4** — the MVP (single-ticker stock/market analysis) is architecturally a foundation for a broader investing research copilot (portfolio-level reasoning, multi-asset comparison), reusing the same tool/RAG layer.
 
 Full plan, acceptance criteria, and architecture decisions: [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md).
@@ -221,6 +239,8 @@ Full plan, acceptance criteria, and architecture decisions: [`.omc/plans/finance
 ## License / Attribution
 
 Application and agent code is original; the hybrid retrieval is hand-rolled on native
-Elasticsearch (no RAGFlow). Pokémon data (pre-migration corpus, now in `legacy/`) via
+Elasticsearch (no RAGFlow). Finance filings via [SEC EDGAR](https://www.sec.gov/edgar),
+market data via [yfinance](https://github.com/ranaroussi/yfinance), PDF parsing ported
+from FinReportRAG. Pokémon data (pre-migration corpus, now in `legacy/`) via
 [PokeAPI](https://pokeapi.co/); strategy content from [Smogon](https://www.smogon.com/);
 LLMs via Alibaba Cloud DashScope.

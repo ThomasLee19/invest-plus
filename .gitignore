@@ -12,6 +12,9 @@ salespilot_analysis.md
 debug.md
 readme_zh.md
 
+# DashScope API usage reference/scratch snippets, not part of the app
+backend/app/service/agent/example_api.py
+
 legacy/pokemon-data
 legacy/smogon-data
 legacy/index_pokemon.py

@@ -37,7 +37,6 @@ load_dotenv()
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
-    "https://ws-yf3kg1wjlwur7eww.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
 ES_INDEX = "finance_kb"
 

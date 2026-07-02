@@ -113,6 +113,7 @@ const 答案 = (props: { item: API.ChatItem }) => {
 
 const 来源 = (props: { item: API.ChatItem }) => {
   const { item } = props
+  const { t } = useLang()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
 
   function toggleExpanded(index: number) {
@@ -128,7 +129,7 @@ const 来源 = (props: { item: API.ChatItem }) => {
   }
 
   return (
-    <Section title="来源" icon={IconSource}>
+    <Section title={t.sourceTitle} icon={IconSource}>
       <div className={styles['chat-message-result__source']}>
         {item.reference?.map((doc, index) => (
           <div

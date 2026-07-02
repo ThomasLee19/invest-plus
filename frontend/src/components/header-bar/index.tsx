@@ -1,6 +1,6 @@
 import { useLang } from '@/i18n'
 import { Button } from 'antd'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo.svg'
 import styles from './index.module.scss'
 
 export default function HeaderBar(props: { className?: string }) {

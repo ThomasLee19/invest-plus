@@ -277,5 +277,56 @@ class ReflectionLoopTests(unittest.TestCase):
         self.assertTrue(cap_logs, "expected a distinct cap-stop log line when the safety cap is hit")
 
 
+class RerankCandidatesTests(unittest.TestCase):
+    """Step 10: _rerank_candidates() must fail open (return the pre-rerank
+    order unchanged) when the DashScope rerank call fails, and must actually
+    re-sort candidates by the new relevance scores on success."""
+
+    def test_rerank_failure_returns_original_candidates_unchanged(self):
+        candidates = [
+            {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
+            {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
+        ]
+        with patch.object(agent.requests, "post", side_effect=RuntimeError("network error")):
+            result = agent._rerank_candidates("test query", candidates)
+
+        self.assertEqual(result, candidates)
+        self.assertIs(result, candidates)
+
+    def test_rerank_non_200_response_returns_original_candidates_unchanged(self):
+        candidates = [
+            {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
+            {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
+        ]
+        fake_response = types.SimpleNamespace(status_code=500, text="internal error")
+        with patch.object(agent.requests, "post", return_value=fake_response):
+            result = agent._rerank_candidates("test query", candidates)
+
+        self.assertEqual(result, candidates)
+
+    def test_rerank_success_resorts_by_new_scores(self):
+        candidates = [
+            {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
+            {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
+        ]
+        fake_response = types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {
+                "output": {
+                    "results": [
+                        {"index": 0, "relevance_score": 0.1},
+                        {"index": 1, "relevance_score": 0.9},
+                    ]
+                }
+            },
+        )
+        with patch.object(agent.requests, "post", return_value=fake_response):
+            result = agent._rerank_candidates("test query", candidates)
+
+        self.assertEqual([c["id"] for c in result], [2, 1])
+        self.assertEqual(result[0]["_score"], 0.9)
+        self.assertEqual(result[1]["_score"], 0.1)
+
+
 if __name__ == "__main__":
     unittest.main()

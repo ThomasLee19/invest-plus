@@ -15,6 +15,7 @@ Agent 架构（本文件）与 RAG 检索基础设施，目标域改为金融研
 import json
 import os
 import re
+import requests
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
@@ -116,7 +117,7 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
                 "minimum_should_match": 1,
             }
         }
-        body: dict = {"query": bm25_query, "size": 5}
+        body: dict = {"query": bm25_query, "size": 20}
 
         # kNN 路：仅在 query embedding 成功时加入，否则纯 BM25 降级
         q_vec = _embed_query(query)
@@ -124,8 +125,8 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
             body["knn"] = {
                 "field": "q_1024_vec",
                 "query_vector": q_vec,
-                "k": 5,
-                "num_candidates": 50,
+                "k": 20,
+                "num_candidates": 100,
                 "boost": _KNN_BOOST,
                 # kNN 路也套用同样的来源过滤，保证两路检索范围一致
                 "filter": {"bool": {"should": source_filter, "minimum_should_match": 1}},
@@ -140,11 +141,48 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
                 "document_name": src.get("docnm_kwd", ""),
                 "source": src.get("source_kwd", ""),
                 "content_with_weight": src.get("content_with_weight", ""),
+                "_score": hit["_score"],
             })
-        return results
+        return _rerank_candidates(query, results)
     except Exception as e:
         print(f"[rag_search] 失败：{e}")
         return []
+
+
+def _rerank_candidates(query: str, candidates: list[dict]) -> list[dict]:
+    """用 DashScope gte-rerank-v2 对候选 chunk 重新打分排序，覆盖各候选的 _score。
+    失败（非 200 响应或异常，如网络错误/超时）时原样返回 candidates（顺序、
+    对象均不变），让上层安全降级为宽召回池原有排序，不中断 agent 循环。"""
+    try:
+        resp = requests.post(
+            "https://dashscope-intl.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
+            headers={
+                "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gte-rerank-v2",
+                "input": {
+                    "query": query,
+                    "documents": [c.get("content_with_weight", "") for c in candidates],
+                },
+                "parameters": {
+                    "top_n": len(candidates),
+                    "return_documents": False,
+                },
+            },
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
+
+        results = resp.json()["output"]["results"]
+        for r in results:
+            candidates[r["index"]]["_score"] = r["relevance_score"]
+        return sorted(candidates, key=lambda c: c["_score"], reverse=True)
+    except Exception as e:
+        print(f"[_rerank_candidates] rerank 失败，降级返回原始排序：{e}")
+        return candidates
 
 
 _TICKER_RE = re.compile(r"\b[A-Z]{1,5}\b")

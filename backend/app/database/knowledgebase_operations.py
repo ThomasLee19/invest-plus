@@ -36,3 +36,18 @@ def get_user_kb_files(user_id: str) -> list[str]:
         return [r.file_name for r in rows]
     finally:
         db.close()
+
+
+def get_latest_user_upload(user_id: str) -> str | None:
+    db = SessionLocal()
+    try:
+        row = db.execute(
+            text(
+                "SELECT file_name FROM knowledgebases WHERE user_id = :uid "
+                "ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"uid": user_id},
+        ).fetchone()
+        return row.file_name if row else None
+    finally:
+        db.close()

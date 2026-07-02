@@ -47,6 +47,16 @@ if "dotenv" not in sys.modules:
     _fake_dotenv.load_dotenv = lambda *a, **kw: False
     sys.modules["dotenv"] = _fake_dotenv
 
+if "app.database.knowledgebase_operations" not in sys.modules:
+    # rag_search() imports get_latest_user_upload() at module load time (Step
+    # 10, upload boost). The real module pulls in sqlalchemy and a live
+    # DATABASE_URL via app/utils/database.py, which this suite deliberately
+    # has neither of (see module docstring). Stub it the same way as
+    # openai/dotenv above so agent.py still imports cleanly.
+    _fake_kb_ops = types.ModuleType("app.database.knowledgebase_operations")
+    _fake_kb_ops.get_latest_user_upload = lambda user_id: None
+    sys.modules["app.database.knowledgebase_operations"] = _fake_kb_ops
+
 from app.service.agent import agent  # noqa: E402  (import after stubbing)
 
 
@@ -326,6 +336,64 @@ class RerankCandidatesTests(unittest.TestCase):
         self.assertEqual([c["id"] for c in result], [2, 1])
         self.assertEqual(result[0]["_score"], 0.9)
         self.assertEqual(result[1]["_score"], 0.1)
+
+
+class UploadBoostTests(unittest.TestCase):
+    """Step 10: _apply_upload_boost() is the unconditional terminal step after
+    reranking — it must promote the current user's latest upload into top-5
+    regardless of whether the pool it receives is a successfully reranked
+    order or the degraded (pre-rerank) order, and must no-op when there's no
+    boost target."""
+
+    def test_promotes_boost_doc_into_top5_from_reranked_order(self):
+        # Simulates the post-rerank pool: the boost doc sits outside the
+        # first 5 positions after reranking.
+        candidates = [
+            {"id": 1, "document_name": "10-K_AAPL.pdf", "_score": 0.95},
+            {"id": 2, "document_name": "10-K_AAPL.pdf", "_score": 0.90},
+            {"id": 3, "document_name": "news_MSFT.pdf", "_score": 0.85},
+            {"id": 4, "document_name": "news_MSFT.pdf", "_score": 0.80},
+            {"id": 5, "document_name": "10-K_AAPL.pdf", "_score": 0.75},
+            {"id": 6, "document_name": "my_upload.pdf", "_score": 0.40},
+            {"id": 7, "document_name": "news_MSFT.pdf", "_score": 0.10},
+        ]
+        result = agent._apply_upload_boost(candidates, "my_upload.pdf")
+
+        self.assertEqual(len(result), 5)
+        self.assertEqual(result[4]["id"], 6)
+        self.assertEqual([c["id"] for c in result[:4]], [1, 2, 3, 4])
+
+    def test_promotes_boost_doc_into_top5_from_degraded_pre_rerank_order(self):
+        # Simulates the degraded pool (rerank failed, original ES order
+        # preserved) — boost placement must not depend on rerank success.
+        candidates = [
+            {"id": 1, "document_name": "news_MSFT.pdf", "_score": 12.3},
+            {"id": 2, "document_name": "10-K_AAPL.pdf", "_score": 11.1},
+            {"id": 3, "document_name": "news_MSFT.pdf", "_score": 9.8},
+            {"id": 4, "document_name": "10-K_AAPL.pdf", "_score": 8.4},
+            {"id": 5, "document_name": "news_MSFT.pdf", "_score": 7.2},
+            {"id": 6, "document_name": "10-K_AAPL.pdf", "_score": 6.5},
+            {"id": 7, "document_name": "my_upload.pdf", "_score": 5.0},
+        ]
+        result = agent._apply_upload_boost(candidates, "my_upload.pdf")
+
+        self.assertEqual(len(result), 5)
+        self.assertEqual(result[4]["id"], 7)
+        self.assertEqual([c["id"] for c in result[:4]], [1, 2, 3, 4])
+
+    def test_no_boost_docnm_returns_plain_top5_slice(self):
+        candidates = [
+            {"id": 1, "document_name": "news_MSFT.pdf", "_score": 12.3},
+            {"id": 2, "document_name": "10-K_AAPL.pdf", "_score": 11.1},
+            {"id": 3, "document_name": "news_MSFT.pdf", "_score": 9.8},
+            {"id": 4, "document_name": "10-K_AAPL.pdf", "_score": 8.4},
+            {"id": 5, "document_name": "news_MSFT.pdf", "_score": 7.2},
+            {"id": 6, "document_name": "10-K_AAPL.pdf", "_score": 6.5},
+            {"id": 7, "document_name": "my_upload.pdf", "_score": 5.0},
+        ]
+        result = agent._apply_upload_boost(candidates, None)
+
+        self.assertEqual([c["id"] for c in result], [1, 2, 3, 4, 5])
 
 
 if __name__ == "__main__":

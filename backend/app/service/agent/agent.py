@@ -27,6 +27,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 from app.service.finance.finance_tool import finance_query as _finance_query
+from app.database.knowledgebase_operations import get_latest_user_upload
 
 # 显式加载 .env，不依赖调用方（如 chat_rt.py）恰好先 import 了其他会触发
 # load_dotenv() 的模块——这里独立运行（脚本/测试）时也能正确拿到 DASHSCOPE_API_KEY，
@@ -143,7 +144,13 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
                 "content_with_weight": src.get("content_with_weight", ""),
                 "_score": hit["_score"],
             })
-        return _rerank_candidates(query, results)
+        reranked = _rerank_candidates(query, results)
+        try:
+            boost_docnm = get_latest_user_upload(user_id)
+        except Exception as e:
+            print(f"[rag_search] upload boost 查询失败，跳过 boost：{e}")
+            boost_docnm = None
+        return _apply_upload_boost(reranked, boost_docnm)
     except Exception as e:
         print(f"[rag_search] 失败：{e}")
         return []
@@ -183,6 +190,33 @@ def _rerank_candidates(query: str, candidates: list[dict]) -> list[dict]:
     except Exception as e:
         print(f"[_rerank_candidates] rerank 失败，降级返回原始排序：{e}")
         return candidates
+
+
+def _apply_upload_boost(candidates: list[dict], boost_docnm: str | None) -> list[dict]:
+    """终态步骤：将当前用户上传文档（boost_docnm）的最佳命中 chunk 提升进
+    top-5。本地确定性逻辑，无网络调用；是整条流水线唯一做切片的地方。
+
+    - boost_docnm 为空：不做提升，直接取前 5 个返回。
+    - boost_docnm 命中的候选若已在前 5（index < 5）：顺序不变。
+    - 命中候选在 5 名开外：将其从原位置移除，重新插入到 index 4（top-5 的
+      最后一位），其余候选相对顺序不变——是有界提升，不是整体按分数重排。
+    - boost_docnm 未命中任何候选：无可提升项，直接取前 5 个返回。
+    """
+    if not boost_docnm:
+        return candidates[:5]
+
+    matches = [c for c in candidates if c.get("document_name") == boost_docnm]
+    if not matches:
+        return candidates[:5]
+
+    best = max(matches, key=lambda c: c["_score"])
+    best_index = candidates.index(best)
+    if best_index < 5:
+        return candidates[:5]
+
+    reordered = [c for c in candidates if c is not best]
+    reordered.insert(4, best)
+    return reordered[:5]
 
 
 _TICKER_RE = re.compile(r"\b[A-Z]{1,5}\b")

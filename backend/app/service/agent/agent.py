@@ -80,6 +80,50 @@ def _embed_query(text: str) -> list[float] | None:
 _KNN_BOOST = 8.0
 
 
+# BM25 疑问词/虚词剥离（仅用于 content_ltks match 文本）。规则移植自
+# FinReportRAG query.py 的 rmWWW 正则（逻辑迁移，不引入其 tokenizer/RAGFlow
+# 依赖）——BM25 精确关键词匹配下，"什么是"/"what is" 这类虚词只会稀释
+# ticker/财务术语的信噪比；kNN 与 _rerank_candidates 仍使用原始 query，
+# 因为语义检索/rerank 依赖完整句子语境，剥离虚词反而会丢失语义信号。
+_CHINESE_FILLER_RE = re.compile(
+    r"是*(什么样的|哪家|一下|那家|请问|啥样|咋样了|什么时候|何时|何地|何人|是否|是不是|"
+    r"多少|哪里|怎么|哪儿|怎么样|如何|哪些|是啥|啥是|啊|吗|呢|吧|咋|什么|有没有|呀|谁|哪位|哪个)是*"
+)
+# 第一条问句词模式（what/who/how...）没有真实 ticker 冲突，保留大小写不敏感。
+_ENGLISH_QUESTION_WORD_RE = re.compile(r"(^| )(what|who|how|which|where|why)('re|'s)? ", re.IGNORECASE)
+# 第二条虚词模式则不能大小写不敏感：其中 is/are/on/so/an/do/go 等短词与真实
+# 美股 ticker 完全撞字（ON=ON Semiconductor、SO=Southern、ARE=Alexandria
+# Real Estate、AN=AutoNation、DO=Diamond Offshore、GO=Grocery Outlet 等）。
+# agent_plan 的 prompt 已明确要求子问题里的 ticker 必须大写（"子问题必须包含
+# 大写的股票代码"），因此按大小写区分虚词（小写）与 ticker（大写）是可靠的、
+# 与系统既有约定一致的判别依据，而非任意拍板。
+_ENGLISH_FILLER_RE = re.compile(
+    r"(^| )('s|'re|is|are|were|was|do|does|did|don't|doesn't|didn't|has|have|be|there|you|me|"
+    r"your|my|mine|just|please|may|i|should|would|wouldn't|will|won't|done|go|for|with|so|the|"
+    r"a|an|by|i'm|it's|he's|she's|they|they're|you're|as|by|on|in|at|up|out|down|of|to|or|and|if) "
+)
+
+
+def _strip_filler_words(query: str) -> str:
+    """剥离查询中的中英文疑问词/语气词/虚词，仅用于 BM25 match 文本。
+
+    单趟替换会漏掉相邻虚词（如 "what is the ... of" 中，去掉 "what is " 后
+    "the"/"of" 前面的边界发生变化，同趟正则扫描不到），因此循环替换至不动点
+    （有界迭代防止病态输入死循环，正则替换单调收缩，实践中 2-3 轮即收敛）。
+    若剥离后为空（如整句全是虚词），回退返回原始 query，避免产生空 match 子句。
+    """
+    stripped = query
+    for _ in range(5):
+        next_stripped = _CHINESE_FILLER_RE.sub("", stripped)
+        for pattern in (_ENGLISH_QUESTION_WORD_RE, _ENGLISH_FILLER_RE):
+            next_stripped = pattern.sub(" ", next_stripped)
+        if next_stripped == stripped:
+            break
+        stripped = next_stripped
+    stripped = re.sub(r"\s+", " ", stripped).strip()
+    return stripped or query
+
+
 def rag_search(query: str, user_id: str = "1") -> list[dict]:
     """查询 ES finance_kb，返回 filings/news/教育内容 + 用户上传文档的 chunks。
 
@@ -105,10 +149,11 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
             {"term": {"user_id": user_id}},
         ]
 
-        # BM25 路
+        # BM25 路：剥离疑问词/虚词后的 query，提升关键词匹配信噪比
+        # （kNN 与 _rerank_candidates 下方仍用原始 query，见 _strip_filler_words 注释）
         bm25_query = {
             "bool": {
-                "must": {"match": {"content_ltks": query}},
+                "must": {"match": {"content_ltks": _strip_filler_words(query)}},
                 "should": source_filter,
                 "minimum_should_match": 1,
             }

@@ -47,6 +47,41 @@ if "dotenv" not in sys.modules:
     _fake_dotenv.load_dotenv = lambda *a, **kw: False
     sys.modules["dotenv"] = _fake_dotenv
 
+if "dashscope" not in sys.modules:
+    # _rerank_candidates() calls dashscope.TextReRank.call() (Step 2, v5 —
+    # switched from a raw `requests` call to the official SDK so DashScope's
+    # own client resolves the correct service). Stub it the same way as
+    # openai/dotenv above so agent.py still imports with zero installs;
+    # individual tests patch TextReRank.call with their own fake responses.
+    _fake_dashscope = types.ModuleType("dashscope")
+
+    class _FakeTextReRank:
+        @staticmethod
+        def call(*args, **kwargs):
+            raise NotImplementedError("dashscope.TextReRank.call must be mocked per-test")
+
+    _fake_dashscope.TextReRank = _FakeTextReRank
+    sys.modules["dashscope"] = _fake_dashscope
+
+if "elasticsearch" not in sys.modules:
+    # rag_search() does `from elasticsearch import Elasticsearch` as a local
+    # import (only when actually called, not at module load time), so this
+    # isn't needed for agent.py to import cleanly -- but is needed for any
+    # test that calls rag_search() itself (Step 9's BM25-vs-kNN/rerank
+    # wiring test below). Individual tests patch `Elasticsearch` with their
+    # own fake instance to capture/control the ES query body and response.
+    _fake_es_module = types.ModuleType("elasticsearch")
+
+    class _FakeElasticsearch:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def search(self, index=None, body=None):
+            raise NotImplementedError("elasticsearch.Elasticsearch must be mocked per-test")
+
+    _fake_es_module.Elasticsearch = _FakeElasticsearch
+    sys.modules["elasticsearch"] = _fake_es_module
+
 if "app.database.knowledgebase_operations" not in sys.modules:
     # rag_search() imports get_latest_user_upload() at module load time (Step
     # 10, upload boost). The real module pulls in sqlalchemy and a live
@@ -168,6 +203,15 @@ class ReflectionLoopTests(unittest.TestCase):
     LLM-driven (iterates more than once when asked to, stops on sufficient,
     and distinguishes a safety-cap stop from an LLM-signaled stop), and must
     stream should_continue()'s rationale into the existing SSE content field.
+
+    v5 note: a later bug fix made final_answer() skip Act+Reflect entirely
+    when agent_plan() returns None/empty (agent.py's `if actions:` guard) —
+    previously an identity/history/off-topic query's null plan didn't stop
+    should_continue() from independently deciding to search anyway. These
+    reflect-loop mechanics tests used to exploit `plan_result=None` as a
+    shortcut to skip straight to a mocked process_actions()/should_continue()
+    fixture; that shortcut is now a real no-op by design, so
+    _drive_final_answer() defaults to a minimal well-formed plan instead.
     """
 
     def _drive_final_answer(self, decisions, plan_result=None, process_actions_result=None):
@@ -176,7 +220,14 @@ class ReflectionLoopTests(unittest.TestCase):
         single completed chunk immediately. `decisions` is a list of dicts
         consumed one per should_continue() call, in order. `process_actions_result`
         overrides the memory process_actions() returns (defaults to the
-        original string-only fixture used by the pre-existing tests below)."""
+        original string-only fixture used by the pre-existing tests below).
+        `plan_result` defaults to a minimal single-action plan (not None) so
+        Act+Reflect actually runs — these tests exercise the reflect loop's
+        iteration/logging mechanics via the mocked should_continue/
+        process_actions, so the plan's specific content doesn't matter, only
+        that it's non-empty."""
+        if plan_result is None:
+            plan_result = [{"action_name": "rag_search", "prompts": ["q"]}]
         decisions_iter = iter(decisions)
 
         def _fake_should_continue(query, memory):
@@ -241,7 +292,12 @@ class ReflectionLoopTests(unittest.TestCase):
         decisions = [
             {"sufficient": True, "rationale": "信息已足够，第一轮就判定停止", "actions": []},
         ]
-        with patch.object(agent, "agent_plan", return_value=None), \
+        # agent_plan must return a real (non-empty) plan here: a None/empty
+        # plan now short-circuits Act+Reflect entirely (see class docstring),
+        # which would make should_continue() never get called at all rather
+        # than being called once and stopping on its own — the exact
+        # distinction this test exists to verify.
+        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
              patch.object(agent, "process_actions", return_value=[]), \
              patch.object(agent, "should_continue", side_effect=iter(decisions)) as mocked_sc, \
              patch.object(agent, "OpenAI") as mocked_openai_cls:
@@ -269,7 +325,11 @@ class ReflectionLoopTests(unittest.TestCase):
         }
         decisions = [never_sufficient] * 10  # more than enough to exhaust the cap
 
-        with patch.object(agent, "agent_plan", return_value=None), \
+        # See test_llm_signaled_stop_does_not_hit_safety_cap: agent_plan must
+        # return a real plan or Act+Reflect (and should_continue with it)
+        # never runs at all, which would trivially "pass" this test for the
+        # wrong reason (0 calls, not 5).
+        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
              patch.object(agent, "process_actions", return_value=[{"提问": "q", "结果": "r"}]), \
              patch.object(agent, "should_continue", side_effect=lambda q, m: never_sufficient) as mocked_sc, \
              patch.object(agent, "OpenAI") as mocked_openai_cls, \
@@ -428,14 +488,21 @@ class DocumentsSSEEventTests(unittest.TestCase):
 class RerankCandidatesTests(unittest.TestCase):
     """Step 10: _rerank_candidates() must fail open (return the pre-rerank
     order unchanged) when the DashScope rerank call fails, and must actually
-    re-sort candidates by the new relevance scores on success."""
+    re-sort candidates by the new relevance scores on success.
+
+    v5: rewritten against dashscope.TextReRank.call (the SDK-based transport
+    that replaced the raw `requests.post` call to a hardcoded REST endpoint —
+    see the plan's v5 changelog). Response shape mirrors the SDK's actual
+    return value: `.status_code`/`.output` on the response, `.output.results`
+    as a list of objects exposing `.index`/`.relevance_score`, not dicts.
+    """
 
     def test_rerank_failure_returns_original_candidates_unchanged(self):
         candidates = [
             {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
             {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
         ]
-        with patch.object(agent.requests, "post", side_effect=RuntimeError("network error")):
+        with patch.object(agent.dashscope.TextReRank, "call", side_effect=RuntimeError("network error")):
             result = agent._rerank_candidates("test query", candidates)
 
         self.assertEqual(result, candidates)
@@ -446,8 +513,10 @@ class RerankCandidatesTests(unittest.TestCase):
             {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
             {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
         ]
-        fake_response = types.SimpleNamespace(status_code=500, text="internal error")
-        with patch.object(agent.requests, "post", return_value=fake_response):
+        fake_response = types.SimpleNamespace(
+            status_code=401, output=None, code="InvalidApiKey", message="Invalid API-key provided."
+        )
+        with patch.object(agent.dashscope.TextReRank, "call", return_value=fake_response):
             result = agent._rerank_candidates("test query", candidates)
 
         self.assertEqual(result, candidates)
@@ -457,18 +526,14 @@ class RerankCandidatesTests(unittest.TestCase):
             {"id": 1, "content_with_weight": "first chunk", "_score": 5.0},
             {"id": 2, "content_with_weight": "second chunk", "_score": 3.0},
         ]
-        fake_response = types.SimpleNamespace(
-            status_code=200,
-            json=lambda: {
-                "output": {
-                    "results": [
-                        {"index": 0, "relevance_score": 0.1},
-                        {"index": 1, "relevance_score": 0.9},
-                    ]
-                }
-            },
+        fake_output = types.SimpleNamespace(
+            results=[
+                types.SimpleNamespace(index=0, relevance_score=0.1),
+                types.SimpleNamespace(index=1, relevance_score=0.9),
+            ]
         )
-        with patch.object(agent.requests, "post", return_value=fake_response):
+        fake_response = types.SimpleNamespace(status_code=200, output=fake_output)
+        with patch.object(agent.dashscope.TextReRank, "call", return_value=fake_response):
             result = agent._rerank_candidates("test query", candidates)
 
         self.assertEqual([c["id"] for c in result], [2, 1])
@@ -532,6 +597,78 @@ class UploadBoostTests(unittest.TestCase):
         result = agent._apply_upload_boost(candidates, None)
 
         self.assertEqual([c["id"] for c in result], [1, 2, 3, 4, 5])
+
+
+class StripFillerWordsTests(unittest.TestCase):
+    """Step 9/10: _strip_filler_words() must remove Chinese/English filler
+    and question words while preserving ticker symbols and financial terms,
+    and rag_search() must apply it only to the BM25 match text -- the kNN
+    embedding call and _rerank_candidates must still receive the original,
+    unmodified query (semantic search/rerank need full sentence context)."""
+
+    def test_strips_chinese_question_word_keeps_financial_term(self):
+        self.assertEqual(agent._strip_filler_words("什么是市盈率"), "市盈率")
+
+    def test_strips_chinese_filler_keeps_ticker(self):
+        result = agent._strip_filler_words("AAPL的股价是多少")
+        self.assertIn("AAPL", result)
+        self.assertNotIn("是多少", result)
+
+    def test_strips_english_filler_keeps_ticker_and_term(self):
+        result = agent._strip_filler_words("what is the P/E ratio of AAPL")
+        self.assertIn("AAPL", result)
+        self.assertIn("P/E ratio", result)
+        self.assertNotIn("what is", result.lower())
+        self.assertNotIn(" the ", f" {result.lower()} ")
+
+    def test_falls_back_to_original_query_when_stripping_empties_it(self):
+        # A query that's entirely filler words must not degrade to an empty
+        # BM25 match clause -- fall back to the original query untouched.
+        self.assertEqual(agent._strip_filler_words("请问"), "请问")
+
+    def test_uppercase_ticker_colliding_with_filler_word_is_preserved(self):
+        # Several real US tickers are also common English filler words
+        # (ON=ON Semiconductor, SO=Southern Co, ARE=Alexandria Real Estate,
+        # AN=AutoNation, DO=Diamond Offshore, GO=Grocery Outlet). The filler
+        # regex must only match the lowercase form -- agent_plan's prompt
+        # already mandates uppercase tickers in generated sub-questions, so
+        # case is a reliable discriminator here, not an arbitrary heuristic.
+        for query, ticker in [
+            ("ON stock price", "ON"),
+            ("SO dividend yield", "SO"),
+            ("ARE quarterly earnings", "ARE"),
+            ("is ON a buy", "ON"),
+            ("AN stock forecast", "AN"),
+            ("GO stock price", "GO"),
+            ("DO stock price", "DO"),
+        ]:
+            with self.subTest(query=query, ticker=ticker):
+                result = agent._strip_filler_words(query)
+                self.assertIn(ticker, result.split())
+
+    def test_rag_search_strips_only_the_bm25_match_text(self):
+        query_with_filler = "what is AAPL price"
+        captured = {}
+
+        class _FakeEsInstance:
+            def search(self, index=None, body=None):
+                captured["body"] = body
+                return {"hits": {"hits": []}}
+
+        with patch.object(sys.modules["elasticsearch"], "Elasticsearch", return_value=_FakeEsInstance()), \
+             patch.object(agent, "_embed_query", return_value=None) as mocked_embed, \
+             patch.object(agent, "_rerank_candidates", side_effect=lambda q, c: c) as mocked_rerank:
+            agent.rag_search(query_with_filler)
+
+        bm25_match_text = captured["body"]["query"]["bool"]["must"]["match"]["content_ltks"]
+        self.assertEqual(bm25_match_text, agent._strip_filler_words(query_with_filler))
+        self.assertNotEqual(bm25_match_text, query_with_filler)
+
+        # kNN (_embed_query) and _rerank_candidates must receive the raw,
+        # unstripped query -- only the BM25 match text is filler-stripped.
+        mocked_embed.assert_called_once_with(query_with_filler)
+        mocked_rerank.assert_called_once()
+        self.assertEqual(mocked_rerank.call_args.args[0], query_with_filler)
 
 
 if __name__ == "__main__":

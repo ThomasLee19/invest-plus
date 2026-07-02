@@ -37,7 +37,7 @@ load_dotenv()
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
-    "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    "https://ws-yf3kg1wjlwur7eww.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
 ES_INDEX = "finance_kb"
 
@@ -554,13 +554,41 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         for turn in history:
             history_str += f"用户：{turn['user']}\n助手：{turn['assistant']}\n\n"
 
+    # 引用列表：仅从 rag_search 的结果里抽取（用 content_with_weight 字段判别
+    # 形状——web_search 的 结果 同样是 list[dict]，但字段是 title/url/content，
+    # 不是 rag_search 的 id/document_name/source/content_with_weight/_score，
+    # 混进来会在下面的编号引用块和 documents SSE 事件里产生内容为空的假引用）。
+    # 不去重，按 memory 顺序 0-based 展开即可，跟 plan 的范围一致。
+    references = []
+    for entry in memory:
+        result = entry.get("结果")
+        if isinstance(result, list):
+            references.extend(
+                r for r in result if isinstance(r, dict) and "content_with_weight" in r
+            )
+
+    reference_block = ""
+    if references:
+        numbered = "\n".join(
+            f"[{i}] {r.get('content_with_weight', '')}" for i, r in enumerate(references)
+        )
+        reference_block = f"\n## 参考文档（可引用）\n{numbered}\n"
+
+    citation_instruction = ""
+    if references:
+        citation_instruction = (
+            "- 引用「参考文档（可引用）」中的内容时，在相关句子末尾（句号等标点之后，"
+            "不要放在行首，避免与 Markdown 语法冲突）插入引用标记 ##N$$，"
+            "其中 N 为该条参考文档的编号，只能使用「参考文档（可引用）」中实际存在的编号\n"
+        )
+
     final_prompt = f"""你是专业的金融研究助手，基于财报（10-K/10-Q/8-K）、新闻与实时行情数据回答用户的投资研究问题。
 
 {lang_instruction}
 {history_str}
 ## 参考信息
 {json.dumps(memory, ensure_ascii=False, indent=2)}
-
+{reference_block}
 ## 用户问题
 {query}
 
@@ -572,12 +600,27 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 - 回答要专业、准确，适当引用具体数值（行情、财务指标、财报原文）
 - 分析要基于参考信息中的行情/财报/新闻数据给出具体依据，不要给出买卖建议
 - 如果问题涉及知识库未覆盖的公司或数据范围，明确告知该局限性
-"""
+{citation_instruction}"""
+
+    if references:
+        docs_payload = {
+            "documents": [
+                {
+                    "document_id": str(i),
+                    "document_name": r.get("document_name", ""),
+                    "content_with_weight": r.get("content_with_weight", ""),
+                }
+                for i, r in enumerate(references)
+            ]
+        }
+        yield f"event: message\ndata: {json.dumps(docs_payload, ensure_ascii=False)}\n\n"
 
     completion = client.chat.completions.create(
-        model="qwq-plus",
+        model="qwen3.7-max",
         messages=[{"role": "user", "content": final_prompt}],
+        extra_body={"enable_thinking":True},
         stream=True,
+        temperature=0.4,
     )
 
     ended = False
@@ -588,12 +631,16 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         choice = chunk.choices[0]
         delta = choice.delta
 
-        # 先输出本 chunk 携带的内容：带 finish_reason 的最后一个 chunk 仍可能有 content
+        # 先输出本 chunk 携带的内容：带 finish_reason 的最后一个 chunk 仍可能有 content。
+        # reasoning_content 与 content 分别用独立的 if 判断（而非 if/elif）——两者
+        # 通过各自独立的字段返回，理论上同一 chunk 可能同时携带两者，用 elif 会丢失
+        # 这种情况下的 reasoning_content。reasoning_content 用 `is not None` 而非真值
+        # 判断，因为空字符串 "" 也代表"仍在思考阶段"这一有效信号。
+        if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+            msg = {"role": "assistant", "content": delta.reasoning_content, "thinking": True}
+            yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
         if delta and delta.content:
             msg = {"role": "assistant", "content": delta.content, "thinking": False}
-            yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
-        elif delta and getattr(delta, "reasoning_content", None):
-            msg = {"role": "assistant", "content": delta.reasoning_content, "thinking": True}
             yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
 
         # 内容已输出后再判定结束

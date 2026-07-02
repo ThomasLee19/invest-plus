@@ -17,7 +17,7 @@ declare namespace API {
     think?: string
 
     documents?: Document[]
-    reference?: Reference[]
+    reference?: Document[]
     recommended_questions?: string[]
     image_results?: {
       images?: {

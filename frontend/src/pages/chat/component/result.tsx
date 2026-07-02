@@ -67,26 +67,42 @@ const 答案 = (props: { item: API.ChatItem }) => {
     [],
   )
 
+  function handleReferenceClick(event: React.MouseEvent<HTMLDivElement>) {
+    const target = (event.target as HTMLElement).closest?.('.refrence-token')
+    if (!target) return
+    const index = target.getAttribute('data-refrence-index')
+    if (index == null) return
+
+    const el = document.getElementById(`source-ref-${index}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (el) {
+      el.classList.add(styles['source-highlight'])
+      setTimeout(() => el.classList.remove(styles['source-highlight']), 2500)
+    }
+  }
+
   return (
     <Section title={t.answerTitle} icon={IconAnswer}>
-      {item.think ? (
-        <Markdown
-          className={classNames(
-            styles['chat-message-result__think'],
-            styles['chat-message-result__md'],
-          )}
-          value={item.think}
-          extensions={extensions}
-        />
-      ) : null}
+      <div onClick={handleReferenceClick}>
+        {item.think ? (
+          <Markdown
+            className={classNames(
+              styles['chat-message-result__think'],
+              styles['chat-message-result__md'],
+            )}
+            value={item.think}
+            extensions={extensions}
+          />
+        ) : null}
 
-      {item.content ? (
-        <Markdown
-          className={styles['chat-message-result__md']}
-          value={item.content}
-          extensions={extensions}
-        />
-      ) : null}
+        {item.content ? (
+          <Markdown
+            className={styles['chat-message-result__md']}
+            value={item.content}
+            extensions={extensions}
+          />
+        ) : null}
+      </div>
 
       {item.error ? (
         <div className={styles['chat-message-result__error']}>{item.error}</div>
@@ -97,25 +113,39 @@ const 答案 = (props: { item: API.ChatItem }) => {
 
 const 来源 = (props: { item: API.ChatItem }) => {
   const { item } = props
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
 
-  // 来源与之前后端协商的不一致，暂时不展示了
-  return null
+  function toggleExpanded(index: number) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }
 
   return (
     <Section title="来源" icon={IconSource}>
       <div className={styles['chat-message-result__source']}>
-        {item.reference?.map((item) => (
+        {item.reference?.map((doc, index) => (
           <div
-            key={item.url}
+            key={doc.document_id}
+            id={`source-ref-${index}`}
             className={styles.item}
-            onClick={() => window.open(item.url, '_blank')}
+            onClick={() => toggleExpanded(index)}
           >
-            <div className={styles.header}>
-              {/* <img className={styles.icon} src={IconShare} /> */}
-              <div className={styles.url}>{item.url}</div>
+            <div className={styles.index}>[{index + 1}]</div>
+            <div className={styles.title}>{doc.document_name}</div>
+            <div
+              className={classNames(styles.content, {
+                [styles['content--expanded']]: expanded.has(index),
+              })}
+            >
+              {doc.content_with_weight}
             </div>
-            <div className={styles.title}>{item.title}</div>
-            <div className={styles.content}>{item.content}</div>
           </div>
         ))}
       </div>

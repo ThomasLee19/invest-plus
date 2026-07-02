@@ -170,11 +170,13 @@ class ReflectionLoopTests(unittest.TestCase):
     stream should_continue()'s rationale into the existing SSE content field.
     """
 
-    def _drive_final_answer(self, decisions, plan_result=None):
+    def _drive_final_answer(self, decisions, plan_result=None, process_actions_result=None):
         """Run final_answer() with agent_plan/process_actions/should_continue
         mocked, and the final-answer streaming LLM call stubbed to emit a
         single completed chunk immediately. `decisions` is a list of dicts
-        consumed one per should_continue() call, in order."""
+        consumed one per should_continue() call, in order. `process_actions_result`
+        overrides the memory process_actions() returns (defaults to the
+        original string-only fixture used by the pre-existing tests below)."""
         decisions_iter = iter(decisions)
 
         def _fake_should_continue(query, memory):
@@ -187,8 +189,11 @@ class ReflectionLoopTests(unittest.TestCase):
             )]
         )
 
+        if process_actions_result is None:
+            process_actions_result = [{"提问": "q", "结果": "r"}]
+
         with patch.object(agent, "agent_plan", return_value=plan_result), \
-             patch.object(agent, "process_actions", return_value=[{"提问": "q", "结果": "r"}]), \
+             patch.object(agent, "process_actions", return_value=process_actions_result), \
              patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
              patch.object(agent, "OpenAI") as mocked_openai_cls:
             mocked_client = mocked_openai_cls.return_value
@@ -285,6 +290,139 @@ class ReflectionLoopTests(unittest.TestCase):
             if call.args and "安全上限" in str(call.args[0])
         ]
         self.assertTrue(cap_logs, "expected a distinct cap-stop log line when the safety cap is hit")
+
+
+class DocumentsSSEEventTests(unittest.TestCase):
+    """Round 3: final_answer() must emit a `documents` SSE event built from
+    any list-valued (rag_search-style) memory results, without leaking a
+    `documents` key into the existing per-token assistant events, and must
+    stay silent (no `documents` event at all) when memory only has the
+    string-only results the pre-existing ReflectionLoopTests fixtures use.
+
+    Reuses ReflectionLoopTests._drive_final_answer (unbound) rather than
+    duplicating the mocking setup — the helper doesn't touch instance state,
+    just `self.assertEqual` never gets called on the mismatched instance.
+    """
+
+    def _drive_final_answer(self, decisions, plan_result=None, process_actions_result=None):
+        return ReflectionLoopTests._drive_final_answer(
+            self, decisions, plan_result=plan_result, process_actions_result=process_actions_result
+        )
+
+    def test_documents_event_emitted_for_list_valued_rag_result(self):
+        rag_result = [
+            {
+                "id": "doc1",
+                "document_name": "10-K_AAPL.pdf",
+                "content_with_weight": "Apple reported revenue of $394B.",
+                "source": "rag_search",
+                "_score": 0.9,
+            },
+            {
+                "id": "doc2",
+                "document_name": "news_MSFT.pdf",
+                "content_with_weight": "Microsoft cloud growth accelerated.",
+                "source": "rag_search",
+                "_score": 0.8,
+            },
+        ]
+        process_actions_result = [{"提问": "q", "结果": rag_result}]
+        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
+
+        events = self._drive_final_answer(
+            decisions, process_actions_result=process_actions_result
+        )
+
+        documents_events = [e for e in events if '"documents"' in e]
+        self.assertEqual(len(documents_events), 1)
+        payload = json.loads(documents_events[0].split("data: ", 1)[1].strip())
+        self.assertEqual(
+            payload["documents"],
+            [
+                {
+                    "document_id": "0",
+                    "document_name": "10-K_AAPL.pdf",
+                    "content_with_weight": "Apple reported revenue of $394B.",
+                },
+                {
+                    "document_id": "1",
+                    "document_name": "news_MSFT.pdf",
+                    "content_with_weight": "Microsoft cloud growth accelerated.",
+                },
+            ],
+        )
+
+    def test_per_token_events_do_not_leak_documents_key(self):
+        rag_result = [
+            {
+                "id": "doc1",
+                "document_name": "10-K_AAPL.pdf",
+                "content_with_weight": "Apple revenue info.",
+            }
+        ]
+        process_actions_result = [{"提问": "q", "结果": rag_result}]
+        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
+
+        events = self._drive_final_answer(
+            decisions, process_actions_result=process_actions_result
+        )
+
+        token_events = [e for e in events if '"role": "assistant"' in e]
+        self.assertEqual(len(token_events), 1)
+        payload = json.loads(token_events[0].split("data: ", 1)[1].strip())
+        self.assertEqual(set(payload.keys()), {"role", "content", "thinking"})
+        self.assertNotIn("documents", payload)
+
+    def test_no_documents_event_when_memory_results_are_string_only(self):
+        # Default process_actions_result ({"提问": "q", "结果": "r"}) matches
+        # the pre-existing ReflectionLoopTests fixtures: a plain string
+        # result, never a list. No documents event should be emitted.
+        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
+
+        events = self._drive_final_answer(decisions)
+
+        documents_events = [e for e in events if '"documents"' in e]
+        self.assertEqual(len(documents_events), 0)
+
+    def test_documents_event_only_includes_rag_search_shaped_entries_when_mixed_with_web_search(self):
+        # web_search() also returns list[dict], but shaped {title,url,content}
+        # — no "content_with_weight" key. The shape-filter in final_answer()
+        # must exclude these and keep only rag_search-shaped dicts.
+        web_search_result = [
+            {"title": "Fed raises rates", "url": "https://example.com/fed", "content": "The Fed raised rates today."},
+        ]
+        rag_result = [
+            {
+                "id": "doc1",
+                "document_name": "10-K_AAPL.pdf",
+                "content_with_weight": "Apple reported revenue of $394B.",
+                "source": "rag_search",
+                "_score": 0.9,
+            },
+        ]
+        process_actions_result = [
+            {"提问": "q1", "结果": web_search_result},
+            {"提问": "q2", "结果": rag_result},
+        ]
+        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
+
+        events = self._drive_final_answer(
+            decisions, process_actions_result=process_actions_result
+        )
+
+        documents_events = [e for e in events if '"documents"' in e]
+        self.assertEqual(len(documents_events), 1)
+        payload = json.loads(documents_events[0].split("data: ", 1)[1].strip())
+        self.assertEqual(
+            payload["documents"],
+            [
+                {
+                    "document_id": "0",
+                    "document_name": "10-K_AAPL.pdf",
+                    "content_with_weight": "Apple reported revenue of $394B.",
+                },
+            ],
+        )
 
 
 class RerankCandidatesTests(unittest.TestCase):

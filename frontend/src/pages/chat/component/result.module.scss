@@ -85,7 +85,8 @@
     box-sizing: border-box;
     overflow: hidden;
     cursor: pointer;
-    transition: background-color 0.3s ease-in-out;
+    border: 2px solid transparent;
+    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
 
     &:hover {
       background-color: #e1e7e7;
@@ -96,6 +97,17 @@
     @media (max-width: 768px) {
       flex-basis: 100%;
     }
+
+    &.source-highlight {
+      background-color: #e5fe53;
+      border-color: var(--ant-color-primary);
+    }
+  }
+
+  .index {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ant-color-primary);
   }
 
   .header {
@@ -137,6 +149,12 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     max-height: 14px * 1.5 * 3;
+
+    &.content--expanded {
+      -webkit-line-clamp: unset;
+      display: block;
+      max-height: none;
+    }
   }
 }
 

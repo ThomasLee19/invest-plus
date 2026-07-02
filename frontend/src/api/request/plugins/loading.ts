@@ -2,9 +2,7 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { IRequestPlugin } from './plugin'
 
 function show() {
-  window.$showLoading({
-    title: '加载中...',
-  })
+  window.$showLoading()
 }
 function hide() {
   window.$hideLoading()

@@ -110,7 +110,7 @@ export default function Index() {
         },
       },
     ],
-    [],
+    [t],
   )
   const scroll = useMemo(() => {
     return {

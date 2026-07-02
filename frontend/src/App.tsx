@@ -1,32 +1,41 @@
 import { Router } from '@/router'
-import { LangProvider } from '@/i18n'
+import { LangProvider, useLang } from '@/i18n'
 import { App as AntdApp, ConfigProvider, Spin } from 'antd'
+import enUS from 'antd/es/locale/en_US'
 import zhCN from 'antd/es/locale/zh_CN'
 import { useCallback, useRef, useState } from 'react'
 function App() {
   return (
     <LangProvider>
-      <ConfigProvider
-        locale={zhCN}
-        theme={{
-          cssVar: true,
-          token: {
-            colorPrimary: '#E3350D',
-            fontSize: 14,
-          },
-        }}
-      >
-        <AntdApp>
-          <Router />
-          <MountApi />
-        </AntdApp>
-      </ConfigProvider>
+      <AppContent />
     </LangProvider>
+  )
+}
+
+function AppContent() {
+  const { lang } = useLang()
+  return (
+    <ConfigProvider
+      locale={lang === 'zh' ? zhCN : enUS}
+      theme={{
+        cssVar: true,
+        token: {
+          colorPrimary: '#E3350D',
+          fontSize: 14,
+        },
+      }}
+    >
+      <AntdApp>
+        <Router />
+        <MountApi />
+      </AntdApp>
+    </ConfigProvider>
   )
 }
 
 function MountApi() {
   window.$app = AntdApp.useApp()
+  const { t } = useLang()
 
   const [loading, setLoading] = useState(false)
   const [loadingText, setLoadingText] = useState('')
@@ -50,7 +59,7 @@ function MountApi() {
     <>
       <Spin
         spinning={loading}
-        tip={loadingText}
+        tip={loadingText || t.loading}
         fullscreen
         style={{
           zIndex: 9999999,

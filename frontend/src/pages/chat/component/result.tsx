@@ -11,7 +11,7 @@ import IconVideo from '@/assets/chat/video.svg'
 import Markdown from '@/components/markdown'
 import { useLang } from '@/i18n'
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Dropdown, message } from 'antd'
+import { Button, message, Tooltip } from 'antd'
 import classNames from 'classnames'
 import { TokenizerAndRendererExtension } from 'marked'
 import { useMemo, useState } from 'react'
@@ -281,21 +281,13 @@ export function Result(props: {
     }
   }
 
-  const shareMenu = useMemo(() => {
-    return [
-      {
-        key: 'txt',
-        label: 'Export as txt',
-        onClick: async () => {
-          const url = `data:text/plain;charset=utf-8,${encodeURIComponent(item.content ?? '')}`
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'output.txt'
-          a.click()
-        },
-      },
-    ]
-  }, [item.content])
+  function handleExport() {
+    const url = `data:text/plain;charset=utf-8,${encodeURIComponent(item.content ?? '')}`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'output.txt'
+    a.click()
+  }
 
   return (
     <div className={styles['chat-message-result']}>
@@ -303,35 +295,39 @@ export function Result(props: {
 
       {item.loading ? null : (
         <div className={styles['chat-message-result__actions']}>
-          <Button variant="filled" color="default" shape="circle" onClick={handleCopy} title="复制">
-            <img src={IconCopy} />
-          </Button>
+          <Tooltip title={t.actionCopy}>
+            <Button variant="filled" color="default" shape="circle" onClick={handleCopy}>
+              <img src={IconCopy} />
+            </Button>
+          </Tooltip>
 
-          <Button
-            variant="filled"
-            color={liked === 'like' ? 'primary' : 'default'}
-            shape="circle"
-            onClick={() => setLiked(liked === 'like' ? null : 'like')}
-            title="点赞"
-          >
-            <img src={IconLike} />
-          </Button>
+          <Tooltip title={t.actionLike}>
+            <Button
+              variant="filled"
+              color={liked === 'like' ? 'primary' : 'default'}
+              shape="circle"
+              onClick={() => setLiked(liked === 'like' ? null : 'like')}
+            >
+              <img src={IconLike} />
+            </Button>
+          </Tooltip>
 
-          <Button
-            variant="filled"
-            color={liked === 'dislike' ? 'danger' : 'default'}
-            shape="circle"
-            onClick={() => setLiked(liked === 'dislike' ? null : 'dislike')}
-            title="踩"
-          >
-            <img src={IconRemove} />
-          </Button>
+          <Tooltip title={t.actionDislike}>
+            <Button
+              variant="filled"
+              color={liked === 'dislike' ? 'danger' : 'default'}
+              shape="circle"
+              onClick={() => setLiked(liked === 'dislike' ? null : 'dislike')}
+            >
+              <img src={IconRemove} />
+            </Button>
+          </Tooltip>
 
-          <Dropdown menu={{ items: shareMenu }}>
-            <Button variant="filled" color="default" shape="circle" title="导出">
+          <Tooltip title={t.actionExport}>
+            <Button variant="filled" color="default" shape="circle" onClick={handleExport}>
               <img src={IconShare} />
             </Button>
-          </Dropdown>
+          </Tooltip>
         </div>
       )}
 

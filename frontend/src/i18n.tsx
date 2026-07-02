@@ -6,7 +6,7 @@ export const messages = {
   zh: {
     tagline: 'Agent 自动调用 金融知识库（财报/新闻/科普）/ 实时行情 / 网络搜索，无需手动选择',
     bannerTitle: 'Invest+ 投研助手',
-    bannerSubtitle: '你的 AI 金融投研助手，欢迎问我任何美股相关问题~',
+    bannerSubtitle: '你的 AI 金融投研助手，欢迎问我任何投资相关问题~',
     placeholder: '按 Enter 发送，Shift + Enter 换行',
     attachment: '附件（.txt / .md）',
     hotQuestions: [
@@ -28,6 +28,10 @@ export const messages = {
     repoColAction: '操作',
     answerTitle: '答案',
     sourceTitle: '来源',
+    actionCopy: '复制',
+    actionLike: '点赞',
+    actionDislike: '踩',
+    actionExport: '导出为txt',
     uploadSuccess: '上传已完成',
     uploadFailed: '上传失败',
     fileTooLarge: '文件大小不能超过5M',
@@ -35,6 +39,7 @@ export const messages = {
     copyFailed: '复制失败',
     thinking: '深度探索中',
     failed: '失败',
+    loading: '加载中...',
   },
   en: {
     tagline: 'Agent auto-calls Finance RAG (filings / news / education) / Live Market Data / Web Search — no manual selection needed',
@@ -61,6 +66,10 @@ export const messages = {
     repoColAction: 'Action',
     answerTitle: 'Answer',
     sourceTitle: 'Source',
+    actionCopy: 'Copy',
+    actionLike: 'Like',
+    actionDislike: 'Dislike',
+    actionExport: 'Export as txt',
     uploadSuccess: 'Upload complete',
     uploadFailed: 'Upload failed',
     fileTooLarge: 'File size must not exceed 5MB',
@@ -68,6 +77,7 @@ export const messages = {
     copyFailed: 'Copy failed',
     thinking: 'Thinking...',
     failed: 'Failed',
+    loading: 'Loading...',
   },
 }
 

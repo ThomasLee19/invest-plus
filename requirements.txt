@@ -17,6 +17,7 @@ psycopg2-binary==2.9.12
 
 # ── LLM / embeddings / search clients (agent.py, file_parse.py, scripts) ───
 openai==2.44.0
+dashscope==1.26.2
 elasticsearch==8.19.3
 requests==2.34.2
 python-dotenv==1.2.2

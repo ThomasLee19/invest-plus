@@ -92,10 +92,12 @@ def process_search_results(search_results):
     # 处理 organic 搜索结果，提取 snippet
     if 'organic' in search_results:
         for result in search_results['organic']:
+            # 并非所有 organic 结果都带 snippet（如纯链接卡片），缺失时用空串占位
+            # 而不是 KeyError，避免整次 web_search 因单条结果形状不一致而失败。
             message = {
-                "title": result['title'],
-                "url": result['link'],
-                "content": result['snippet']
+                "title": result.get('title', ''),
+                "url": result.get('link', ''),
+                "content": result.get('snippet', '')
             }
             snippets.append(message)
 

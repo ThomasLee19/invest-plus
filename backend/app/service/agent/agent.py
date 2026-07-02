@@ -1,10 +1,6 @@
 """
 Invest+ Agent
-Plan → Act → Reflect → Answer 架构，沿用 SalesPilot 原始命名。
-
-迁移说明：本项目由 Pokemon 对战助手（PokemonRA）重构而来，复用同一套
-Agent 架构（本文件）与 RAG 检索基础设施，目标域改为金融研究助手。
-工具层与 prompt 已完成向金融领域的迁移（详见 .omc/plans/finance-agent-migration-plan.md）。
+Plan → Act → Reflect → Answer 架构
 
 三个工具：
   rag_search     - 金融知识库（filings/news/教育内容，ES hybrid search）
@@ -15,11 +11,11 @@ Agent 架构（本文件）与 RAG 检索基础设施，目标域改为金融研
 import json
 import os
 import re
-import requests
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
+import dashscope
 
 # 路径处理：支持直接运行和作为模块导入
 _backend_dir = Path(__file__).parent.parent.parent.parent
@@ -156,35 +152,34 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
 
 
 def _rerank_candidates(query: str, candidates: list[dict]) -> list[dict]:
-    """用 DashScope gte-rerank-v2 对候选 chunk 重新打分排序，覆盖各候选的 _score。
-    失败（非 200 响应或异常，如网络错误/超时）时原样返回 candidates（顺序、
-    对象均不变），让上层安全降级为宽召回池原有排序，不中断 agent 循环。"""
-    try:
-        resp = requests.post(
-            "https://dashscope-intl.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank",
-            headers={
-                "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "gte-rerank-v2",
-                "input": {
-                    "query": query,
-                    "documents": [c.get("content_with_weight", "") for c in candidates],
-                },
-                "parameters": {
-                    "top_n": len(candidates),
-                    "return_documents": False,
-                },
-            },
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
+    """用 DashScope qwen3-vl-rerank（官方 dashscope SDK，与 FinReportRAG 同一套
+    rerank 调用方式）对候选 chunk 重新打分排序，覆盖各候选的 _score。
 
-        results = resp.json()["output"]["results"]
-        for r in results:
-            candidates[r["index"]]["_score"] = r["relevance_score"]
+    失败（非 200 响应 / output 为空 / 网络异常等）时原样返回 candidates（顺序、
+    对象均不变），让上层安全降级为宽召回池原有排序，不中断 agent 循环——之前
+    直接 requests.post 硬编码 DashScope 国际站 rerank 端点，与本项目 DASHSCOPE_API_KEY
+    所属的专属部署（compatible-mode base_url）不是同一服务，导致鉴权必然失败；
+    改为 dashscope SDK 调用后交由 SDK 处理服务路由。
+    """
+    if not candidates:
+        return candidates
+
+    try:
+        resp = dashscope.TextReRank.call(
+            model="qwen3-vl-rerank",
+            api_key=os.getenv("DASHSCOPE_API_KEY"),
+            query=query,
+            documents=[c.get("content_with_weight", "") for c in candidates],
+            top_n=len(candidates),
+        )
+        if resp.status_code != 200 or resp.output is None:
+            raise RuntimeError(
+                f"status={resp.status_code} code={getattr(resp, 'code', None)} "
+                f"message={getattr(resp, 'message', None)}"
+            )
+
+        for r in resp.output.results:
+            candidates[r.index]["_score"] = r.relevance_score
         return sorted(candidates, key=lambda c: c["_score"], reverse=True)
     except Exception as e:
         print(f"[_rerank_candidates] rerank 失败，降级返回原始排序：{e}")
@@ -286,12 +281,18 @@ def agent_plan(query: str) -> list[dict] | None:
    - 示例："美联储最新利率决议"
 
 ## 工具选择规则
+默认不调用任何工具，输出 null；只有当问题清楚匹配下面某个场景时，才调用对应工具：
 - 精确数值（行情/市值/市盈率）→ finance_query
 - 财报内容/新闻解读/概念解释 → rag_search
 - 最新市场动态 → web_search
 - 复合问题可同时使用多个工具
-- 日常问候（你好、谢谢等）→ 不调用任何工具，输出 null
-- 与金融完全无关的问题（数学、地理、历史等）→ 不调用任何工具，输出 null
+
+以下情况一律不调用任何工具，输出 null——这些都属于正常的对话交互，不要为了"兜底"而调用 rag_search 或 web_search：
+- 日常问候（你好、谢谢等）
+- 与金融完全无关的问题（数学、地理、历史等）
+- 询问你的身份或能力（如"你是谁"、"你能做什么"、"介绍一下自己"、"Who are you?"、"What can you do?"）
+- 询问对话历史（如"我之前问过什么"、"我上一个问题是什么"、"what did I ask you before"）
+- 任何不清楚属于上述三个工具适用场景的问题：不确定时默认输出 null，绝不能因为"不知道怎么分类"就默认调用 rag_search 搜索
 
 ## 输出格式
 JSON 列表，每项包含 action_name 和 prompts（子问题列表）：
@@ -312,15 +313,32 @@ JSON 列表，每项包含 action_name 和 prompts（子问题列表）：
     print(f"[agent_plan] {result}")
     json_list = _extract_json_list(result)
     try:
-        return json.loads(json_list) if json_list else None
+        parsed = json.loads(json_list) if json_list else None
     except Exception:
         return None
+    # _extract_json_list 的正则是贪婪匹配任意方括号子串——当 LLM 返回裸 JSON 对象
+    # （如 {"action_name":..., "prompts":[...]}）而非要求的 JSON 列表时，会误抓取
+    # 其嵌套的 prompts 数组，parsed 出来是一个字符串列表而非 dict 列表。这里校验
+    # 每一项都是带 action_name 的 dict，否则视为解析失败，安全降级为 null，
+    # 避免 _adjust_format 对字符串调用 .get() 而崩溃。
+    if not isinstance(parsed, list) or not all(
+        isinstance(item, dict) and "action_name" in item for item in parsed
+    ):
+        return None
+    return parsed
 
 
 def _adjust_format(plan: list[dict]) -> list[dict]:
-    """将每个 action 的多个 prompts 展开为独立的 {action_name, prompt} 条目。"""
+    """将每个 action 的多个 prompts 展开为独立的 {action_name, prompt} 条目。
+
+    plan 中的每一项理应是 dict，但 should_continue() 的 actions 字段同样来自
+    LLM JSON 输出、未经 agent_plan 那层校验，跳过非 dict 项或缺失 action_name
+    的项，防止 KeyError/对字符串调用 .get() 崩溃（同一类畸形 JSON 问题）。
+    """
     adjusted = []
     for item in plan:
+        if not isinstance(item, dict) or not item.get("action_name"):
+            continue
         for prompt in item.get("prompts", []):
             adjusted.append({"action_name": item["action_name"], "prompt": prompt})
     return adjusted
@@ -484,48 +502,57 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         msg = {"role": "agent", "content": f'正在调用 {action["action_name"]}: "{action["prompt"]}"'}
         yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
 
-    # ── Act ──
-    memory = process_actions(actions, language)
+    # ── Act + Reflect ──
+    # 仅当 Plan 阶段给出了至少一个 action 时才进入 Act/Reflect：plan 为 null
+    # 代表 agent_plan 已判定该查询不需要任何工具（问候/身份/无关问题），此时
+    # actions 为空列表——若仍无条件进入 Reflect 循环，should_continue() 面对
+    # 空 memory 会自行判断"信息不足"并发起 rag_search/web_search 去补充，
+    # 等于绕过了 Plan 阶段刚做出的"不调用工具"判断（曾导致"你是谁"类问题
+    # 仍触发检索，即使 agent_plan 本身已正确返回 null）。
+    memory = []
+    if actions:
+        # ── Act ──
+        memory = process_actions(actions, language)
 
-    # ── Reflect (循环直到 LLM 自己判定足够，或触达安全上限) ──
-    # 循环本身不做任何"该不该继续/调用什么"的判断——每一轮的决策都来自
-    # should_continue() 这次 LLM 调用的结构化输出。MAX_REFLECTION_ITERATIONS
-    # 只是防止失控的安全上限，不是预设的执行步数；触达上限会被明确标记为
-    # "cap-stop"，与 LLM 主动判定 sufficient=True 的"llm-stop"区分开，方便
-    # 排查循环是否在没有 LLM 判断的情况下被迫终止。
-    MAX_REFLECTION_ITERATIONS = 5
-    reflection_iteration = 0
+        # ── Reflect (循环直到 LLM 自己判定足够，或触达安全上限) ──
+        # 循环本身不做任何"该不该继续/调用什么"的判断——每一轮的决策都来自
+        # should_continue() 这次 LLM 调用的结构化输出。MAX_REFLECTION_ITERATIONS
+        # 只是防止失控的安全上限，不是预设的执行步数；触达上限会被明确标记为
+        # "cap-stop"，与 LLM 主动判定 sufficient=True 的"llm-stop"区分开，方便
+        # 排查循环是否在没有 LLM 判断的情况下被迫终止。
+        MAX_REFLECTION_ITERATIONS = 5
+        reflection_iteration = 0
 
-    while reflection_iteration < MAX_REFLECTION_ITERATIONS:
-        reflection_iteration += 1
-        decision = should_continue(query, memory)
+        while reflection_iteration < MAX_REFLECTION_ITERATIONS:
+            reflection_iteration += 1
+            decision = should_continue(query, memory)
 
-        if decision["sufficient"]:
-            print(f"[loop] LLM 判定信息已足够（第 {reflection_iteration} 轮）：{decision['rationale']}")
-            break
+            if decision["sufficient"]:
+                print(f"[loop] LLM 判定信息已足够（第 {reflection_iteration} 轮）：{decision['rationale']}")
+                break
 
-        if not decision["actions"]:
-            # sufficient=False 但没给出任何补充动作——LLM 认为信息不足，但已无更多可查；
-            # 没有动作可执行就没有继续循环的意义，停止并把这个判断留给最终答案去坦白。
-            print(f"[loop] LLM 判定信息不足但未给出补充动作（第 {reflection_iteration} 轮），停止：{decision['rationale']}")
-            break
+            if not decision["actions"]:
+                # sufficient=False 但没给出任何补充动作——LLM 认为信息不足，但已无更多可查；
+                # 没有动作可执行就没有继续循环的意义，停止并把这个判断留给最终答案去坦白。
+                print(f"[loop] LLM 判定信息不足但未给出补充动作（第 {reflection_iteration} 轮），停止：{decision['rationale']}")
+                break
 
-        reflect_actions = _adjust_format(decision["actions"])
-        for action in reflect_actions:
-            msg = {
-                "role": "agent",
-                "content": (
-                    f'补充调用 {action["action_name"]}: "{action["prompt"]}" '
-                    f'（原因：{decision["rationale"]}）'
-                ),
-            }
-            yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
-        extra_memory = process_actions(reflect_actions, language)
-        memory.extend(extra_memory)
-    else:
-        # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，
-        # 即触达安全上限，从未收到 LLM 的 sufficient=True 信号。
-        print(f"[loop] 触达安全上限（{MAX_REFLECTION_ITERATIONS} 轮），强制停止——非 LLM 主动判定")
+            reflect_actions = _adjust_format(decision["actions"])
+            for action in reflect_actions:
+                msg = {
+                    "role": "agent",
+                    "content": (
+                        f'补充调用 {action["action_name"]}: "{action["prompt"]}" '
+                        f'（原因：{decision["rationale"]}）'
+                    ),
+                }
+                yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
+            extra_memory = process_actions(reflect_actions, language)
+            memory.extend(extra_memory)
+        else:
+            # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，
+            # 即触达安全上限，从未收到 LLM 的 sufficient=True 信号。
+            print(f"[loop] 触达安全上限（{MAX_REFLECTION_ITERATIONS} 轮），强制停止——非 LLM 主动判定")
 
     # ── Answer ──
 

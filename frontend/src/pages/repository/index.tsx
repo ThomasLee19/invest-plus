@@ -50,15 +50,13 @@ export default function Index() {
   })
 
   const deleteFile = async (file: IRepository) => {
-    const {
-      data: { message = '删除成功' },
-    } =
-      (await api.repository.deleteFile({
-        file_name: file.file_name,
-        session_id: file.session_id,
-      })) || {}
-    // 提示成功
-    window.$app.message.success(message)
+    await api.repository.deleteFile({
+      file_name: file.file_name,
+      session_id: file.session_id,
+    })
+    // 后端返回的 message 是中文提示，不随前端语言切换，因此提示统一使用
+    // 前端 i18n 文案，不展示后端原始 message。
+    window.$app.message.success(t.repoDeleteSuccess)
     refresh()
   }
 
@@ -242,9 +240,9 @@ export default function Index() {
       </div>
 
       <Modal
-        title="Upload File"
+        title={t.repoUploadModalTitle}
         open={openUpload}
-        okText="Confirm"
+        okText={t.repoUploadConfirm}
         width={400}
         destroyOnClose
         onCancel={() => {

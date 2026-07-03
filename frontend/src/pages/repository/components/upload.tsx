@@ -100,15 +100,12 @@ export default forwardRef(function RepositoryUpload(
             color: '#666',
           }}
         >
-          Drag file here or{' '}
-          <span style={{ color: '#3266f3' }}>click to upload</span>
+          {t.repoUploadDragText}{' '}
+          <span style={{ color: '#3266f3' }}>{t.repoUploadDragTextHighlight}</span>
         </p>
       </Upload.Dragger>
 
-      <p className={styles['repository-upload__desc']}>
-        Supports single or bulk file upload. Files must not exceed 5M each,with
-        a maximum of 10 files.
-      </p>
+      <p className={styles['repository-upload__desc']}>{t.repoUploadDesc}</p>
 
       {/*
         这个 Upload 不是多余的：上面的 Dragger 设了 showUploadList={false}，

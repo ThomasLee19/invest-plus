@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS knowledgebases (
     id SERIAL PRIMARY KEY,  -- 主键，自增
     user_id VARCHAR(255) NOT NULL,       -- 用户 ID
     file_name VARCHAR(255) NOT NULL,     -- 文件名称
+    session_id VARCHAR(16),              -- 会话 ID（NULL 表示数据集全局上传）
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 创建时间
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP  -- 更新时间
 );
@@ -51,3 +52,4 @@ CREATE TABLE IF NOT EXISTS knowledgebases (
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_knowledgebases_user_id ON knowledgebases(user_id);
 CREATE INDEX IF NOT EXISTS idx_knowledgebases_created_at ON knowledgebases(created_at);
+CREATE INDEX IF NOT EXISTS idx_knowledgebases_session_id ON knowledgebases(session_id);

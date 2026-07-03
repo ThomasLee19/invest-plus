@@ -3,7 +3,7 @@ import IconDelete from '@/assets/repository/action/delete.svg'
 import { useLang } from '@/i18n'
 import { PlusOutlined } from '@ant-design/icons'
 import { useRequest } from 'ahooks'
-import { Button, Modal, Space, Table } from 'antd'
+import { Button, Modal, Space, Table, Tag } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import { TableRowSelection } from 'antd/es/table/interface'
 import dayjs from 'dayjs'
@@ -16,9 +16,11 @@ import styles from './index.module.scss'
 type IRepository = API.Repository & {
   id: number
   $suffix: FileIcon
-  method: string
-  enable: boolean
-  status: string
+}
+
+type IOfficialExample = API.OfficialExample & {
+  id: number
+  $suffix: FileIcon
 }
 
 export default function Index() {
@@ -31,10 +33,19 @@ export default function Index() {
           ...item,
           $suffix: item.file_name.split('.').pop() as FileIcon,
           id: index + 1,
-          method: '优化分块',
-          enable: true,
-          status: 'success',
         }) satisfies IRepository,
+    )
+  })
+
+  const { data: officialData } = useRequest(async () => {
+    const { data } = await api.repository.listOfficialExamples()
+    return data?.map(
+      (item, index) =>
+        ({
+          ...item,
+          $suffix: item.file_name.split('.').pop() as FileIcon,
+          id: index + 1,
+        }) satisfies IOfficialExample,
     )
   })
 
@@ -44,13 +55,14 @@ export default function Index() {
     } =
       (await api.repository.deleteFile({
         file_name: file.file_name,
+        session_id: file.session_id,
       })) || {}
     // 提示成功
     window.$app.message.success(message)
     refresh()
   }
 
-  const columns = useMemo<ColumnsType<IRepository>>(
+  const officialColumns = useMemo<ColumnsType<IOfficialExample>>(
     () => [
       {
         title: t.repoColName,
@@ -75,11 +87,53 @@ export default function Index() {
       },
       {
         title: t.repoColMethod,
-        dataIndex: 'method',
+        dataIndex: 'chunk_method',
+        width: 100,
+      },
+      {
+        title: t.repoColStatus,
+        dataIndex: 'status',
         width: 100,
         render(value) {
-          return value ?? '优化分块'
+          return <Status status={value} />
         },
+      },
+    ],
+    [t],
+  )
+
+  const columns = useMemo<ColumnsType<IRepository>>(
+    () => [
+      {
+        title: t.repoColName,
+        dataIndex: 'file_name',
+        width: 200,
+        render(value, row) {
+          return (
+            <div className={styles['repository-page__file-name']} title={value}>
+              <FileIcon className={styles['icon']} suffix={row.$suffix} />
+              {value}
+              {row.session_id && (
+                <Tag className={styles['repository-page__session-tag']}>
+                  {t.repoSessionTag}: {row.session_id}
+                </Tag>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        title: t.repoColUpdated,
+        dataIndex: 'updated_at',
+        width: 200,
+        render(value) {
+          return dayjs(value).format('MM/DD/YYYY HH:mm:ss')
+        },
+      },
+      {
+        title: t.repoColMethod,
+        dataIndex: 'chunk_method',
+        width: 100,
       },
       {
         title: t.repoColStatus,
@@ -119,6 +173,13 @@ export default function Index() {
       }, 0),
     }
   }, [columns])
+  const officialScroll = useMemo(() => {
+    return {
+      x: officialColumns?.reduce((prev, current) => {
+        return prev + parseInt(String(current.width ?? 0))
+      }, 0),
+    }
+  }, [officialColumns])
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
 
@@ -143,6 +204,20 @@ export default function Index() {
       </div>
 
       <div className={styles['repository-page__body']}>
+        <div className={styles['repository-page__section']}>
+          <div className={styles['repository-page__section-title']}>{t.repoOfficialTitle}</div>
+          <div className={styles['repository-page__section-desc']}>{t.repoOfficialDesc}</div>
+          <Table<IOfficialExample>
+            rowKey="id"
+            columns={officialColumns}
+            dataSource={officialData}
+            scroll={officialScroll}
+            pagination={false}
+          />
+        </div>
+
+        <div className={styles['repository-page__section-title']}>{t.repoUploadedTitle}</div>
+
         <div className={styles['header']}>
           {/* <Input
             placeholder="搜索你的文件"

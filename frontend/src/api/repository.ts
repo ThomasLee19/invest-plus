@@ -8,8 +8,15 @@ export function list(params?: {}, options?: AxiosRequestConfig) {
   })
 }
 
+export function listOfficialExamples(params?: {}, options?: AxiosRequestConfig) {
+  return request.get<API.OfficialExample[]>('/get_official_examples/', {
+    ...options,
+    params,
+  })
+}
+
 export function deleteFile(
-  params?: Pick<API.Repository, 'file_name'>,
+  params?: Pick<API.Repository, 'file_name' | 'session_id'>,
   options?: AxiosRequestConfig,
 ) {
   return request.delete<{ message: string }>('/delete_file/', {

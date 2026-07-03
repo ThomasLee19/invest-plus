@@ -22,7 +22,6 @@ load_dotenv()
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv(
     "DASHSCOPE_BASE_URL",
-    "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
 )
 ES_URL = os.getenv("ES_URL", "http://localhost:1200")
 ES_INDEX = "finance_kb"
@@ -133,7 +132,7 @@ def _build_pdf_items(file_path: str, file_name: str,
     return items
 
 
-def execute_insert_process(file_path: str, file_name: str, user_id: str):
+def execute_insert_process(file_path: str, file_name: str, user_id: str, session_id: str | None = None):
     ext = Path(file_path).suffix.lower()
     if ext == ".pdf":
         items = _build_pdf_items(file_path, file_name)
@@ -161,7 +160,9 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str):
 
     docs = []
     for (display, embed_text), vec in zip(items, vectors):
-        doc_id = hashlib.md5(f"{user_id}{file_name}{display}".encode()).hexdigest()
+        # scope 哨兵值随 doc_id 一起哈希：不同 session（含 global）上传同名同内容
+        # 文件时不会产生相同的 _id，避免第二次写入静默覆盖第一次（跨 scope 冲突）。
+        doc_id = hashlib.md5(f"{session_id or 'global'}{file_name}{display}".encode()).hexdigest()
         docs.append({
             "_index": ES_INDEX,
             "_id": doc_id,
@@ -170,6 +171,7 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str):
                 "docnm_kwd": file_name,
                 "source_kwd": "user_upload",
                 "user_id": user_id,
+                "session_id": session_id,
                 # 展示用：表格保留字面 HTML
                 "content_with_weight": display,
                 # BM25 检索 + 与向量同源：去标记后的干净文本

@@ -58,6 +58,13 @@ ES_URL = os.getenv("ES_URL", "http://localhost:1200")
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
 
+# Dynamic-template regex (below, in ensure_index) that auto-maps any field
+# matching this pattern to ES `keyword` type. Hoisted to a named constant
+# (rather than left as an inline string literal) so tests can import and
+# assert against the actual pattern -- e.g. that `session_id` still matches
+# it -- instead of re-typing a copy that could silently drift out of sync.
+KEYWORD_DYNAMIC_TEMPLATE_REGEX = r"^(.*_(kwd|id)|uid)$"
+
 
 def get_es() -> Elasticsearch:
     return Elasticsearch(
@@ -80,7 +87,7 @@ def ensure_index(es: Elasticsearch):
             "dynamic_templates": [
                 {"kwd": {
                     "match_pattern": "regex",
-                    "match": "^(.*_(kwd|id)|uid)$",
+                    "match": KEYWORD_DYNAMIC_TEMPLATE_REGEX,
                     "mapping": {"type": "keyword", "store": True}
                 }},
                 {"ltks": {

@@ -37,6 +37,24 @@
     }
   }
 
+  .repository-page__section {
+    margin-bottom: 24px;
+  }
+
+  .repository-page__section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 6px;
+  }
+
+  .repository-page__section-desc {
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 12px;
+  }
+
   .repository-page__file-name {
     color: #3266f3;
     overflow: hidden;
@@ -49,5 +67,10 @@
       margin-right: 6px;
       vertical-align: -0.25em;
     }
+  }
+
+  .repository-page__session-tag {
+    margin-left: 8px;
+    font-size: 12px;
   }
 }

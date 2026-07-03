@@ -33,11 +33,12 @@ export default function ComSender(
   props: PropsWithChildren<{
     className?: string
     loading?: boolean
+    sessionId?: string
     onSend?: (value: string, files: string[]) => void | Promise<void>
     onContract?: () => void
   }>,
 ) {
-  const { className, onSend, loading, ...rest } = props
+  const { className, onSend, loading, sessionId, ...rest } = props
   const { t } = useLang()
   const [value, setValue] = useState('')
   const [fileList, setFileList] = useState<(UploadFile & { loading?: boolean })[]>([])
@@ -57,7 +58,7 @@ export default function ComSender(
     file.loading = true
     setFileList((prev) => [...prev, file])
     try {
-      await api.session.upload({ files: file as any })
+      await api.session.upload({ files: file as any, session_id: sessionId })
       window.$app.message.success(`${file.name} 上传成功`)
     } catch {
       window.$app.message.error(`${file.name} 上传失败`)

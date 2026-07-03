@@ -4,5 +4,15 @@ declare namespace API {
     file_name: string
     updated_at: string
     user_id: string
+    chunk_method: string
+    status: string
+    session_id: string | null
+  }
+
+  type OfficialExample = {
+    file_name: string
+    updated_at: string
+    chunk_method: string
+    status: string
   }
 }

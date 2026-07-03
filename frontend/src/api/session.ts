@@ -73,9 +73,13 @@ export function deleteSession(
   })
 }
 
-export function upload(params: { files: File }, options?: AxiosRequestConfig) {
+export function upload(
+  params: { files: File; session_id?: string },
+  options?: AxiosRequestConfig,
+) {
+  const { files, session_id } = params
   const form = new FormData()
-  form.append('files', params.files)
+  form.append('files', files)
   return request.post<API.Result<{ file_id: string; url: string }>>(
     `/upload_files/`,
     form,
@@ -83,6 +87,7 @@ export function upload(params: { files: File }, options?: AxiosRequestConfig) {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      params: session_id ? { session_id } : undefined,
       ...options,
     },
   )

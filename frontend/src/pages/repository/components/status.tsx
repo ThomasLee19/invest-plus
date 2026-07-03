@@ -19,6 +19,10 @@ const map = {
     text: '异常',
     color: '#F56C6C',
   },
+  Indexed: {
+    text: 'Indexed',
+    color: '#67C23A',
+  },
 }
 
 export function Status(props: { status: keyof typeof map }) {

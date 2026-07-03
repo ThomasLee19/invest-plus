@@ -92,7 +92,51 @@ if "app.database.knowledgebase_operations" not in sys.modules:
     _fake_kb_ops.get_latest_user_upload = lambda user_id: None
     sys.modules["app.database.knowledgebase_operations"] = _fake_kb_ops
 
+if "xxhash" not in sys.modules:
+    # scripts/index_finance.py (imported read-only by
+    # KeywordDynamicTemplateRegexTests below, US-001) does `import xxhash`
+    # for chunk-id hashing. Stubbed the same way as openai/dotenv/
+    # elasticsearch above so that import doesn't require an actual install,
+    # preserving this suite's zero-installed-packages guarantee.
+    _fake_xxhash = types.ModuleType("xxhash")
+    _fake_xxhash.xxh64 = lambda *a, **kw: types.SimpleNamespace(hexdigest=lambda: "0")
+    sys.modules["xxhash"] = _fake_xxhash
+
+if "bs4" not in sys.modules:
+    # Same rationale as xxhash above: scripts/index_finance.py does
+    # `from bs4 import BeautifulSoup, NavigableString` for HTML->text
+    # extraction. Only needs to exist at import time here -- the new test
+    # below never calls the HTML-parsing functions.
+    _fake_bs4 = types.ModuleType("bs4")
+
+    class _FakeBeautifulSoup:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class _FakeNavigableString(str):
+        pass
+
+    _fake_bs4.BeautifulSoup = _FakeBeautifulSoup
+    _fake_bs4.NavigableString = _FakeNavigableString
+    sys.modules["bs4"] = _fake_bs4
+
 from app.service.agent import agent  # noqa: E402  (import after stubbing)
+
+
+def _import_index_finance_module():
+    """Import scripts/index_finance.py by file path for
+    KeywordDynamicTemplateRegexTests (US-001). It isn't a package and isn't
+    on sys.path by default, so this loads it directly rather than requiring
+    the test to re-type a copy of its KEYWORD_DYNAMIC_TEMPLATE_REGEX
+    constant, which would defeat the point of a regression test (a copy
+    can't catch the original changing)."""
+    import importlib.util
+
+    scripts_dir = _backend_dir.parent / "scripts"
+    spec = importlib.util.spec_from_file_location("index_finance", scripts_dir / "index_finance.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _llm_json_returning(payload) -> str:
@@ -669,6 +713,151 @@ class StripFillerWordsTests(unittest.TestCase):
         mocked_embed.assert_called_once_with(query_with_filler)
         mocked_rerank.assert_called_once()
         self.assertEqual(mocked_rerank.call_args.args[0], query_with_filler)
+
+
+class ScopeShouldClausesTests(unittest.TestCase):
+    """Step 6a: _scope_should_clauses(session_id) builds the tri-state filter
+    (seed corpus OR (user_upload AND (global OR current session))) exactly
+    once, reused by both the BM25 should and the kNN filter in rag_search."""
+
+    def test_real_session_id_produces_expected_shape(self):
+        clauses = agent._scope_should_clauses("session_a")
+        self.assertEqual(clauses[0], {"terms": {"source_kwd": ["sec_filing", "news", "educational"]}})
+        upload_clause = clauses[1]["bool"]
+        self.assertIn({"term": {"source_kwd": "user_upload"}}, upload_clause["must"])
+        self.assertIn(
+            {"bool": {"must_not": {"exists": {"field": "session_id"}}}},
+            upload_clause["should"],
+        )
+        self.assertIn({"term": {"session_id": "session_a"}}, upload_clause["should"])
+        self.assertEqual(upload_clause["minimum_should_match"], 1)
+
+    def test_none_session_id_does_not_crash_and_keeps_shape(self):
+        clauses = agent._scope_should_clauses(None)
+        upload_clause = clauses[1]["bool"]
+        self.assertIn({"term": {"session_id": None}}, upload_clause["should"])
+
+
+def _es_bool_matches(query: dict, doc: dict) -> bool:
+    """Minimal ES query-DSL evaluator covering only the clause shapes used by
+    _scope_should_clauses/rag_search (term, terms, exists, bool/must/must_not/
+    should/minimum_should_match, and a no-op "match" since BM25 text scoring
+    isn't what these tests exercise). Lets the session-scoping tests below
+    assert against the real query body rag_search() builds, without a live ES."""
+    if "match" in query:
+        return True
+    if "term" in query:
+        (field, value), = query["term"].items()
+        return doc.get(field) == value
+    if "terms" in query:
+        (field, values), = query["terms"].items()
+        return doc.get(field) in values
+    if "exists" in query:
+        return doc.get(query["exists"]["field"]) is not None
+    if "bool" in query:
+        b = query["bool"]
+        musts = b.get("must", [])
+        if isinstance(musts, dict):
+            musts = [musts]
+        if not all(_es_bool_matches(m, doc) for m in musts):
+            return False
+        must_not = b.get("must_not")
+        if must_not:
+            must_not = [must_not] if isinstance(must_not, dict) else must_not
+            if any(_es_bool_matches(mn, doc) for mn in must_not):
+                return False
+        shoulds = b.get("should", [])
+        if shoulds:
+            matched = sum(1 for s in shoulds if _es_bool_matches(s, doc))
+            if matched < (b.get("minimum_should_match") or 0):
+                return False
+        return True
+    raise ValueError(f"unsupported query clause in test evaluator: {query}")
+
+
+class _ScopedFakeElasticsearch:
+    """Evaluates the real bool query rag_search() builds against a fixed doc
+    set via _es_bool_matches, standing in for a live Elasticsearch so the
+    session-scoping behavior is verified against the actual query shape."""
+
+    def __init__(self, docs):
+        self._docs = docs
+
+    def search(self, index=None, body=None):
+        hits = [{"_source": doc, "_score": 1.0} for doc in self._docs if _es_bool_matches(body["query"], doc)]
+        return {"hits": {"hits": hits}}
+
+
+class SessionScopedRagSearchTests(unittest.TestCase):
+    """Step 6/6a acceptance criteria: a chat message in session X retrieves
+    seed corpus + dataset-global uploads + its own session's uploads, and must
+    NOT retrieve a different session's upload."""
+
+    _DOCS = [
+        {"docnm_kwd": "session_a_upload.pdf", "source_kwd": "user_upload", "session_id": "session_a",
+         "content_with_weight": "session a content"},
+        {"docnm_kwd": "session_b_upload.pdf", "source_kwd": "user_upload", "session_id": "session_b",
+         "content_with_weight": "session b content"},
+        {"docnm_kwd": "global_upload.pdf", "source_kwd": "user_upload", "session_id": None,
+         "content_with_weight": "global content"},
+        {"docnm_kwd": "10-K_AAPL.pdf", "source_kwd": "sec_filing", "session_id": None,
+         "content_with_weight": "seed corpus content"},
+    ]
+
+    def _search(self, session_id):
+        with patch.object(sys.modules["elasticsearch"], "Elasticsearch",
+                           return_value=_ScopedFakeElasticsearch(self._DOCS)), \
+             patch.object(agent, "_embed_query", return_value=None), \
+             patch.object(agent, "_rerank_candidates", side_effect=lambda q, c: c):
+            results = agent.rag_search("some query", session_id)
+        return {r["document_name"] for r in results}
+
+    def test_own_session_upload_is_retrieved(self):
+        self.assertIn("session_a_upload.pdf", self._search("session_a"))
+
+    def test_other_session_upload_is_not_retrieved(self):
+        names = self._search("session_a")
+        self.assertNotIn("session_b_upload.pdf", names)
+
+    def test_global_upload_is_retrieved_from_any_session(self):
+        for session_id in ("session_a", "session_b"):
+            with self.subTest(session_id=session_id):
+                self.assertIn("global_upload.pdf", self._search(session_id))
+
+    def test_seed_corpus_is_always_retrieved(self):
+        for session_id in ("session_a", "session_b"):
+            with self.subTest(session_id=session_id):
+                self.assertIn("10-K_AAPL.pdf", self._search(session_id))
+
+
+class KeywordDynamicTemplateRegexTests(unittest.TestCase):
+    """US-001: rag_search's session scoping (_scope_should_clauses, above)
+    and chat_rt.py's delete_file both run exact-match ES `term` queries
+    against `session_id`. Those only work because `session_id` is mapped to
+    ES `keyword` (not analyzed text) -- and that mapping is entirely
+    implicit: scripts/index_finance.py's dynamic index template auto-maps
+    any field matching KEYWORD_DYNAMIC_TEMPLATE_REGEX to `keyword`, and
+    `session_id` happens to qualify only because it ends in "_id". Nothing
+    currently guards that coincidence. This test imports the actual regex
+    constant from scripts/index_finance.py (not a re-typed copy, which
+    couldn't catch the original changing) and asserts it still matches
+    "session_id". If the field is ever renamed, or the template regex is
+    ever narrowed to stop covering "_id" suffixes, this fails loudly instead
+    of `term` queries on session_id silently starting to match nothing."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.index_finance = _import_index_finance_module()
+
+    def test_dynamic_template_regex_matches_session_id_field(self):
+        pattern = self.index_finance.KEYWORD_DYNAMIC_TEMPLATE_REGEX
+        self.assertRegex("session_id", pattern)
+
+    def test_dynamic_template_regex_rejects_a_non_id_field(self):
+        # Guards against the regex being loosened into something so broad
+        # the assertion above would be meaningless (e.g. matching anything).
+        pattern = self.index_finance.KEYWORD_DYNAMIC_TEMPLATE_REGEX
+        self.assertNotRegex("session_title", pattern)
 
 
 if __name__ == "__main__":

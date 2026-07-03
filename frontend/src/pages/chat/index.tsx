@@ -264,7 +264,7 @@ export default function Index() {
   })
 
   return (
-    <ComPageLayout sender={<ComSender loading={loading} onSend={send} />}>
+    <ComPageLayout sender={<ComSender loading={loading} sessionId={id} onSend={send} />}>
       <div className={styles['chat-page']}>
         <ChatMessage
           list={list}

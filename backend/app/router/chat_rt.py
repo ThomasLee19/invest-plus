@@ -1,4 +1,6 @@
+import logging
 import os
+import re
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Body, File, HTTPException, Query, Depends, UploadFile, status
@@ -10,14 +12,36 @@ from schemas.chat import ChatRequest
 from utils.database import get_db
 from service.agent.agent import final_answer
 from service.core.file_parse import execute_insert_process
-from database.knowledgebase_operations import insert_knowledgebase
+from database.knowledgebase_operations import insert_knowledgebase, delete_knowledgebase_entry
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../../storage/file")
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
+# 真实 session_id 由 uuid4().hex[:16] 生成（见 create_session），故只接受定长字母数字
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9]{1,16}$")
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 USER_ID = "1"
+
+
+def _validate_session_id(session_id: str | None) -> str | None:
+    """校验 session_id 格式，防止路径穿越（如 session_id=../../etc）。
+    None/空字符串代表全局 scope，视为合法。
+    """
+    if not session_id:
+        return None
+    if not SESSION_ID_RE.match(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    return session_id
+
+
+def _safe_filename(file_name: str) -> str:
+    """仅取路径最后一段，防止文件名中的 ../ 段逃逸出 STORAGE_DIR。"""
+    name = os.path.basename(file_name or "")
+    if not name or name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid file name")
+    return name
 
 
 @router.post("/create_session")
@@ -58,7 +82,7 @@ async def chat(
     collected_think: list[str] = []
 
     def stream():
-        for event in final_answer(question, history=history):
+        for event in final_answer(question, history=history, session_id=session_id):
             import json, re
             yield event
             # 收集 answer / think 内容
@@ -108,39 +132,56 @@ async def chat(
 
 @router.post("/upload_files/")
 async def upload_files(
-    session_id: str = Query(default="default"),
+    session_id: str | None = Query(default=None),
     files: list[UploadFile] = File(...),
 ):
+    session_id = _validate_session_id(session_id)
     results = []
     for file in files:
-        suffix = os.path.splitext(file.filename)[1].lower()
+        safe_name = _safe_filename(file.filename)
+        suffix = os.path.splitext(safe_name)[1].lower()
         if suffix not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"{file.filename} 不支持，仅支持 .txt、.md 和 .pdf 文件",
+                detail=f"{safe_name} 不支持，仅支持 .txt、.md 和 .pdf 文件",
             )
 
-        save_dir = os.path.join(STORAGE_DIR, session_id)
+        save_dir = os.path.join(STORAGE_DIR, session_id or "global")
         os.makedirs(save_dir, exist_ok=True)
-        file_path = os.path.join(save_dir, file.filename)
+        file_path = os.path.join(save_dir, safe_name)
 
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
 
         try:
-            execute_insert_process(file_path, file.filename, USER_ID)
-            insert_knowledgebase(USER_ID, file.filename)
-            results.append({"file": file.filename, "status": "success"})
+            execute_insert_process(file_path, safe_name, USER_ID, session_id)
+            insert_knowledgebase(USER_ID, safe_name, session_id)
+            results.append({"file": safe_name, "status": "success"})
         except Exception as e:
-            results.append({"file": file.filename, "status": "failed", "error": str(e)})
+            results.append({"file": safe_name, "status": "failed", "error": str(e)})
 
     return {"status": "success", "results": results}
 
 
+def _chunk_method_for_upload(file_name: str) -> str:
+    suffix = os.path.splitext(file_name)[1].lower()
+    return "DeepDoc" if suffix == ".pdf" else "Plain text"
+
+
+def _chunk_method_for_official(source_kwd: str) -> str:
+    return "HTML" if source_kwd == "sec_filing" else "Markdown"
+
+
 @router.get("/get_files/")
 async def get_files():
-    """返回用户上传的文档列表（从 ES 查询 source_kwd=user_upload）。"""
+    """返回所有 session 上传的文档列表（从 ES 查询 source_kwd=user_upload）。
+
+    用 composite 聚合按 (docnm_kwd, session_id) 分桶，而非对原始 chunk 文档做
+    size:1000 的扁平查询——单个文件可能有数百个 chunk，chunk 总数一旦超过
+    1000，ES 会静默截断且不保证返回哪些文档的 chunk，导致整份文件从列表中消失。
+    聚合的 size 现在受"不同文件数"约束而非"chunk 数"约束，不会再截断。
+    """
     try:
         from elasticsearch import Elasticsearch
         es = Elasticsearch(
@@ -153,30 +194,60 @@ async def get_files():
         resp = es.search(
             index="finance_kb",
             body={
+                "size": 0,
                 "query": {"term": {"source_kwd": "user_upload"}},
-                "collapse": {"field": "docnm_kwd"},
-                "size": 100,
-                "_source": ["docnm_kwd", "user_id", "create_time"],
+                "aggs": {
+                    "by_file": {
+                        "composite": {
+                            "size": 10000,
+                            "sources": [
+                                {"docnm_kwd": {"terms": {"field": "docnm_kwd"}}},
+                                {
+                                    "session_id": {
+                                        "terms": {"field": "session_id", "missing_bucket": True}
+                                    }
+                                },
+                            ],
+                        },
+                        "aggs": {
+                            "latest": {
+                                "top_hits": {
+                                    "size": 1,
+                                    "_source": ["docnm_kwd", "create_time", "session_id"],
+                                }
+                            }
+                        },
+                    }
+                },
             },
         )
-        seen = {}
-        for hit in resp["hits"]["hits"]:
-            src = hit["_source"]
+        results = []
+        for bucket in resp["aggregations"]["by_file"]["buckets"]:
+            src = bucket["latest"]["hits"]["hits"][0]["_source"]
             name = src.get("docnm_kwd", "")
-            if name and name not in seen:
-                seen[name] = {
-                    "file_name": name,
-                    # 真实上传时间；存量旧文件无 create_time 时回退为当前时间
-                    "updated_at": src.get("create_time") or datetime.utcnow().isoformat(),
-                }
-        return list(seen.values())
-    except Exception as e:
+            if not name:
+                continue
+            results.append({
+                "file_name": name,
+                # 真实上传时间；存量旧文件无 create_time 时回退为当前时间
+                "updated_at": src.get("create_time") or datetime.utcnow().isoformat(),
+                "chunk_method": _chunk_method_for_upload(name),
+                "status": "Indexed",
+                "session_id": src.get("session_id"),
+            })
+        return results
+    except Exception:
+        logger.exception("get_files failed")
         return []
 
 
-@router.delete("/delete_file/")
-async def delete_file(file_name: str = Query(...)):
-    """从 ES 删除指定文件名的所有 chunks。"""
+@router.get("/get_official_examples/")
+async def get_official_examples():
+    """返回官方示例语料列表（source_kwd 属于 sec_filing/news/educational）。
+
+    同 get_files：用 terms 聚合按 docnm_kwd 分桶，避免对原始 chunk 做
+    size:1000 扁平查询时因 chunk 数超限而静默丢失整份文件。
+    """
     try:
         from elasticsearch import Elasticsearch
         es = Elasticsearch(
@@ -186,29 +257,106 @@ async def delete_file(file_name: str = Query(...)):
             ssl_show_warn=False,
             request_timeout=30,
         )
+        resp = es.search(
+            index="finance_kb",
+            body={
+                "size": 0,
+                "query": {"terms": {"source_kwd": ["sec_filing", "news", "educational"]}},
+                "aggs": {
+                    "by_file": {
+                        "terms": {"field": "docnm_kwd", "size": 10000},
+                        "aggs": {
+                            "latest": {
+                                "top_hits": {
+                                    "size": 1,
+                                    "_source": ["docnm_kwd", "create_time", "source_kwd"],
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+        )
+        results = []
+        for bucket in resp["aggregations"]["by_file"]["buckets"]:
+            src = bucket["latest"]["hits"]["hits"][0]["_source"]
+            name = src.get("docnm_kwd", "")
+            if not name:
+                continue
+            results.append({
+                "file_name": name,
+                "updated_at": src.get("create_time") or datetime.utcnow().isoformat(),
+                "chunk_method": _chunk_method_for_official(src.get("source_kwd", "")),
+                "status": "Indexed",
+            })
+        return results
+    except Exception:
+        logger.exception("get_official_examples failed")
+        return []
+
+
+@router.delete("/delete_file/")
+async def delete_file(file_name: str = Query(...), session_id: str | None = Query(default=None)):
+    """删除指定文件名在指定 session（或全局桶）下的所有 chunks。
+
+    session_id 必须与上传时的 scope 一致：不带 session_id 匹配 ES 中
+    session_id 字段不存在（全局上传），否则会误删其他 session 的同名文件。
+    """
+    session_id = _validate_session_id(session_id)
+    file_name = _safe_filename(file_name)
+    try:
+        from elasticsearch import Elasticsearch
+        es = Elasticsearch(
+            os.getenv("ES_URL", "http://localhost:1200"),
+            basic_auth=("elastic", "infini_rag_flow"),
+            verify_certs=False,
+            ssl_show_warn=False,
+            request_timeout=30,
+        )
+        scope_clause = (
+            {"bool": {"must_not": {"exists": {"field": "session_id"}}}}
+            if not session_id
+            else {"term": {"session_id": session_id}}
+        )
         # refresh=True：删除后立即刷新，确保前端紧接着的 /get_files/ 查询
         # 不再返回已删文件（与上传端 refresh="wait_for" 对称）。
         result = es.delete_by_query(
             index="finance_kb",
-            body={"query": {"term": {"docnm_kwd": file_name}}},
+            body={
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"docnm_kwd": file_name}},
+                            # 官方语料（sec_filing/news/educational）没有 session_id 字段，
+                            # 与"全局上传"的 scope_clause 语义重叠——加上 source_kwd 限定，
+                            # 确保此接口只能删除用户上传的文档，不会误删种子语料库。
+                            {"term": {"source_kwd": "user_upload"}},
+                            scope_clause,
+                        ],
+                    }
+                }
+            },
             refresh=True,
         )
         deleted = result.get("deleted", 0)
 
-        # 同步清理本地磁盘文件：上传时存在 storage/file/<session_id>/<file_name>，
-        # 但 delete_file 不带 session_id，故遍历所有 session 子目录删除同名文件，
-        # 避免磁盘副本长期残留累积占用空间。
+        # 同步清理本地磁盘文件：上传时存在 storage/file/<session_id or "global">/<file_name>，
+        # 只清理该 scope 自己的目录，避免误删其他 session 的同名文件。
         removed_files = 0
-        if os.path.isdir(STORAGE_DIR):
-            for session_dir in os.listdir(STORAGE_DIR):
-                fp = os.path.join(STORAGE_DIR, session_dir, file_name)
-                if os.path.isfile(fp):
-                    try:
-                        os.remove(fp)
-                        removed_files += 1
-                    except OSError as e:
-                        print(f"[delete_file] 删除本地文件失败 {fp}：{e}")
+        scope_dir = os.path.join(STORAGE_DIR, session_id or "global")
+        fp = os.path.join(scope_dir, file_name)
+        if os.path.isfile(fp):
+            try:
+                os.remove(fp)
+                removed_files += 1
+            except OSError as e:
+                logger.warning("delete_file failed to remove local file %s: %s", fp, e)
+
+        # 同步清理 Postgres knowledgebases 表中的对应行，避免 get_latest_user_upload
+        # 返回一个已在 ES/磁盘中不存在的陈旧文件名（upload boost 静默失效）。
+        delete_knowledgebase_entry(file_name, session_id)
 
         return {"message": f"已删除 {file_name}（{deleted} 个分块，{removed_files} 个本地文件）"}
     except Exception as e:
+        logger.exception("delete_file failed")
         raise HTTPException(status_code=500, detail=str(e))

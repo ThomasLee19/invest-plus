@@ -124,7 +124,31 @@ def _strip_filler_words(query: str) -> str:
     return stripped or query
 
 
-def rag_search(query: str, user_id: str = "1") -> list[dict]:
+def _scope_should_clauses(session_id: str | None) -> list[dict]:
+    """构建检索范围过滤子句（BM25 的 should 与 kNN 的 filter 共用同一份）：
+    seed 语料（filings/news/教育内容）或 (user_upload 且 (无 session_id[全局] 或 session_id 匹配当前))。
+
+    `must_not: {exists: session_id}` 匹配 ES 中 session_id 为 null 的
+    dataset-global 上传文档。chat() 的 session_id 是必填 query 参数，因此
+    调用 rag_search 时 session_id 恒为真实值；这里仍接受 None 只是为了让
+    该 helper 本身可独立单测。
+    """
+    return [
+        {"terms": {"source_kwd": ["sec_filing", "news", "educational"]}},
+        {
+            "bool": {
+                "must": [{"term": {"source_kwd": "user_upload"}}],
+                "should": [
+                    {"bool": {"must_not": {"exists": {"field": "session_id"}}}},
+                    {"term": {"session_id": session_id}},
+                ],
+                "minimum_should_match": 1,
+            }
+        },
+    ]
+
+
+def rag_search(query: str, session_id: str | None = None) -> list[dict]:
     """查询 ES finance_kb，返回 filings/news/教育内容 + 用户上传文档的 chunks。
 
     Hybrid 检索（ES 8.11 原生 knn + query，自实现，无 RAGFlow 依赖）：
@@ -142,12 +166,9 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
             request_timeout=30,
         )
 
-        # 来源过滤：finance_kb 语料（filings/news/教育内容）或当前用户上传的文档
+        # 来源过滤：finance_kb 语料（filings/news/教育内容）或当前 session 可见的用户上传文档
         # （BM25 与 kNN 两路共用）
-        source_filter = [
-            {"terms": {"source_kwd": ["sec_filing", "news", "educational"]}},
-            {"term": {"user_id": user_id}},
-        ]
+        source_filter = _scope_should_clauses(session_id)
 
         # BM25 路：剥离疑问词/虚词后的 query，提升关键词匹配信噪比
         # （kNN 与 _rerank_candidates 下方仍用原始 query，见 _strip_filler_words 注释）
@@ -186,7 +207,7 @@ def rag_search(query: str, user_id: str = "1") -> list[dict]:
             })
         reranked = _rerank_candidates(query, results)
         try:
-            boost_docnm = get_latest_user_upload(user_id)
+            boost_docnm = get_latest_user_upload(session_id)
         except Exception as e:
             print(f"[rag_search] upload boost 查询失败，跳过 boost：{e}")
             boost_docnm = None
@@ -389,8 +410,9 @@ def _adjust_format(plan: list[dict]) -> list[dict]:
     return adjusted
 
 
-def process_actions(actions: list[dict], language: str = "en") -> list[dict]:
-    """执行工具调用，返回 memory 列表。language 决定 web_search 的检索区域偏好。"""
+def process_actions(actions: list[dict], language: str = "en", session_id: str | None = None) -> list[dict]:
+    """执行工具调用，返回 memory 列表。language 决定 web_search 的检索区域偏好，
+    session_id 决定 rag_search 的检索范围（seed 语料 + 全局上传 + 当前 session 上传）。"""
     memory = []
     seen = set()
 
@@ -401,7 +423,7 @@ def process_actions(actions: list[dict], language: str = "en") -> list[dict]:
 
         try:
             if action_name == "rag_search":
-                result = rag_search(prompt)
+                result = rag_search(prompt, session_id)
             elif action_name == "finance_query":
                 result = finance_tool(prompt)
             elif action_name == "web_search":
@@ -522,11 +544,12 @@ def _detect_language(text: str) -> str:
     return "zh" if re.search(r'[一-鿿]', text) else "en"
 
 
-def final_answer(query: str, language: str = "auto", history: list[dict] | None = None):
+def final_answer(query: str, language: str = "auto", history: list[dict] | None = None, session_id: str | None = None):
     """
     完整 Agent Pipeline，SSE 流式生成器。
     language: "zh"（中文）或 "en"（英文）
     history: 历史对话，格式 [{"user": "...", "assistant": "..."}]
+    session_id: 当前 chat session，用于 rag_search 的检索范围限定（chat() 恒传入真实值）
     """
     client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
 
@@ -557,7 +580,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     memory = []
     if actions:
         # ── Act ──
-        memory = process_actions(actions, language)
+        memory = process_actions(actions, language, session_id)
 
         # ── Reflect (循环直到 LLM 自己判定足够，或触达安全上限) ──
         # 循环本身不做任何"该不该继续/调用什么"的判断——每一轮的决策都来自
@@ -592,7 +615,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                     ),
                 }
                 yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
-            extra_memory = process_actions(reflect_actions, language)
+            extra_memory = process_actions(reflect_actions, language, session_id)
             memory.extend(extra_memory)
         else:
             # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，

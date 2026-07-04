@@ -20,24 +20,5 @@ declare module 'axios' {
      */
     cancelRepeat?: boolean
     repeatKey?: string
-
-    /**
-     * 展开接口数据
-     * 将 response.data.data 提升到 response.data
-     * plugins/service.ts
-     */
-    unwrap?: boolean
-  }
-
-  export interface AxiosResponse<T, D> {
-    /**
-     * 展开接口数据前的原始数据
-     * plugins/service.ts
-     */
-    _data?: {
-      code: number
-      msg: string
-      data: T
-    }
   }
 }

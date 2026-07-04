@@ -49,7 +49,7 @@ def findMaxDt(fnm):
                     continue
                 if line > m:
                     m = line
-    except Exception:
+    except OSError:
         pass
     return m
 
@@ -67,7 +67,7 @@ def findMaxTm(fnm):
                     continue
                 if int(line) > m:
                     m = int(line)
-    except Exception:
+    except (OSError, ValueError):
         pass
     return m
 

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -9,13 +10,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from schemas.chat import ChatRequest
-from utils.database import get_db
+from utils.database import get_db, SessionLocal
+from utils.es_client import get_es_client
 from service.agent.agent import final_answer
 from service.core.file_parse import execute_insert_process
 from database.knowledgebase_operations import insert_knowledgebase, delete_knowledgebase_entry
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../../storage/file")
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+DEFAULT_SESSION_NAME = "新对话"
 # 真实 session_id 由 uuid4().hex[:16] 生成（见 create_session），故只接受定长字母数字
 SESSION_ID_RE = re.compile(r"^[A-Za-z0-9]{1,16}$")
 
@@ -50,7 +54,7 @@ async def create_session(db: Session = Depends(get_db)):
     try:
         db.execute(
             text("INSERT INTO sessions (session_id, session_name, user_id) VALUES (:sid, :name, :uid)"),
-            {"sid": session_id, "name": "新对话", "uid": USER_ID},
+            {"sid": session_id, "name": DEFAULT_SESSION_NAME, "uid": USER_ID},
         )
         db.commit()
     except Exception as e:
@@ -60,11 +64,15 @@ async def create_session(db: Session = Depends(get_db)):
 
 
 @router.post("/chat")
-async def chat(
+def chat(
     session_id: str = Query(...),
     request: ChatRequest = Body(...),
     db: Session = Depends(get_db),
 ):
+    # 同步 def（而非 async def）：FastAPI 会把它扔进线程池执行，避免下面这条
+    # 同步 db.execute 历史查询阻塞事件循环——这个 handler 本身也没有需要
+    # await 的地方（流式部分是普通同步生成器，不是 async generator）。
+    session_id = _validate_session_id(session_id)
     question = request.message
 
     # 查询该 session 的历史对话（最近 5 轮）
@@ -81,51 +89,58 @@ async def chat(
     collected_answer: list[str] = []
     collected_think: list[str] = []
 
-    def stream():
-        for event in final_answer(question, history=history, session_id=session_id):
-            import json, re
-            yield event
-            # 收集 answer / think 内容
-            m = re.search(r"data: (.+)", event)
-            if m:
-                try:
-                    data = json.loads(m.group(1))
-                    if data.get("thinking") is False:
-                        collected_answer.append(data.get("content", ""))
-                    elif data.get("thinking") is True:
-                        collected_think.append(data.get("content", ""))
-                except Exception:
-                    pass
-
-        # 流结束后写入数据库
-        try:
-            db.execute(
-                text(
-                    "INSERT INTO messages (session_id, user_question, model_answer, think) "
-                    "VALUES (:sid, :q, :a, :t)"
-                ),
-                {
-                    "sid": session_id,
-                    "q": question,
-                    "a": "".join(collected_answer),
-                    "t": "".join(collected_think) or None,
-                },
-            )
-            # 如果是第一条消息，用问题前 20 字更新 session_name
-            count = db.execute(
-                text("SELECT COUNT(*) FROM messages WHERE session_id = :sid"),
-                {"sid": session_id},
-            ).scalar()
-            if count == 1:
-                session_name = question[:20] + ("..." if len(question) > 20 else "")
-                db.execute(
-                    text("UPDATE sessions SET session_name = :name WHERE session_id = :sid"),
-                    {"name": session_name, "sid": session_id},
+    def _persist():
+        # 用独立的短生命周期 session 做落库写入，而不是复用请求作用域的
+        # db（那个连接会在整个流式生成期间被占用）。落库放在 finally 里，
+        # 这样客户端中途断连（generator 被 GeneratorExit 提前关闭）时这条
+        # 回答依然会被写入，而不是随着流一起被静默丢弃。
+        with SessionLocal() as write_db:
+            try:
+                write_db.execute(
+                    text(
+                        "INSERT INTO messages (session_id, user_question, model_answer, think) "
+                        "VALUES (:sid, :q, :a, :t)"
+                    ),
+                    {
+                        "sid": session_id,
+                        "q": question,
+                        "a": "".join(collected_answer),
+                        "t": "".join(collected_think) or None,
+                    },
                 )
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            print(f"[chat_rt] 写入消息失败：{e}")
+                # 仅在 session 仍是刚创建时的默认名时才重命名——用 WHERE 条件
+                # 代替原来的 "SELECT COUNT(*) == 1" 判断，天然避免了并发下
+                # 两条同时到达的首条消息互相漏判/重复改名的竞态。
+                session_name = question[:20] + ("..." if len(question) > 20 else "")
+                write_db.execute(
+                    text(
+                        "UPDATE sessions SET session_name = :name "
+                        "WHERE session_id = :sid AND session_name = :default_name"
+                    ),
+                    {"name": session_name, "sid": session_id, "default_name": DEFAULT_SESSION_NAME},
+                )
+                write_db.commit()
+            except Exception as e:
+                write_db.rollback()
+                print(f"[chat_rt] 写入消息失败：{e}")
+
+    def stream():
+        try:
+            for event in final_answer(question, history=history, session_id=session_id):
+                yield event
+                # 收集 answer / think 内容
+                m = re.search(r"data: (.+)", event)
+                if m:
+                    try:
+                        data = json.loads(m.group(1))
+                        if data.get("thinking") is False:
+                            collected_answer.append(data.get("content", ""))
+                        elif data.get("thinking") is True:
+                            collected_think.append(data.get("content", ""))
+                    except Exception:
+                        pass
+        finally:
+            _persist()
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
@@ -151,6 +166,11 @@ async def upload_files(
         file_path = os.path.join(save_dir, safe_name)
 
         content = await file.read()
+        if len(content) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"{safe_name} 超过上传大小限制（{MAX_UPLOAD_BYTES // (1024 * 1024)}MB）",
+            )
         with open(file_path, "wb") as f:
             f.write(content)
 
@@ -183,14 +203,7 @@ async def get_files():
     聚合的 size 现在受"不同文件数"约束而非"chunk 数"约束，不会再截断。
     """
     try:
-        from elasticsearch import Elasticsearch
-        es = Elasticsearch(
-            os.getenv("ES_URL", "http://localhost:1200"),
-            basic_auth=("elastic", "infini_rag_flow"),
-            verify_certs=False,
-            ssl_show_warn=False,
-            request_timeout=30,
-        )
+        es = get_es_client()
         resp = es.search(
             index="finance_kb",
             body={
@@ -249,14 +262,7 @@ async def get_official_examples():
     size:1000 扁平查询时因 chunk 数超限而静默丢失整份文件。
     """
     try:
-        from elasticsearch import Elasticsearch
-        es = Elasticsearch(
-            os.getenv("ES_URL", "http://localhost:1200"),
-            basic_auth=("elastic", "infini_rag_flow"),
-            verify_certs=False,
-            ssl_show_warn=False,
-            request_timeout=30,
-        )
+        es = get_es_client()
         resp = es.search(
             index="finance_kb",
             body={
@@ -305,14 +311,7 @@ async def delete_file(file_name: str = Query(...), session_id: str | None = Quer
     session_id = _validate_session_id(session_id)
     file_name = _safe_filename(file_name)
     try:
-        from elasticsearch import Elasticsearch
-        es = Elasticsearch(
-            os.getenv("ES_URL", "http://localhost:1200"),
-            basic_auth=("elastic", "infini_rag_flow"),
-            verify_certs=False,
-            ssl_show_warn=False,
-            request_timeout=30,
-        )
+        es = get_es_client()
         scope_clause = (
             {"bool": {"must_not": {"exists": {"field": "session_id"}}}}
             if not session_id

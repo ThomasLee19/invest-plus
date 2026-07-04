@@ -8,11 +8,7 @@ interface HotQuestion {
   title: string
 }
 
-interface HotQuestionsProps {
-  list?: HotQuestion[]
-}
-
-export default function HotQuestions(props: HotQuestionsProps) {
+export default function HotQuestions() {
   const { t } = useLang()
   const list = t.hotQuestions
 

@@ -20,6 +20,11 @@ function UserMessage(props: { item: API.ChatItem }) {
       )}
     >
       {item.content}
+      {item.attachments?.length ? (
+        <div className={styles['chat-message-item__attachments']}>
+          {item.attachments.join(', ')}
+        </div>
+      ) : null}
     </div>
   )
 }

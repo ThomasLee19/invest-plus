@@ -4,6 +4,7 @@ PokeAPI 工具封装
 对应 CONTEXT.md 中 pokeapi_query 工具的职责：精确数值和结构化事实。
 """
 
+import re
 import requests
 import time
 
@@ -70,46 +71,49 @@ def query_pokemon(name: str) -> str:
     if not species_data:
         return f"无法获取 {name} 的物种数据。"
 
-    # 基本信息
-    name_en = data["name"]
-    name_zh = next(
-        (n["name"] for n in species_data.get("names", [])
-         if n["language"]["name"] == "zh-hans"),
-        name_en
-    )
-    types = " / ".join(t["type"]["name"] for t in data["types"])
-    height = data["height"] / 10
-    weight = data["weight"] / 10
-    genus = get_english(species_data.get("genera", []), key="genus")
+    try:
+        # 基本信息
+        name_en = data.get("name", name)
+        name_zh = next(
+            (n["name"] for n in species_data.get("names", [])
+             if n.get("language", {}).get("name") == "zh-hans"),
+            name_en
+        )
+        types = " / ".join(t["type"]["name"] for t in data.get("types", []))
+        height = data.get("height", 0) / 10
+        weight = data.get("weight", 0) / 10
+        genus = get_english(species_data.get("genera", []), key="genus")
 
-    # 种族值
-    stats = {s["stat"]["name"]: s["base_stat"] for s in data["stats"]}
-    stat_map = {"hp": "HP", "attack": "攻击", "defense": "防御",
-                "special-attack": "特攻", "special-defense": "特防", "speed": "速度"}
-    bst = sum(stats.values())
-    stats_str = "、".join(f"{stat_map.get(k, k)} {v}" for k, v in stats.items())
+        # 种族值
+        stats = {s["stat"]["name"]: s["base_stat"] for s in data.get("stats", [])}
+        stat_map = {"hp": "HP", "attack": "攻击", "defense": "防御",
+                    "special-attack": "特攻", "special-defense": "特防", "speed": "速度"}
+        bst = sum(stats.values())
+        stats_str = "、".join(f"{stat_map.get(k, k)} {v}" for k, v in stats.items())
 
-    # 特性
-    abilities = []
-    for a in data["abilities"]:
-        tag = "（隐藏）" if a["is_hidden"] else ""
-        abilities.append(f"{a['ability']['name']}{tag}")
-    abilities_str = "、".join(abilities)
+        # 特性
+        abilities = []
+        for a in data.get("abilities", []):
+            tag = "（隐藏）" if a.get("is_hidden") else ""
+            abilities.append(f"{a['ability']['name']}{tag}")
+        abilities_str = "、".join(abilities)
 
-    # Gen9 技能池
-    learnset: dict[str, list] = {"level-up": [], "machine": [], "egg": []}
-    for m in data["moves"]:
-        move_name = m["move"]["name"]
-        for vgd in m["version_group_details"]:
-            if vgd["version_group"]["name"] not in GEN9_VERSION_GROUPS:
-                continue
-            method = vgd["move_learn_method"]["name"]
-            if method == "level-up":
-                learnset["level-up"].append((vgd["level_learned_at"], move_name))
-            elif method == "machine":
-                learnset["machine"].append(move_name)
-            elif method == "egg":
-                learnset["egg"].append(move_name)
+        # Gen9 技能池
+        learnset: dict[str, list] = {"level-up": [], "machine": [], "egg": []}
+        for m in data.get("moves", []):
+            move_name = m["move"]["name"]
+            for vgd in m.get("version_group_details", []):
+                if vgd["version_group"]["name"] not in GEN9_VERSION_GROUPS:
+                    continue
+                method = vgd["move_learn_method"]["name"]
+                if method == "level-up":
+                    learnset["level-up"].append((vgd["level_learned_at"], move_name))
+                elif method == "machine":
+                    learnset["machine"].append(move_name)
+                elif method == "egg":
+                    learnset["egg"].append(move_name)
+    except (KeyError, TypeError) as e:
+        return f"{name} 的数据格式异常，无法解析：{e}"
 
     learnset["level-up"].sort()
     level_up_str = ", ".join(f"Lv.{lv} {mv}" for lv, mv in learnset["level-up"]) or "无"
@@ -148,7 +152,11 @@ def query_type_matchup(attacking_type: str, defending_types: str) -> str:
     """
     defending_list = [t.strip().lower() for t in defending_types.replace("，", ",").split("/")]
 
-    type_data = safe_get(f"{BASE_URL}/type/{attacking_type.lower()}")
+    attacking_slug = attacking_type.strip().lower()
+    if not re.fullmatch(r"[a-z]+", attacking_slug):
+        return f"未找到属性：{attacking_type}"
+
+    type_data = safe_get(f"{BASE_URL}/type/{attacking_slug}")
     if not type_data:
         return f"未找到属性：{attacking_type}"
 

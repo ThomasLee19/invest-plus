@@ -23,6 +23,13 @@
   font-weight: bold;
 }
 
+.chat-message-item__attachments {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: normal;
+  opacity: 0.75;
+}
+
 .chat-status {
   margin: 20px 0;
   padding: 15px 20px;

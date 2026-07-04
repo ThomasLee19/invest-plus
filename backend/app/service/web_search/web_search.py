@@ -22,7 +22,7 @@ def serper_search(q="apple inc", hl="en", num=20):
 
 def serper_images(q="apple inc", hl="zh-cn"):
     """
-    使用 Serper API 进行图片搜索的异步函数
+    使用 Serper API 进行图片搜索的函数
 
     参数:
         q (str): 搜索关键词，默认为 "apple inc"
@@ -35,7 +35,7 @@ def serper_images(q="apple inc", hl="zh-cn"):
 
 def serper_videos(q="apple inc", hl="zh-cn"):
     """
-    使用 Serper API 进行视频搜索的异步函数
+    使用 Serper API 进行视频搜索的函数
 
     参数:
         q (str): 搜索关键词，默认为 "apple inc"
@@ -45,6 +45,9 @@ def serper_videos(q="apple inc", hl="zh-cn"):
         dict: 视频搜索结果的 JSON 数据
     """
     return make_request(q, hl, "/videos")
+
+_REQUEST_TIMEOUT_SECONDS = 10
+
 
 def make_request(q, hl, endpoint, num=10):
     """
@@ -56,11 +59,13 @@ def make_request(q, hl, endpoint, num=10):
         endpoint (str): API 的 endpoint
 
     返回:
-        dict: 搜索结果的 JSON 数据
+        dict: 搜索结果的 JSON 数据；请求失败或响应不是合法 JSON 时返回 {"error": <说明>}
     """
     api_key = os.getenv("SERPER_API_KEY")
+    if not api_key:
+        return {"error": "SERPER_API_KEY 未设置，请在 .env 中配置后重试。"}
 
-    conn = http.client.HTTPSConnection("google.serper.dev")
+    conn = http.client.HTTPSConnection("google.serper.dev", timeout=_REQUEST_TIMEOUT_SECONDS)
     payload = json.dumps({
         "q": q,
         "hl": hl,
@@ -70,10 +75,22 @@ def make_request(q, hl, endpoint, num=10):
         'X-API-KEY': api_key,
         'Content-Type': 'application/json'
     }
-    conn.request("POST", endpoint, payload, headers)
-    res = conn.getresponse()
-    data = res.read()
-    return json.loads(data.decode("utf-8"))
+    try:
+        conn.request("POST", endpoint, payload, headers)
+        res = conn.getresponse()
+        data = res.read()
+    except Exception as e:
+        return {"error": f"请求 Serper API 失败：{e}"}
+    finally:
+        conn.close()
+
+    if res.status != 200:
+        return {"error": f"Serper API 返回异常状态码 {res.status}：{data[:200]!r}"}
+
+    try:
+        return json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        return {"error": f"Serper API 响应不是合法 JSON：{e}"}
 
 
 def process_search_results(search_results):

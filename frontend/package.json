@@ -17,6 +17,7 @@
     "classnames": "^2.5.1",
     "color": "^5.0.0",
     "dayjs": "^1.11.13",
+    "dompurify": "^3.4.11",
     "lodash-es": "^4.17.21",
     "marked": "^15.0.7",
     "normalize.css": "^8.0.1",

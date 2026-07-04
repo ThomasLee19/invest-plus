@@ -7,28 +7,6 @@ import classNames from 'classnames'
 import { PropsWithChildren, useMemo, useState } from 'react'
 import './index.scss'
 
-const IconFile2 = (
-  <svg
-    className="com-sender__file-icon"
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
-    <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
-    <path d="M10 9H8"></path>
-    <path d="M16 13H8"></path>
-    <path d="M16 17H8"></path>
-  </svg>
-)
-
 export default function ComSender(
   props: PropsWithChildren<{
     className?: string
@@ -50,8 +28,17 @@ export default function ComSender(
     if (loading) return
     if (!value) return
     const msg = value
-    setValue('')
-    await onSend?.(msg, [])
+    const attachmentNames = fileList.map((f) => f.name)
+    try {
+      await onSend?.(msg, attachmentNames)
+      // 仅在发送成功后才清空输入框和已上传文件列表；发送失败时保留，
+      // 避免用户输入的内容随一次失败的请求丢失。
+      setValue('')
+      setFileList([])
+    } catch {
+      // onSend 内部已经把错误记录到对应的 chat item 上，这里不需要再处理，
+      // 只是不清空输入框/附件列表。
+    }
   }
 
   async function upload(file: UploadFile & { loading?: boolean }) {
@@ -59,9 +46,9 @@ export default function ComSender(
     setFileList((prev) => [...prev, file])
     try {
       await api.session.upload({ files: file as any, session_id: sessionId })
-      window.$app.message.success(`${file.name} 上传成功`)
+      window.$app.message.success(`${file.name} ${t.uploadSuccess}`)
     } catch {
-      window.$app.message.error(`${file.name} 上传失败`)
+      window.$app.message.error(`${file.name} ${t.uploadFailed}`)
     } finally {
       file.loading = false
       setFileList((prev) => [...prev])

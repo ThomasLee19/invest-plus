@@ -21,6 +21,7 @@ loop-mechanism and error-propagation behavior is domain-agnostic by
 construction. Finance-domain end-to-end scenarios belong in Phase 5.
 """
 import json
+import os
 import sys
 import types
 import unittest
@@ -31,6 +32,13 @@ from unittest.mock import patch
 _backend_dir = Path(__file__).parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
+
+# agent.py fails fast at import time if DASHSCOPE_BASE_URL is unset (it would
+# otherwise silently leak requests to the public OpenAI endpoint with a
+# DashScope key). Set a harmless placeholder so that guard doesn't break this
+# suite's import — no real network call is ever made since _get_llm_client()
+# is lazy and every test patches the LLM-calling boundary directly.
+os.environ.setdefault("DASHSCOPE_BASE_URL", "https://example.invalid/compatible-mode/v1")
 
 if "openai" not in sys.modules:
     _fake_openai = types.ModuleType("openai")
@@ -218,6 +226,35 @@ class ShouldContinueTests(unittest.TestCase):
         self.assertTrue(decision["sufficient"])
         self.assertEqual(decision["actions"], [])
         self.assertIn("parse error", decision["rationale"])
+
+    def test_string_false_is_not_treated_as_sufficient(self):
+        """Regression test for bool("false") == True in Python: the LLM often
+        emits "sufficient" as a JSON string rather than a real boolean, and a
+        bare bool() cast would misread the literal string "false" as truthy,
+        stopping the reflection loop prematurely on insufficient info."""
+        memory = [{"提问": "iron valiant battle strategy", "结果": []}]
+        mocked_response = _llm_json_returning({
+            "sufficient": "false",
+            "rationale": "仍需补充信息。",
+            "actions": [{"action_name": "web_search", "prompts": ["iron valiant strategy"]}],
+        })
+        with patch.object(agent, "_llm_json", return_value=mocked_response):
+            decision = agent.should_continue("铁巨剑适合什么打法", memory)
+
+        self.assertFalse(decision["sufficient"])
+        self.assertEqual(len(decision["actions"]), 1)
+
+    def test_string_true_is_treated_as_sufficient(self):
+        memory = [{"提问": "garchomp speed stat", "结果": "Garchomp base speed: 102"}]
+        mocked_response = _llm_json_returning({
+            "sufficient": "true",
+            "rationale": "已获得完整数据。",
+            "actions": [],
+        })
+        with patch.object(agent, "_llm_json", return_value=mocked_response):
+            decision = agent.should_continue("garchomp 速度种族值多少", memory)
+
+        self.assertTrue(decision["sufficient"])
 
 
 class ProcessActionsErrorPropagationTests(unittest.TestCase):
@@ -699,7 +736,7 @@ class StripFillerWordsTests(unittest.TestCase):
                 captured["body"] = body
                 return {"hits": {"hits": []}}
 
-        with patch.object(sys.modules["elasticsearch"], "Elasticsearch", return_value=_FakeEsInstance()), \
+        with patch.object(agent, "_get_es", return_value=_FakeEsInstance()), \
              patch.object(agent, "_embed_query", return_value=None) as mocked_embed, \
              patch.object(agent, "_rerank_candidates", side_effect=lambda q, c: c) as mocked_rerank:
             agent.rag_search(query_with_filler)
@@ -805,8 +842,7 @@ class SessionScopedRagSearchTests(unittest.TestCase):
     ]
 
     def _search(self, session_id):
-        with patch.object(sys.modules["elasticsearch"], "Elasticsearch",
-                           return_value=_ScopedFakeElasticsearch(self._DOCS)), \
+        with patch.object(agent, "_get_es", return_value=_ScopedFakeElasticsearch(self._DOCS)), \
              patch.object(agent, "_embed_query", return_value=None), \
              patch.object(agent, "_rerank_candidates", side_effect=lambda q, c: c):
             results = agent.rag_search("some query", session_id)

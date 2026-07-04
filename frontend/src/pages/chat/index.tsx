@@ -2,6 +2,7 @@ import * as api from '@/api'
 import ComPageLayout from '@/components/page-layout'
 import ComSender from '@/components/sender'
 import { ChatRole, ChatType } from '@/configs'
+import { useLang } from '@/i18n'
 import { deviceActions } from '@/store/device'
 import { sessionState } from '@/store/session'
 import { usePageTransport } from '@/utils'
@@ -14,27 +15,35 @@ import styles from './index.module.scss'
 import { createChatId, transportToChatEnter } from './shared'
 
 // 滚动到页面底部的辅助函数，当距离底部小于阈值时自动滚动
-async function scrollToBottom() {
-  await new Promise((resolve) => setTimeout(resolve))
+// 多次调用会被折叠进同一帧，避免每个流式 token 都触发一次布局重排
+let scrollFramePending = false
+function scrollToBottom() {
+  if (scrollFramePending) return
+  scrollFramePending = true
 
-  const threshold = 200
-  const distanceToBottom =
-    document.documentElement.scrollHeight -
-    document.documentElement.scrollTop -
-    document.documentElement.clientHeight
+  requestAnimationFrame(() => {
+    scrollFramePending = false
 
-  if (distanceToBottom <= threshold) {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: 'smooth',
-    })
-  }
+    const threshold = 200
+    const distanceToBottom =
+      document.documentElement.scrollHeight -
+      document.documentElement.scrollTop -
+      document.documentElement.clientHeight
+
+    if (distanceToBottom <= threshold) {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
+  })
 }
 
 export default function Index() {
   const { id } = useParams()
   const { data: ctx } = usePageTransport(transportToChatEnter)
   const sessionStore = useSnapshot(sessionState)
+  const { t } = useLang()
 
   // 使用valtio管理聊天消息列表状态
   const [chat] = useState(() => {
@@ -99,7 +108,11 @@ export default function Index() {
 
   // 发送聊天消息并处理流式响应
   const sendChat = useCallback(
-    async (target: API.ChatItem, message: string, attachments?: string[]) => {
+    // 上传的附件已经在调用方通过 session 范围的 RAG 检索关联到本次会话
+    // （见 backend rag_search 的 session_id scoping），不需要作为独立字段
+    // 发到 /chat；attachments 只用于调用方把它显示在用户消息气泡里
+    // （见下方 chat.list.push 里的 target.attachments）。
+    async (target: API.ChatItem, message: string) => {
       target.loading = true
       try {
         const res = await api.session.chat({
@@ -113,7 +126,9 @@ export default function Index() {
 
         await read(reader)
       } catch (error: unknown) {
-        target.error = (error as Error)?.message ?? 'Unknown error'
+        // 展示给用户的是通用提示，而非后端原始错误字符串（可能是英文、未翻译，
+        // 或暴露实现细节）；原始错误仍然通过 throw 保留给上层/控制台排查。
+        target.error = t.genericError
         throw error
       } finally {
         target.loading = false
@@ -127,7 +142,7 @@ export default function Index() {
         const decoder = new TextDecoder('utf-8')
         while (true) {
           const { value, done } = await reader.read()
-          temp += decoder.decode(value)
+          temp += decoder.decode(value, { stream: true })
 
           // 按行解析SSE数据
           while (true) {
@@ -144,7 +159,7 @@ export default function Index() {
           }
 
           if (done) {
-            console.debug('数据接受完毕', temp)
+            temp += decoder.decode()
             target.loading = false
             break
           }
@@ -197,8 +212,7 @@ export default function Index() {
             target.video_results = json.video_results
           }
         } catch {
-          console.debug('解析失败')
-          console.debug(slice)
+          // 单行 SSE 数据解析失败：跳过这一行即可，不影响后续行的处理。
         }
       }
     },
@@ -218,6 +232,7 @@ export default function Index() {
           role: ChatRole.User,
           type: ChatType.Text,
           content: message,
+          attachments,
         })
 
         chat.list.push({
@@ -229,7 +244,7 @@ export default function Index() {
 
         const target = chat.list[chat.list.length - 1]
 
-        await sendChat(target, message!, attachments)
+        await sendChat(target, message!)
       } else {
         // 非首次发送，添加新的对话项
         chat.list.push({
@@ -237,6 +252,7 @@ export default function Index() {
           role: ChatRole.User,
           type: ChatType.Text,
           content: message,
+          attachments,
         })
 
         chat.list.push({
@@ -249,7 +265,7 @@ export default function Index() {
 
         const target = chat.list[chat.list.length - 1]
 
-        await sendChat(target, message!, attachments)
+        await sendChat(target, message!)
       }
     },
     [chat, sendChat],

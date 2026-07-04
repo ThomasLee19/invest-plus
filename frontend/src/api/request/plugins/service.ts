@@ -1,3 +1,4 @@
+import { getMessages } from '@/i18n'
 import { AxiosResponse } from 'axios'
 import { ResponseError } from '../error'
 import { IRequestPlugin } from './plugin'
@@ -19,7 +20,7 @@ export const servicePlugin: IRequestPlugin = {
         const code = data[CODE_KEY]
         if (code !== 'success') {
           const message =
-            data[MESSAGE_KEY] || data.detail || '接口数据异常'
+            data[MESSAGE_KEY] || data.detail || getMessages().apiDataError
           const error = new ResponseError(message, response)
           return Promise.reject(error)
         }
@@ -35,7 +36,7 @@ export const servicePlugin: IRequestPlugin = {
         const code = data[CODE_KEY]
         if (code === 'error') {
           const message =
-            data[MESSAGE_KEY] || data.detail || '接口数据异常'
+            data[MESSAGE_KEY] || data.detail || getMessages().apiDataError
           const error = new ResponseError(message, response)
           return Promise.reject(error)
         }

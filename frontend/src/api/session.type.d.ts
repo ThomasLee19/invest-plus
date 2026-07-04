@@ -15,6 +15,7 @@ declare namespace API {
     error?: string
     content?: string
     think?: string
+    attachments?: string[]
 
     documents?: Document[]
     reference?: Document[]

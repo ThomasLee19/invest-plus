@@ -60,20 +60,18 @@ export default function Index() {
     refresh()
   }
 
-  const officialColumns = useMemo<ColumnsType<IOfficialExample>>(
-    () => [
+  // 名称/更新时间/分块方法/状态四列在官方语料表和已上传文档表之间完全一致，
+  // 只有"名称"列的渲染（是否显示 session 标签）和是否带操作列不同——用一个
+  // 共享的基础列工厂避免两份表格定义重复维护。
+  function buildBaseColumns<T extends IOfficialExample | IRepository>(
+    renderName: (value: string, row: T) => React.ReactNode,
+  ): ColumnsType<T> {
+    return [
       {
         title: t.repoColName,
         dataIndex: 'file_name',
         width: 200,
-        render(value, row) {
-          return (
-            <div className={styles['repository-page__file-name']} title={value}>
-              <FileIcon className={styles['icon']} suffix={row.$suffix} />
-              {value}
-            </div>
-          )
-        },
+        render: renderName,
       },
       {
         title: t.repoColUpdated,
@@ -96,51 +94,33 @@ export default function Index() {
           return <Status status={value} />
         },
       },
-    ],
+    ]
+  }
+
+  const officialColumns = useMemo<ColumnsType<IOfficialExample>>(
+    () =>
+      buildBaseColumns<IOfficialExample>((value, row) => (
+        <div className={styles['repository-page__file-name']} title={value}>
+          <FileIcon className={styles['icon']} suffix={row.$suffix} />
+          {value}
+        </div>
+      )),
     [t],
   )
 
   const columns = useMemo<ColumnsType<IRepository>>(
     () => [
-      {
-        title: t.repoColName,
-        dataIndex: 'file_name',
-        width: 200,
-        render(value, row) {
-          return (
-            <div className={styles['repository-page__file-name']} title={value}>
-              <FileIcon className={styles['icon']} suffix={row.$suffix} />
-              {value}
-              {row.session_id && (
-                <Tag className={styles['repository-page__session-tag']}>
-                  {t.repoSessionTag}: {row.session_id}
-                </Tag>
-              )}
-            </div>
-          )
-        },
-      },
-      {
-        title: t.repoColUpdated,
-        dataIndex: 'updated_at',
-        width: 200,
-        render(value) {
-          return dayjs(value).format('MM/DD/YYYY HH:mm:ss')
-        },
-      },
-      {
-        title: t.repoColMethod,
-        dataIndex: 'chunk_method',
-        width: 100,
-      },
-      {
-        title: t.repoColStatus,
-        dataIndex: 'status',
-        width: 100,
-        render(value) {
-          return <Status status={value} />
-        },
-      },
+      ...buildBaseColumns<IRepository>((value, row) => (
+        <div className={styles['repository-page__file-name']} title={value}>
+          <FileIcon className={styles['icon']} suffix={row.$suffix} />
+          {value}
+          {row.session_id && (
+            <Tag className={styles['repository-page__session-tag']}>
+              {t.repoSessionTag}: {row.session_id}
+            </Tag>
+          )}
+        </div>
+      )),
       {
         title: t.repoColAction,
         dataIndex: 'action',
@@ -217,12 +197,6 @@ export default function Index() {
         <div className={styles['repository-page__section-title']}>{t.repoUploadedTitle}</div>
 
         <div className={styles['header']}>
-          {/* <Input
-            placeholder="搜索你的文件"
-            prefix={<img src={IconSearch} />}
-            style={{ width: 210 }}
-          /> */}
-
           <Button type="primary" onClick={() => setOpenUpload(true)}>
             <PlusOutlined />
             {t.repoAddFile}

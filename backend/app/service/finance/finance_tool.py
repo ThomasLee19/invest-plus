@@ -5,6 +5,7 @@ Finance 工具封装
 """
 
 import contextlib
+import functools
 import io
 
 
@@ -20,6 +21,29 @@ def _is_valid_ticker(info: dict, history) -> bool:
     return not history.empty or len(info) > 2
 
 
+# yfinance 底层走 requests，Ticker()/.info/.history() 本身不接受 timeout 参数；
+# 显式传一个共享 requests session（带 timeout）是这个版本里让请求不至于无限挂起
+# 的干净做法，对 .info/.history/.news 三处调用都生效。
+_YF_TIMEOUT_SECONDS = 10
+
+
+def _yf_session():
+    import requests
+    session = requests.Session()
+    session.request = functools.partial(session.request, timeout=_YF_TIMEOUT_SECONDS)
+    return session
+
+
+def _load_ticker(ticker: str):
+    """加载一次 yf.Ticker + .info + .history，供 quote/fundamentals/news 共用，避免重复请求。"""
+    import yfinance as yf
+    with _quiet():
+        t = yf.Ticker(ticker, session=_yf_session())
+        info = t.info
+        history = t.history(period="5d")
+    return t, info, history
+
+
 def query_quote(ticker: str) -> str:
     """
     查询股票的实时行情：最新价、涨跌幅、成交量等。
@@ -27,11 +51,7 @@ def query_quote(ticker: str) -> str:
     """
     ticker = ticker.upper().strip()
 
-    import yfinance as yf
-    with _quiet():
-        t = yf.Ticker(ticker)
-        info = t.info
-        history = t.history(period="5d")
+    t, info, history = _load_ticker(ticker)
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"
@@ -67,11 +87,15 @@ def query_quote(ticker: str) -> str:
 
     name = info.get("shortName") or info.get("longName") or ticker
 
+    day_high_str = f"{day_high:.2f}" if day_high is not None else "未知"
+    day_low_str = f"{day_low:.2f}" if day_low is not None else "未知"
+    volume_str = f"{volume:,}" if volume is not None else "未知"
+
     result = f"""【{name}（{ticker}）】
 最新价：{last_price:.2f} {currency}
 涨跌：{direction}{change:.2f} （{direction}{change_pct:.2f}%）
-昨收：{prev_close:.2f} | 最高：{day_high:.2f} | 最低：{day_low:.2f}
-成交量：{volume:,}"""
+昨收：{prev_close:.2f} | 最高：{day_high_str} | 最低：{day_low_str}
+成交量：{volume_str}"""
 
     return result
 
@@ -83,11 +107,7 @@ def query_fundamentals(ticker: str) -> str:
     """
     ticker = ticker.upper().strip()
 
-    import yfinance as yf
-    with _quiet():
-        t = yf.Ticker(ticker)
-        info = t.info
-        history = t.history(period="5d")
+    t, info, history = _load_ticker(ticker)
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"
@@ -136,11 +156,7 @@ def query_news(ticker: str, limit: int = 5) -> str:
     """
     ticker = ticker.upper().strip()
 
-    import yfinance as yf
-    with _quiet():
-        t = yf.Ticker(ticker)
-        info = t.info
-        history = t.history(period="5d")
+    t, info, history = _load_ticker(ticker)
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"
@@ -158,7 +174,9 @@ def query_news(ticker: str, limit: int = 5) -> str:
     name = info.get("shortName") or info.get("longName") or ticker
     lines = [f"【{name}（{ticker}）近期新闻】"]
     for item in news_items[:limit]:
-        content = item.get("content", item)
+        content = item.get("content", item) if isinstance(item, dict) else item
+        if not isinstance(content, dict):
+            content = {}
         title = content.get("title", "（无标题）")
         pub_date = content.get("pubDate", "")
         lines.append(f"- {title}（{pub_date}）")

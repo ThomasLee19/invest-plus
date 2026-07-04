@@ -46,7 +46,7 @@ Every component starts by hand. Order matters.
 
 ```bash
 docker-compose up -d                      # ES on :1200 (mapped from 9200), PG on :5432
-python legacy/index_smogon.py            # one-time, populates ES index `pokemon_kb`
+python scripts/index_finance.py           # one-time, populates ES index `finance_kb`
 cd backend/app && uvicorn app_main:app --reload --port 8000   # NOT from backend/
 cd frontend && npm install && npm run dev # Vite on :5181
 ```
@@ -68,15 +68,20 @@ cd frontend && npm install && npm run dev # Vite on :5181
 ## Elasticsearch quirks
 
 - Port **1200** (host) → 9200 (container). All clients use `ES_URL=http://localhost:1200`.
-- Auth is **hard-coded** as `("elastic", "infini_rag_flow")` in four call sites
-  ([agent.py](backend/app/service/agent/agent.py:89),
-  [file_parse.py](backend/app/service/core/file_parse.py:57),
-  [index_smogon.py](legacy/index_smogon.py:38),
-  [chat_rt.py](backend/app/router/chat_rt.py:148) and :184). The `.env`
-  `ELASTIC_PASSWORD` is only read by the docker container — changing it requires
-  touching all four call sites too.
-- **One shared index `pokemon_kb`**, partitioned by `source_kwd`:
-  - `source_kwd=smogon` — Smogon strategy chunks (loaded by `legacy/index_smogon.py`).
+- Auth is centralized in [es_client.py](backend/app/utils/es_client.py)'s
+  `get_es_client()`, which reads `ES_URL`/`ELASTIC_PASSWORD` from the
+  environment (same vars the docker container's `.env` already uses — no more
+  duplicated hardcoded password). `agent.py`, `chat_rt.py` (all 3 call sites),
+  and `file_parse.py` all construct their client through this one helper.
+  `scripts/index_finance.py` is a standalone script with no `sys.path` hookup
+  into `backend/app`, so it duplicates the same env-var-read pattern locally
+  in its own `get_es()` instead of importing the shared helper.
+  `legacy/index_smogon.py` (the old Pokemon-project indexer, predating this
+  fix and still hardcoding the password) has been removed — it was unused
+  legacy code, not part of the active pipeline.
+- **One shared index `finance_kb`** (renamed from the old Pokemon-project
+  `pokemon_kb`), partitioned by `source_kwd`:
+  - `source_kwd=sec_filing` / `news` / `educational` — finance corpus (loaded by `scripts/index_finance.py`).
   - `source_kwd=user_upload` — user-uploaded `.txt`/`.md` (loaded by [`file_parse.py`](backend/app/service/core/file_parse.py)).
   - **PokeAPI data is NOT in ES.** `legacy/pokemon-data/*.md` is a local cache for
     debugging only; live queries hit PokeAPI through
@@ -148,8 +153,8 @@ inherited from the SalesPilot lineage and **must not be renamed**
   (the `users` table is unused).
 - Chunk size is `MAX_CHUNK = 1500` chars in both ingestion paths — keep them in
   sync if you change one.
-- Indexing is idempotent: `index_smogon.py` keys chunk IDs by `xxhash(content +
-  index)` and skips existing docs.
+- Indexing is idempotent: `scripts/index_finance.py` keys chunk IDs by
+  `xxhash(content + index)` and skips existing docs.
 
 ## Testing reality
 

@@ -38,6 +38,9 @@ export const messages = {
     repoDeleteSuccess: '已删除',
     answerTitle: '答案',
     sourceTitle: '来源',
+    imageResultsTitle: '图像',
+    videoResultsTitle: '视频',
+    relatedTitle: '相关',
     actionCopy: '复制',
     actionLike: '点赞',
     actionDislike: '踩',
@@ -50,6 +53,10 @@ export const messages = {
     thinking: '深度探索中',
     failed: '失败',
     loading: '加载中...',
+    genericError: '请求出错，请稍后重试。',
+    apiDataError: '接口数据异常',
+    tooManyRequests: '请求过于频繁，请稍后再试',
+    requestError: '请求错误',
   },
   en: {
     tagline: 'Agent auto-calls Finance RAG (filings / news / education) / Live Market Data / Web Search — no manual selection needed',
@@ -86,6 +93,9 @@ export const messages = {
     repoDeleteSuccess: 'Deleted',
     answerTitle: 'Answer',
     sourceTitle: 'Source',
+    imageResultsTitle: 'Images',
+    videoResultsTitle: 'Videos',
+    relatedTitle: 'Related',
     actionCopy: 'Copy',
     actionLike: 'Like',
     actionDislike: 'Dislike',
@@ -98,6 +108,10 @@ export const messages = {
     thinking: 'Thinking...',
     failed: 'Failed',
     loading: 'Loading...',
+    genericError: 'Something went wrong. Please try again.',
+    apiDataError: 'Invalid API response',
+    tooManyRequests: 'Too many requests, please try again later',
+    requestError: 'Request error',
   },
 }
 
@@ -106,8 +120,21 @@ const LangContext = createContext<{
   setLang: (l: Lang) => void
 }>({ lang: 'zh', setLang: () => {} })
 
+// 供非 React 模块（如 axios 拦截器插件）读取当前语言用——它们没有 hook
+// 上下文可用，但仍需要把面向用户的字符串走 i18n 而不是硬编码中文。
+// LangProvider 的 setLang 包一层同步更新它，保持与 React state 一致。
+let currentLang: Lang = 'en'
+
+export function getMessages() {
+  return messages[currentLang]
+}
+
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>('en')
+  const [lang, setLangState] = useState<Lang>('en')
+  const setLang = (l: Lang) => {
+    currentLang = l
+    setLangState(l)
+  }
   return <LangContext.Provider value={{ lang, setLang }}>{children}</LangContext.Provider>
 }
 

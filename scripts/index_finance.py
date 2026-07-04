@@ -67,11 +67,20 @@ KEYWORD_DYNAMIC_TEMPLATE_REGEX = r"^(.*_(kwd|id)|uid)$"
 
 
 def get_es() -> Elasticsearch:
+    password = os.getenv("ELASTIC_PASSWORD")
+    if not password:
+        raise RuntimeError(
+            "ELASTIC_PASSWORD is not set. Set it in your .env file (see .env.example)."
+        )
+    # verify_certs only disabled for loopback-ish hosts, mirroring
+    # backend/app/utils/es_client.py's policy (this standalone script has no
+    # sys.path hookup into backend/app, so the logic is duplicated locally
+    # rather than imported).
+    is_loopback = any(h in ES_URL for h in ("localhost", "127.0.0.1", "es01", "elasticsearch"))
     return Elasticsearch(
         ES_URL,
-        basic_auth=("elastic", "infini_rag_flow"),
-        verify_certs=False,
-        ssl_show_warn=False,
+        basic_auth=("elastic", password),
+        verify_certs=not is_loopback,
         request_timeout=600,
     )
 
@@ -340,17 +349,17 @@ def main():
     nw, ns, nf = index_news(es)
 
     print("\n[educational]")
-    ew, es_, ef = index_educational(es)
+    ew, edu_skipped, ef = index_educational(es)
 
     total_w = fw + nw + ew
-    total_s = fs + ns + es_
+    total_s = fs + ns + edu_skipped
     total_f = ff + nf + ef
 
     print("\n" + "=" * 60)
     print(f"Done. {total_w} chunks written, {total_s} skipped (already indexed), {total_f} failed")
     print(f"  filings:     {fw} written, {fs} skipped, {ff} failed")
     print(f"  news:        {nw} written, {ns} skipped, {nf} failed")
-    print(f"  educational: {ew} written, {es_} skipped, {ef} failed")
+    print(f"  educational: {ew} written, {edu_skipped} skipped, {ef} failed")
     print(f"ES index: {INDEX_NAME}")
     print("=" * 60)
 

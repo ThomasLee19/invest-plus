@@ -13,17 +13,21 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
-from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
+
+from app.utils.es_client import get_es_client
 
 # 独立于调用方的 import 顺序显式加载 .env（同 agent.py 的修复原因）。
 load_dotenv()
 
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
-DASHSCOPE_BASE_URL = os.getenv(
-    "DASHSCOPE_BASE_URL",
-)
-ES_URL = os.getenv("ES_URL", "http://localhost:1200")
+DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL")
+if not DASHSCOPE_BASE_URL:
+    raise RuntimeError(
+        "DASHSCOPE_BASE_URL is not set. Set it in your .env file (see .env.example) — "
+        "leaving it unset makes the OpenAI client fall back to the public OpenAI endpoint, "
+        "leaking requests made with a DashScope key."
+    )
 ES_INDEX = "finance_kb"
 
 # .txt/.md 路按字符切分（与历史新闻/教育内容一致）
@@ -64,8 +68,11 @@ def _clean_for_embedding(text: str) -> str:
     return t
 
 
+_openai_client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
+
+
 def _embed(texts: list[str]) -> list[list[float]]:
-    client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
+    client = _openai_client
     vectors: list[list[float]] = []
     for i in range(0, len(texts), _EMBED_BATCH):
         batch = texts[i:i + _EMBED_BATCH]
@@ -79,8 +86,14 @@ def _embed(texts: list[str]) -> list[list[float]]:
     return vectors
 
 
+# DeepDoc 的 _Pdf.__call__ 默认 to_page=100000，对一份被精心构造的超大 PDF 会
+# 同步跑满每一页的 OCR+版面+表格识别，耗尽 CPU/内存且没有上限。这里给用户上传路
+# 一个合理的页数上限（超出的页直接不解析，而不是让请求无限跑下去）。
+MAX_PDF_PAGES = 50
+
+
 def _build_pdf_items(file_path: str, file_name: str,
-                     from_page: int = 0, to_page: int = 100000) -> list[tuple[str, str]]:
+                     from_page: int = 0, to_page: int = MAX_PDF_PAGES) -> list[tuple[str, str]]:
     """跑 DeepDoc 流水线，返回 [(display_text, embed_text), ...]。
     display_text 进 content_with_weight（表格保留 HTML 供展示），
     embed_text 是去标记后的干净文本，进 content_ltks 并用于生成向量。
@@ -147,13 +160,7 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
 
     vectors = _embed([embed_text for _, embed_text in items])
 
-    es = Elasticsearch(
-        ES_URL,
-        basic_auth=("elastic", "infini_rag_flow"),
-        verify_certs=False,
-        ssl_show_warn=False,
-        request_timeout=60,
-    )
+    es = get_es_client()
 
     # 整个文件的所有 chunk 用同一上传时间戳（字段名与 index_smogon.py 保持一致）
     create_time = str(datetime.datetime.now())[:19]

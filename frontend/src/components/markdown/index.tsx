@@ -1,4 +1,5 @@
 import classNames from 'classnames'
+import DOMPurify from 'dompurify'
 import { Marked, Renderer, TokenizerAndRendererExtension } from 'marked'
 import { useMemo } from 'react'
 import './index.scss'
@@ -22,7 +23,7 @@ export default function Markdown(props: {
       renderer,
     })
 
-    return html
+    return DOMPurify.sanitize(html as string)
   }, [value, extensions])
 
   return (

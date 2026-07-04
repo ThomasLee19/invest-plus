@@ -54,14 +54,18 @@ hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
 ### core/file_parse.py
 - `execute_insert_process`: split on blank lines into ≤ `MAX_CHUNK = 1500`-char
   chunks → embed with `text-embedding-v3` (1024-dim) → bulk-index into
-  `pokemon_kb` with `source_kwd="user_upload"`, `refresh="wait_for"`.
-- Keep `MAX_CHUNK = 1500` in sync with `legacy/index_smogon.py`.
+  `finance_kb` with `source_kwd="user_upload"`, `refresh="wait_for"`.
+- Keep `MAX_CHUNK = 1500` in sync with `scripts/index_finance.py` (the old
+  sync target, `legacy/index_smogon.py`, was removed — unused Pokemon-project
+  leftover code).
 
 ## For AI Agents
 
 ### Working In This Directory
-- ES auth is **hard-coded** `("elastic", "infini_rag_flow")` here and in three
-  other call sites (see root AGENTS.md). Changing the password means touching all four.
+- ES auth goes through the shared `get_es_client()` helper in
+  `backend/app/utils/es_client.py` (reads `ELASTIC_PASSWORD`/`ES_URL` from
+  env — see root AGENTS.md). Don't reintroduce an inline `Elasticsearch(...)`
+  construction with hardcoded credentials in new code.
 - `agent.py` is the one file that imports siblings via `app.service.*` (it inserts
   `backend/` into `sys.path`). New code elsewhere uses flat imports.
 - `pokeapi_query` and `rag_search` have **non-overlapping** jobs: exact

@@ -5,5 +5,4 @@ export const request = createRequest({
   loading: true,
   errorToast: true,
   cancelRepeat: true,
-  unwrap: true,
 })

@@ -60,7 +60,7 @@ const 答案 = (props: { item: API.ChatItem }) => {
         },
         renderer(token) {
           const index = this.parser.parseInline(token.index)
-          return `<span class="refrence-token" data-refrence-index="${index}">[${Number(index) + 1}]</span>`
+          return `<span class="reference-token" data-reference-index="${index}">[${Number(index) + 1}]</span>`
         },
       },
     ],
@@ -68,9 +68,9 @@ const 答案 = (props: { item: API.ChatItem }) => {
   )
 
   function handleReferenceClick(event: React.MouseEvent<HTMLDivElement>) {
-    const target = (event.target as HTMLElement).closest?.('.refrence-token')
+    const target = (event.target as HTMLElement).closest?.('.reference-token')
     if (!target) return
-    const index = target.getAttribute('data-refrence-index')
+    const index = target.getAttribute('data-reference-index')
     if (index == null) return
 
     const el = document.getElementById(`source-ref-${index}`)
@@ -154,47 +154,17 @@ const 来源 = (props: { item: API.ChatItem }) => {
   )
 }
 
-const 笔记 = (props: { item: API.ChatItem }) => {
-  const { item } = props
-  console.log(item)
-
-  // 后端暂未实现，使用假数据代替
-  return (
-    <Section title="笔记" icon={IconImage}>
-      <div className={styles['chat-message-result__xhs']}>
-        {Array.from({ length: 4 }).map((_) => (
-          <div className={styles.item}>
-            <div className={styles.header}>
-              <img className={styles.cover} src={IconShare} />
-            </div>
-
-            <div className={styles.footer}>
-              <div className={styles.title}>
-                如何培养孩子的兴趣？家长学会这三点，孩子受益匪浅 - Classover
-              </div>
-
-              <div className={styles.user}>
-                <img className={styles.avatar} src={IconShare} />
-                <div className={styles.name}>Classover</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Section>
-  )
-}
-
 const 图像 = (props: { item: API.ChatItem }) => {
   const { item } = props
+  const { t } = useLang()
 
   return (
-    <Section title="图像" icon={IconImage}>
+    <Section title={t.imageResultsTitle} icon={IconImage}>
       <div className={styles['chat-message-result__images']}>
-        {item.image_results?.images?.map((item, index) => (
+        {item.image_results?.images?.map((item) => (
           <div
             className={styles.item}
-            key={index}
+            key={item.link || item.imageUrl}
             onClick={() => window.open(item.link, '_blank')}
           >
             <div className={styles.box}>
@@ -209,14 +179,15 @@ const 图像 = (props: { item: API.ChatItem }) => {
 
 const 视频 = (props: { item: API.ChatItem }) => {
   const { item } = props
+  const { t } = useLang()
 
   return (
-    <Section title="视频" icon={IconVideo}>
+    <Section title={t.videoResultsTitle} icon={IconVideo}>
       <div className={styles['chat-message-result__videos']}>
-        {item.video_results?.videos?.map((item, index) => (
+        {item.video_results?.videos?.map((item) => (
           <div
             className={styles.item}
-            key={index}
+            key={item.link || item.imageUrl}
             onClick={() => window.open(item.link, '_blank')}
           >
             <div className={styles.box}>
@@ -236,6 +207,7 @@ const 相关 = (props: {
   onSend?: (text: string) => void
 }) => {
   const { item, onSend } = props
+  const { t } = useLang()
 
   if (
     !item.recommended_questions?.length ||
@@ -244,12 +216,12 @@ const 相关 = (props: {
     return null
 
   return (
-    <Section title="相关" icon={IconRelated}>
+    <Section title={t.relatedTitle} icon={IconRelated}>
       <div className={styles['chat-message-result__quick-reply']}>
         {item.recommended_questions?.map((item, index) => (
           <div
             className={styles['item']}
-            key={index}
+            key={item}
             onClick={() => onSend?.(item)}
           >
             <span className={styles['text']}>
@@ -332,8 +304,6 @@ export function Result(props: {
       )}
 
       {item.reference?.length ? <来源 item={item} /> : null}
-
-      {false ? <笔记 item={item} /> : null}
 
       {item.image_results?.images?.length ? <图像 item={item} /> : null}
 

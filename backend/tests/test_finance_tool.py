@@ -13,7 +13,7 @@ try/except behavior already present in query_news.
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 _backend_dir = Path(__file__).parent.parent
 if str(_backend_dir) not in sys.path:
@@ -52,6 +52,53 @@ class FinanceToolNetworkFailureTests(unittest.TestCase):
 
         self.assertIsInstance(result, str)
         self.assertIn("暂时不可用", result)
+
+
+class TickerCacheTests(unittest.TestCase):
+    """_load_ticker caches per-ticker results for _TICKER_CACHE_TTL_SECONDS.
+
+    Reflect-loop dedup (seen_actions/seen_prompts in agent.py) only matches on
+    literal prompt text, so a differently-worded prompt resolving to the same
+    ticker within one conversation would otherwise trigger a fresh yfinance
+    call every time. This cache fixes that at the _load_ticker layer."""
+
+    def setUp(self):
+        finance_tool._ticker_cache.clear()
+
+    def _patch_yfinance(self):
+        history_mock = MagicMock()
+        history_mock.empty = False
+        ticker_mock = MagicMock()
+        ticker_mock.info = {"symbol": "AAPL", "regularMarketPrice": 200}
+        ticker_mock.history.return_value = history_mock
+        ticker_cls = MagicMock(return_value=ticker_mock)
+        return patch("yfinance.Ticker", ticker_cls), ticker_cls
+
+    def test_second_call_within_ttl_skips_network(self):
+        patcher, ticker_cls = self._patch_yfinance()
+        with patcher:
+            finance_tool._load_ticker("AAPL")
+            finance_tool._load_ticker("AAPL")
+
+        ticker_cls.assert_called_once()
+
+    def test_different_tickers_are_not_conflated(self):
+        patcher, ticker_cls = self._patch_yfinance()
+        with patcher:
+            finance_tool._load_ticker("AAPL")
+            finance_tool._load_ticker("MSFT")
+
+        self.assertEqual(ticker_cls.call_count, 2)
+
+    def test_cache_expires_after_ttl(self):
+        patcher, ticker_cls = self._patch_yfinance()
+        fake_now = [1000.0]
+        with patcher, patch.object(finance_tool.time, "monotonic", lambda: fake_now[0]):
+            finance_tool._load_ticker("AAPL")
+            fake_now[0] += finance_tool._TICKER_CACHE_TTL_SECONDS + 1
+            finance_tool._load_ticker("AAPL")
+
+        self.assertEqual(ticker_cls.call_count, 2)
 
 
 if __name__ == "__main__":

@@ -824,6 +824,10 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     # 等于绕过了 Plan 阶段刚做出的"不调用工具"判断（曾导致"你是谁"类问题
     # 仍触发检索，即使 agent_plan 本身已正确返回 null）。
     memory = []
+    # 是否曾触达 Reflect 循环的安全上限（而非 LLM 主动判定信息已足够）；用于
+    # 提示 Answer 阶段的模型如实告知用户信息可能不完整。actions 为空时不会
+    # 进入下面的 Reflect 循环，此处保持 False 是唯一正确的初始值。
+    reflection_capped = False
     if actions:
         # 跨 Act + 所有 Reflect 迭代共用同一个去重集合：process_actions() 默认按
         # 调用创建独立的 seen，若这里不显式传入同一实例，Reflect 阶段重新发起与
@@ -894,7 +898,9 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
             memory.extend(extra_memory)
         else:
             # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，
-            # 即触达安全上限，从未收到 LLM 的 sufficient=True 信号。
+            # 即触达安全上限，从未收到 LLM 的 sufficient=True 信号。这不是 LLM 主动判定
+            # 信息已足够，标记下来供 Answer 阶段提示模型如实告知用户信息可能不完整。
+            reflection_capped = True
             print(f"[loop] 触达安全上限（{MAX_REFLECTION_ITERATIONS} 轮），强制停止——非 LLM 主动判定")
 
     # ── Answer ──
@@ -973,6 +979,17 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
             "其中 N 为该条参考文档的编号，只能使用「参考文档（可引用）」中实际存在的编号\n"
         )
 
+    # Reflect 循环触达安全上限（而非 LLM 主动判定 sufficient=True）时，信息收集
+    # 可能并不完整，提示模型在回答中如实告知这一局限性，而不是把已收集到的
+    # 信息当作详尽结果呈现。
+    reflection_capped_instruction = ""
+    if reflection_capped:
+        reflection_capped_instruction = (
+            "- 本次信息收集在达到安全轮次上限后被迫停止，并非你主动判定信息已经完整；"
+            "如果依据现有参考信息还不足以全面回答用户问题，请在回答中如实说明可能存在"
+            "信息不完整的情况，不要假装已经掌握了全部所需信息\n"
+        )
+
     final_prompt = f"""你是专业的金融研究助手，基于财报（10-K/10-Q/8-K）、新闻与实时行情数据回答用户的投资研究问题。
 
 当前日期：{_current_date_str()}（参考信息中出现的日期若晚于你自身的知识截止时间，
@@ -996,7 +1013,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 - 回答要专业、准确，适当引用具体数值（行情、财务指标、财报原文）
 - 分析要基于参考信息中的行情/财报/新闻数据给出具体依据，不要给出买卖建议
 - 如果问题涉及知识库未覆盖的公司或数据范围，明确告知该局限性
-{citation_instruction}"""
+{reflection_capped_instruction}{citation_instruction}"""
 
     if references:
         docs_payload = {

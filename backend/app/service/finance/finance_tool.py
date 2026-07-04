@@ -8,6 +8,8 @@ import concurrent.futures
 import contextlib
 import functools
 import io
+import threading
+import time
 
 
 @contextlib.contextmanager
@@ -41,6 +43,14 @@ _YF_TIMEOUT_SECONDS = 10
 # 发起 cookie/crumb/info/history 多个请求，正常也需数秒。
 _YF_WALL_CLOCK_SECONDS = 30
 
+# Reflect 循环里 LLM 换个说法重复问同一支股票很常见（seen_actions/seen_prompts
+# 只按 prompt 文本去重，管不到"不同措辞、同一 ticker"这种情况）；行情/基本面/
+# 新闻数据在这个粒度的陈旧度对研究分析没有实质影响，短 TTL 缓存可以把这类重复
+# 换来的多余 yfinance 网络请求直接砍掉。
+_TICKER_CACHE_TTL_SECONDS = 60
+_ticker_cache: dict[str, tuple[float, tuple]] = {}
+_ticker_cache_lock = threading.Lock()
+
 
 def _yf_session():
     import requests
@@ -55,7 +65,16 @@ def _load_ticker(ticker: str):
     在独立线程中执行并施加墙钟超时：一个挂死的请求不会无限占用调用线程；超时会抛出
     concurrent.futures.TimeoutError，由各 query_* 的 try/except 捕获降级为友好提示。
     超时后不 join 泄漏线程（shutdown(wait=False)），让其随底层 socket timeout 自行结束。
+
+    结果按 ticker 缓存 _TICKER_CACHE_TTL_SECONDS 秒，命中时直接跳过网络请求
+    （见上方 _ticker_cache 的说明）。调用方（query_quote/query_fundamentals/
+    query_news）都已在调用前做过 ticker.upper().strip()，此处直接用作缓存 key。
     """
+    now = time.monotonic()
+    cached = _ticker_cache.get(ticker)
+    if cached is not None and now - cached[0] < _TICKER_CACHE_TTL_SECONDS:
+        return cached[1]
+
     import yfinance as yf
 
     def _do():
@@ -67,9 +86,13 @@ def _load_ticker(ticker: str):
 
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        return executor.submit(_do).result(timeout=_YF_WALL_CLOCK_SECONDS)
+        result = executor.submit(_do).result(timeout=_YF_WALL_CLOCK_SECONDS)
     finally:
         executor.shutdown(wait=False)
+
+    with _ticker_cache_lock:
+        _ticker_cache[ticker] = (now, result)
+    return result
 
 
 def query_quote(ticker: str) -> str:

@@ -36,6 +36,34 @@ function getSourceRefId(messageId: number, index: number) {
   return `source-ref-${messageId}-${index}`
 }
 
+// 后端一次性返回的 item.reference 是候选参考文档全集（最多 20 条），其中
+// 未必每一条都真的被正文/思考过程用 ##N$$ 引用——直接展示全集会让来源列表
+// 出现"看起来引用了但正文里根本没标注"的文档。这里按 think→content 的
+// 阅读顺序扫描出实际出现过的引用编号（去重、忽略越界的幻觉编号），并把
+// 它们重新映射为从 0 开始的连续序号，同时过滤出对应的文档，使来源列表与
+// 正文引用一一对应、编号连续。
+function buildReferenceOrder(item: API.ChatItem) {
+  const reference = item.reference ?? []
+  const text = `${item.think ?? ''}\n${item.content ?? ''}`
+  const seen = new Set<number>()
+  const orderedOldIndices: number[] = []
+  const regex = /##(\d+)\$\$/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text))) {
+    const oldIndex = Number(match[1])
+    if (!seen.has(oldIndex) && reference[oldIndex]) {
+      seen.add(oldIndex)
+      orderedOldIndices.push(oldIndex)
+    }
+  }
+  const indexMap = new Map<number, number>()
+  orderedOldIndices.forEach((oldIndex, newIndex) => indexMap.set(oldIndex, newIndex))
+  return {
+    orderedReferences: orderedOldIndices.map((oldIndex) => reference[oldIndex]),
+    indexMap,
+  }
+}
+
 const Section = (props: {
   title: string
   icon: string
@@ -52,8 +80,8 @@ const Section = (props: {
   )
 }
 
-const Answer = (props: { item: API.ChatItem }) => {
-  const { item } = props
+const Answer = (props: { item: API.ChatItem; indexMap: Map<number, number> }) => {
+  const { item, indexMap } = props
   const { t } = useLang()
 
   /* markdown */
@@ -78,12 +106,17 @@ const Answer = (props: { item: API.ChatItem }) => {
           }
         },
         renderer(token) {
-          const index = token.index
-          return `<span class="reference-token" data-reference-index="${index}">[${Number(index) + 1}]</span>`
+          // token.index 是后端原始编号；重新映射为按正文引用顺序连续排列的
+          // 新编号，与 Source 列表的过滤/重排保持一致。理论上 buildReferenceOrder
+          // 已经用同样的正则扫描过同一段文本，映射必定存在；查不到时（不应发生）
+          // 保守地不渲染角标，而不是显示一个未经过滤的原始编号造成不一致。
+          const newIndex = indexMap.get(Number(token.index))
+          if (newIndex == null) return ''
+          return `<span class="reference-token" data-reference-index="${newIndex}">[${newIndex + 1}]</span>`
         },
       },
     ],
-    [],
+    [indexMap],
   )
 
   function handleReferenceClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -130,8 +163,8 @@ const Answer = (props: { item: API.ChatItem }) => {
   )
 }
 
-const Source = (props: { item: API.ChatItem }) => {
-  const { item } = props
+const Source = (props: { item: API.ChatItem; orderedReferences: API.Document[] }) => {
+  const { item, orderedReferences } = props
   const { t } = useLang()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
 
@@ -150,7 +183,7 @@ const Source = (props: { item: API.ChatItem }) => {
   return (
     <Section title={t.sourceTitle} icon={IconSource}>
       <div className={styles['chat-message-result__source']}>
-        {item.reference?.map((doc, index) => (
+        {orderedReferences.map((doc, index) => (
           <div
             key={index}
             id={getSourceRefId(item.id, index)}
@@ -263,6 +296,11 @@ export function Result(props: {
   const [liked, setLiked] = useState<'like' | 'dislike' | null>(null)
   const { t } = useLang()
 
+  const { orderedReferences, indexMap } = useMemo(
+    () => buildReferenceOrder(item),
+    [item.think, item.content, item.reference],
+  )
+
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(item.content ?? '')
@@ -282,7 +320,9 @@ export function Result(props: {
 
   return (
     <div className={styles['chat-message-result']}>
-      {item.think || item.content || item.error ? <Answer item={item} /> : null}
+      {item.think || item.content || item.error ? (
+        <Answer item={item} indexMap={indexMap} />
+      ) : null}
 
       {item.loading ? null : (
         <div className={styles['chat-message-result__actions']}>
@@ -322,7 +362,9 @@ export function Result(props: {
         </div>
       )}
 
-      {item.reference?.length ? <Source item={item} /> : null}
+      {orderedReferences.length ? (
+        <Source item={item} orderedReferences={orderedReferences} />
+      ) : null}
 
       {item.image_results?.images?.length ? <Images item={item} /> : null}
 

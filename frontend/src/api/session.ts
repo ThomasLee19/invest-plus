@@ -56,23 +56,6 @@ export function chat(
   )
 }
 
-export function getSessions(options?: AxiosRequestConfig) {
-  return request.get<{ session_id: string; session_name: string; created_at: string }[]>(
-    '/sessions',
-    options,
-  )
-}
-
-export function deleteSession(
-  params: { session_id: string },
-  options?: AxiosRequestConfig,
-) {
-  return request.delete<{ message: string }>('/sessions', {
-    ...options,
-    params,
-  })
-}
-
 export function upload(
   params: { files: File; session_id?: string },
   options?: AxiosRequestConfig,

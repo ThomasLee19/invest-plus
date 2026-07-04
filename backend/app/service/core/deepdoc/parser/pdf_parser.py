@@ -34,6 +34,24 @@ from copy import deepcopy
 from huggingface_hub import snapshot_download
 
 class RAGFlowPdfParser:
+    # 单页栅格化后的最大像素面积上限：恶意构造超大 MediaBox 的 PDF（页数/文件体积
+    # 都在限制内）否则可以在这一步炸出数 GB 的位图，造成 OOM。超过此面积时按比例
+    # 降低实际渲染分辨率，而不是拒绝整页解析。
+    MAX_PAGE_RENDER_PIXELS = 30_000_000
+
+    def _safe_render_resolution(self, page, zoomin):
+        resolution = 72 * zoomin
+        try:
+            width_px = float(page.width) * resolution / 72
+            height_px = float(page.height) * resolution / 72
+        except Exception:
+            return resolution
+        area = width_px * height_px
+        if area > self.MAX_PAGE_RENDER_PIXELS:
+            scale = (self.MAX_PAGE_RENDER_PIXELS / area) ** 0.5
+            resolution = max(1.0, resolution * scale)
+        return resolution
+
     def __init__(self):
         self.ocr = OCR()
         if hasattr(self, "model_speciess"):
@@ -940,6 +958,7 @@ class RAGFlowPdfParser:
             return len(pdf.pages)
         except Exception:
             logging.exception("total_page_number")
+            return 0
 
     def __images__(self, fnm, zoomin=3, page_from=0,
                    page_to=299, callback=None):
@@ -954,7 +973,7 @@ class RAGFlowPdfParser:
         try:
             self.pdf = pdfplumber.open(fnm) if isinstance(
                 fnm, str) else pdfplumber.open(BytesIO(fnm))
-            self.page_images = [p.to_image(resolution=72 * zoomin).annotated for i, p in
+            self.page_images = [p.to_image(resolution=self._safe_render_resolution(p, zoomin)).annotated for i, p in
                                 enumerate(self.pdf.pages[page_from:page_to])]
             try:
                 self.page_chars = [[{**c, 'top': c['top'], 'bottom': c['bottom']} for c in page.dedupe_chars().chars if self._has_color(c)] for page in self.pdf.pages[page_from:page_to]]

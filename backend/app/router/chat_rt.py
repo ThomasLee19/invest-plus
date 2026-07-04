@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Body, File, HTTPException, Query, Depends, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -19,6 +20,8 @@ from database.knowledgebase_operations import insert_knowledgebase, delete_knowl
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../../storage/file")
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_FILES_PER_REQUEST = 10
+UPLOAD_READ_CHUNK_BYTES = 1024 * 1024
 DEFAULT_SESSION_NAME = "新对话"
 # 真实 session_id 由 uuid4().hex[:16] 生成（见 create_session），故只接受定长字母数字
 SESSION_ID_RE = re.compile(r"^[A-Za-z0-9]{1,16}$")
@@ -151,6 +154,11 @@ async def upload_files(
     files: list[UploadFile] = File(...),
 ):
     session_id = _validate_session_id(session_id)
+    if len(files) > MAX_FILES_PER_REQUEST:
+        raise HTTPException(
+            status_code=400,
+            detail=f"单次最多上传 {MAX_FILES_PER_REQUEST} 个文件",
+        )
     results = []
     for file in files:
         safe_name = _safe_filename(file.filename)
@@ -165,18 +173,34 @@ async def upload_files(
         os.makedirs(save_dir, exist_ok=True)
         file_path = os.path.join(save_dir, safe_name)
 
-        content = await file.read()
-        if len(content) > MAX_UPLOAD_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"{safe_name} 超过上传大小限制（{MAX_UPLOAD_BYTES // (1024 * 1024)}MB）",
-            )
-        with open(file_path, "wb") as f:
-            f.write(content)
+        # 分块读取并边读边校验大小，而不是先 file.read() 整体载入内存再判断
+        # 长度——否则恶意的超大文件在被拒绝之前就已经把整个内容读进了内存，
+        # 原先的大小上限起不到防内存耗尽 DoS 的作用。
+        size = 0
+        try:
+            with open(file_path, "wb") as f:
+                while True:
+                    chunk = await file.read(UPLOAD_READ_CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > MAX_UPLOAD_BYTES:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"{safe_name} 超过上传大小限制（{MAX_UPLOAD_BYTES // (1024 * 1024)}MB）",
+                        )
+                    f.write(chunk)
+        except HTTPException:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            raise
 
         try:
-            execute_insert_process(file_path, safe_name, USER_ID, session_id)
-            insert_knowledgebase(USER_ID, safe_name, session_id)
+            # OCR/版式解析/表格识别/向量化/ES 写入都是重 CPU + 阻塞 IO 操作，
+            # 用 run_in_threadpool 丢到线程池执行，避免整个事件循环（包括其他
+            # 并发用户的 /chat 流式请求）被一次文件解析卡住。
+            await run_in_threadpool(execute_insert_process, file_path, safe_name, USER_ID, session_id)
+            await run_in_threadpool(insert_knowledgebase, USER_ID, safe_name, session_id)
             results.append({"file": safe_name, "status": "success"})
         except Exception as e:
             results.append({"file": safe_name, "status": "failed", "error": str(e)})
@@ -194,7 +218,7 @@ def _chunk_method_for_official(source_kwd: str) -> str:
 
 
 @router.get("/get_files/")
-async def get_files():
+def get_files():
     """返回所有 session 上传的文档列表（从 ES 查询 source_kwd=user_upload）。
 
     用 composite 聚合按 (docnm_kwd, session_id) 分桶，而非对原始 chunk 文档做
@@ -255,7 +279,7 @@ async def get_files():
 
 
 @router.get("/get_official_examples/")
-async def get_official_examples():
+def get_official_examples():
     """返回官方示例语料列表（source_kwd 属于 sec_filing/news/educational）。
 
     同 get_files：用 terms 聚合按 docnm_kwd 分桶，避免对原始 chunk 做
@@ -302,7 +326,7 @@ async def get_official_examples():
 
 
 @router.delete("/delete_file/")
-async def delete_file(file_name: str = Query(...), session_id: str | None = Query(default=None)):
+def delete_file(file_name: str = Query(...), session_id: str | None = Query(default=None)):
     """删除指定文件名在指定 session（或全局桶）下的所有 chunks。
 
     session_id 必须与上传时的 scope 一致：不带 session_id 匹配 ES 中

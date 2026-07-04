@@ -42,16 +42,16 @@ export default function ComSender(
   }
 
   async function upload(file: UploadFile & { loading?: boolean }) {
-    file.loading = true
-    setFileList((prev) => [...prev, file])
+    setFileList((prev) => [...prev, { ...file, loading: true }])
     try {
       await api.session.upload({ files: file as any, session_id: sessionId })
       window.$app.message.success(`${file.name} ${t.uploadSuccess}`)
     } catch {
       window.$app.message.error(`${file.name} ${t.uploadFailed}`)
     } finally {
-      file.loading = false
-      setFileList((prev) => [...prev])
+      setFileList((prev) =>
+        prev.map((f) => (f.uid === file.uid ? { ...f, loading: false } : f)),
+      )
     }
   }
 

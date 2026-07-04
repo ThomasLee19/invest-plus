@@ -68,7 +68,9 @@ def _clean_for_embedding(text: str) -> str:
     return t
 
 
-_openai_client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
+_openai_client = OpenAI(
+    api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
+)
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
@@ -76,13 +78,20 @@ def _embed(texts: list[str]) -> list[list[float]]:
     vectors: list[list[float]] = []
     for i in range(0, len(texts), _EMBED_BATCH):
         batch = texts[i:i + _EMBED_BATCH]
-        resp = client.embeddings.create(
-            model="text-embedding-v3",
-            input=batch,
-            dimensions=1024,
-            encoding_format="float",
-        )
-        vectors.extend(item.embedding for item in resp.data)
+        try:
+            resp = client.embeddings.create(
+                model="text-embedding-v3",
+                input=batch,
+                dimensions=1024,
+                encoding_format="float",
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"embedding batch {i // _EMBED_BATCH} (chunks {i}-{i + len(batch) - 1}) failed: {e}"
+            ) from e
+        # 按 index 排序后再取 embedding，不依赖 provider 返回顺序与输入顺序一致，
+        # 否则一旦顺序不一致，向量会错位挂到错误的 chunk 上。
+        vectors.extend(item.embedding for item in sorted(resp.data, key=lambda item: item.index))
     return vectors
 
 
@@ -150,7 +159,13 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
     if ext == ".pdf":
         items = _build_pdf_items(file_path, file_name)
     else:
-        text = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+        from service.core.rag.nlp import find_codec
+
+        raw = Path(file_path).read_bytes()
+        # 先探测编码再解码，而不是直接以 utf-8 + errors="ignore" 硬解——
+        # 后者会把非 UTF-8（如 GB2312/Latin-1）字节静默丢弃，导致索引进
+        # 乱码文本。find_codec 探测失败时仍回退 utf-8，行为不变。
+        text = raw.decode(find_codec(raw), errors="ignore")
         # 纯文本展示与向量同源
         items = [(c, c) for c in _chunk_text(text)]
 
@@ -163,7 +178,7 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
     es = get_es_client()
 
     # 整个文件的所有 chunk 用同一上传时间戳（字段名与 index_smogon.py 保持一致）
-    create_time = str(datetime.datetime.now())[:19]
+    create_time = str(datetime.datetime.utcnow())[:19]
 
     docs = []
     for (display, embed_text), vec in zip(items, vectors):

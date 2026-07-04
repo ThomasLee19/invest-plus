@@ -53,13 +53,13 @@ const 答案 = (props: { item: API.ChatItem }) => {
             return {
               type: 'reference',
               raw,
-              index: this.lexer.inlineTokens(index),
+              index,
               tokens: [],
             }
           }
         },
         renderer(token) {
-          const index = this.parser.parseInline(token.index)
+          const index = token.index
           return `<span class="reference-token" data-reference-index="${index}">[${Number(index) + 1}]</span>`
         },
       },
@@ -165,7 +165,7 @@ const 图像 = (props: { item: API.ChatItem }) => {
           <div
             className={styles.item}
             key={item.link || item.imageUrl}
-            onClick={() => window.open(item.link, '_blank')}
+            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
           >
             <div className={styles.box}>
               <img className={styles.cover} src={item.thumbnailUrl} />
@@ -188,7 +188,7 @@ const 视频 = (props: { item: API.ChatItem }) => {
           <div
             className={styles.item}
             key={item.link || item.imageUrl}
-            onClick={() => window.open(item.link, '_blank')}
+            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
           >
             <div className={styles.box}>
               <img className={styles.cover} src={item.imageUrl} />
@@ -221,7 +221,7 @@ const 相关 = (props: {
         {item.recommended_questions?.map((item, index) => (
           <div
             className={styles['item']}
-            key={item}
+            key={`${index}-${item}`}
             onClick={() => onSend?.(item)}
           >
             <span className={styles['text']}>

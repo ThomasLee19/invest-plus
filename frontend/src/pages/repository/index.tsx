@@ -25,29 +25,41 @@ type IOfficialExample = API.OfficialExample & {
 
 export default function Index() {
   const { t } = useLang()
-  const { data, refresh } = useRequest(async () => {
-    const { data } = await api.repository.list()
-    return data?.map(
-      (item, index) =>
-        ({
-          ...item,
-          $suffix: item.file_name.split('.').pop() as FileIcon,
-          id: index + 1,
-        }) satisfies IRepository,
-    )
-  })
+  const onListError = () => window.$app.message.error(t.genericError)
 
-  const { data: officialData } = useRequest(async () => {
-    const { data } = await api.repository.listOfficialExamples()
-    return data?.map(
-      (item, index) =>
-        ({
-          ...item,
-          $suffix: item.file_name.split('.').pop() as FileIcon,
-          id: index + 1,
-        }) satisfies IOfficialExample,
-    )
-  })
+  const {
+    data,
+    loading: listLoading,
+    refresh,
+  } = useRequest(
+    async () => {
+      const { data } = await api.repository.list()
+      return data?.map(
+        (item, index) =>
+          ({
+            ...item,
+            $suffix: item.file_name.split('.').pop() as FileIcon,
+            id: index + 1,
+          }) satisfies IRepository,
+      )
+    },
+    { onError: onListError },
+  )
+
+  const { data: officialData, loading: officialLoading } = useRequest(
+    async () => {
+      const { data } = await api.repository.listOfficialExamples()
+      return data?.map(
+        (item, index) =>
+          ({
+            ...item,
+            $suffix: item.file_name.split('.').pop() as FileIcon,
+            id: index + 1,
+          }) satisfies IOfficialExample,
+      )
+    },
+    { onError: onListError },
+  )
 
   const deleteFile = async (file: IRepository) => {
     await api.repository.deleteFile({
@@ -191,6 +203,7 @@ export default function Index() {
             dataSource={officialData}
             scroll={officialScroll}
             pagination={false}
+            loading={officialLoading}
           />
         </div>
 
@@ -210,6 +223,7 @@ export default function Index() {
           rowSelection={rowSelection}
           scroll={scroll}
           pagination={false}
+          loading={listLoading}
         />
       </div>
 

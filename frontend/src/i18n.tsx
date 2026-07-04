@@ -57,6 +57,10 @@ export const messages = {
     apiDataError: '接口数据异常',
     tooManyRequests: '请求过于频繁，请稍后再试',
     requestError: '请求错误',
+    statusUnparsed: '未解析',
+    statusCancel: '已取消',
+    statusSuccess: '已完成',
+    statusFailed: '异常',
   },
   en: {
     tagline: 'Agent auto-calls Finance RAG (filings / news / education) / Live Market Data / Web Search — no manual selection needed',
@@ -112,13 +116,17 @@ export const messages = {
     apiDataError: 'Invalid API response',
     tooManyRequests: 'Too many requests, please try again later',
     requestError: 'Request error',
+    statusUnparsed: 'Unparsed',
+    statusCancel: 'Cancelled',
+    statusSuccess: 'Completed',
+    statusFailed: 'Failed',
   },
 }
 
 const LangContext = createContext<{
   lang: Lang
   setLang: (l: Lang) => void
-}>({ lang: 'zh', setLang: () => {} })
+}>({ lang: 'en', setLang: () => {} })
 
 // 供非 React 模块（如 axios 拦截器插件）读取当前语言用——它们没有 hook
 // 上下文可用，但仍需要把面向用户的字符串走 i18n 而不是硬编码中文。

@@ -1,40 +1,29 @@
 import { Tag } from 'antd'
 import Color from 'color'
 import { useMemo } from 'react'
+import { useLang } from '../../../i18n'
 
-const map = {
-  unparsed: {
-    text: '未解析',
-    color: '#67C23A',
-  },
-  cancel: {
-    text: '已取消',
-    color: '#E6A23C',
-  },
-  success: {
-    text: '已完成',
-    color: '#3266f3',
-  },
-  failed: {
-    text: '异常',
-    color: '#F56C6C',
-  },
-  Indexed: {
-    text: 'Indexed',
-    color: '#67C23A',
-  },
+const colorMap = {
+  unparsed: '#67C23A',
+  cancel: '#E6A23C',
+  success: '#3266f3',
+  failed: '#F56C6C',
+  Indexed: '#67C23A',
 }
 
-export function Status(props: { status: keyof typeof map }) {
+export function Status(props: { status: keyof typeof colorMap }) {
   const { status } = props
-  const { text, color } = useMemo(() => {
-    return (
-      map[status] ?? {
-        color: '#999',
-        text: status,
-      }
-    )
-  }, [status])
+  const { t } = useLang()
+  const textMap = {
+    unparsed: t.statusUnparsed,
+    cancel: t.statusCancel,
+    success: t.statusSuccess,
+    failed: t.statusFailed,
+    Indexed: 'Indexed',
+  }
+
+  const color = colorMap[status] ?? '#999'
+  const text = textMap[status] ?? status
 
   const backgroundColor = useMemo(() => {
     return new Color(color).alpha(0.1).toString()

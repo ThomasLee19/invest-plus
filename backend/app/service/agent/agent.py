@@ -55,7 +55,9 @@ def _get_llm_client() -> OpenAI:
     让测试可以在导入后 patch 掉本函数，且不在导入期就触发真实客户端构造。"""
     global _llm_client
     if _llm_client is None:
-        _llm_client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
+        _llm_client = OpenAI(
+            api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
+        )
     return _llm_client
 
 
@@ -622,7 +624,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     history: 历史对话，格式 [{"user": "...", "assistant": "..."}]
     session_id: 当前 chat session，用于 rag_search 的检索范围限定（chat() 恒传入真实值）
     """
-    client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
+    client = _get_llm_client()
 
     # 语言提前确定：web_search 在 Act/Reflect 阶段就需要它来设置 Serper 的 hl 区域偏好
     if language == "auto":
@@ -769,7 +771,9 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 {lang_instruction}
 {history_str}
 ## 参考信息
+<untrusted_context>
 {json.dumps(memory, ensure_ascii=False, indent=2)}
+</untrusted_context>
 {reference_block}
 ## 用户问题
 {query}

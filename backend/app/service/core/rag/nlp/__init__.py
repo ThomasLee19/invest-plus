@@ -112,7 +112,25 @@ def naive_merge(sections, chunk_token_num=128, delimiter="\n。；！？"):
             tk_nums[-1] += tnum
 
     for sec, pos in sections:
-        add_chunk(sec, pos)
+        # 单个 section 自身 token 数就超过 chunk_token_num 时（例如一段未被换行
+        # 切开的长 PDF 文本框），先按 delimiter 指定的句子边界切开再逐段喂给
+        # add_chunk，否则会产生远超 chunk_token_num 的单个 chunk——此前 delimiter
+        # 只是被声明为 nonlocal，从未真正用来切分过文本。
+        if delimiter and num_tokens_from_string(sec) > chunk_token_num:
+            pattern = "[" + re.escape(delimiter) + "]"
+            pieces = re.split(f"({pattern})", sec)
+            merged_pieces = []
+            for piece in pieces:
+                if not piece:
+                    continue
+                if re.fullmatch(pattern, piece) and merged_pieces:
+                    merged_pieces[-1] += piece
+                else:
+                    merged_pieces.append(piece)
+            for piece in merged_pieces:
+                add_chunk(piece, pos)
+        else:
+            add_chunk(sec, pos)
 
     return cks
 

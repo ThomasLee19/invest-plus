@@ -216,7 +216,7 @@ export default function Index() {
         }
       }
     },
-    [chat],
+    [id, t],
   )
 
   // 发送消息的主函数，处理用户输入并创建对话项

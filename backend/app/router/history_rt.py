@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from utils.database import get_db
+from router.chat_rt import _validate_session_id
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ USER_ID = "1"
 # await 的地方。
 @router.delete("/sessions")
 def delete_session(session_id: str = Query(...), db: Session = Depends(get_db)):
+    session_id = _validate_session_id(session_id)
     try:
         db.execute(text("DELETE FROM messages WHERE session_id = :sid"), {"sid": session_id})
         db.execute(text("DELETE FROM sessions WHERE session_id = :sid"), {"sid": session_id})
@@ -41,6 +43,7 @@ def get_sessions(db: Session = Depends(get_db)):
 
 @router.get("/messages")
 def get_messages(session_id: str = Query(...), db: Session = Depends(get_db)):
+    session_id = _validate_session_id(session_id)
     try:
         rows = db.execute(
             text("SELECT user_question, model_answer, think, created_at FROM messages WHERE session_id = :sid ORDER BY created_at ASC"),

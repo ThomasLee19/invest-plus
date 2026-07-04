@@ -20,4 +20,5 @@ def get_es_client() -> Elasticsearch:
         url,
         basic_auth=("elastic", password),
         verify_certs=not _is_loopback(url),
+        request_timeout=30,
     )

@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
-import { ChatRole, ChatType } from '@/configs'
+import { ChatRole } from '@/configs'
 import { useLang } from '@/i18n'
 import { SyncOutlined } from '@ant-design/icons'
 import classNames from 'classnames'
 import { useMemo } from 'react'
-import { createChatIdText } from '../shared'
 import styles from './chat-message.module.css'
 import { Result } from './result'
 
@@ -50,15 +48,8 @@ function AssistantMessage(props: {
 }) {
   const { item, isEnd, onSend } = props
 
-  // 为文档类型消息生成唯一ID，用于定位和滚动
-  const id = useMemo(() => {
-    if (item.type === ChatType.Document) {
-      return createChatIdText(item.id)
-    }
-  }, [item.id, item.type])
-
   return (
-    <div id={id} className={classNames(styles['chat-message-item'])}>
+    <div className={classNames(styles['chat-message-item'])}>
       <Result item={item} isEnd={isEnd} onSend={onSend} />
     </div>
   )

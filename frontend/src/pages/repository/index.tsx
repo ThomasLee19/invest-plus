@@ -61,10 +61,14 @@ export default function Index() {
   )
 
   const deleteFile = async (file: IRepository) => {
-    await api.repository.deleteFile({
-      file_name: file.file_name,
-      session_id: file.session_id,
-    })
+    try {
+      await api.repository.deleteFile({
+        file_name: file.file_name,
+        session_id: file.session_id,
+      })
+    } catch {
+      return
+    }
     // 后端返回的 message 是中文提示，不随前端语言切换，因此提示统一使用
     // 前端 i18n 文案，不展示后端原始 message。
     window.$app.message.success(t.repoDeleteSuccess)

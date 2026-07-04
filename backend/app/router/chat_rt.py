@@ -87,6 +87,16 @@ def chat(
     # →Answer 全流程，可能数十秒）被消费完才 close，会把连接池占满；这里查完
     # 立即归还连接，与 _persist 的写库同理。
     with SessionLocal() as read_db:
+        # session_id 格式合法但对应的 session 不存在时（例如从未 create_session
+        # 就直接调用 /chat），下面的 _persist 仍会成功 INSERT 进 messages 表
+        # （messages.session_id 无外键约束），只是 sessions 表的 UPDATE 匹配 0
+        # 行——产生一条永远不会出现在 /sessions 列表里的孤儿消息。在这里提前拒绝。
+        session_row = read_db.execute(
+            text("SELECT 1 FROM sessions WHERE session_id = :sid"),
+            {"sid": session_id},
+        ).fetchone()
+        if session_row is None:
+            raise HTTPException(status_code=404, detail="session not found")
         rows = read_db.execute(
             text(
                 "SELECT user_question, model_answer FROM messages "
@@ -214,6 +224,10 @@ async def upload_files(
         # 分块读取并边读边校验大小，而不是先 file.read() 整体载入内存再判断
         # 长度——否则恶意的超大文件在被拒绝之前就已经把整个内容读进了内存，
         # 原先的大小上限起不到防内存耗尽 DoS 的作用。
+        # f.write(chunk) 是同步阻塞磁盘 IO，与下面重解析/索引的处理方式一样丢进
+        # run_in_threadpool 执行，避免大文件上传（单文件最多 20MB）时阻塞事件
+        # 循环、拖慢其他并发请求；每次只丢一个 chunk（默认 1MB），不在内存里
+        # 攒整份文件，维持原有的内存占用上限。
         size = 0
         try:
             with open(file_path, "wb") as f:
@@ -227,7 +241,7 @@ async def upload_files(
                             status_code=413,
                             detail=f"{safe_name} 超过上传大小限制（{MAX_UPLOAD_BYTES // (1024 * 1024)}MB）",
                         )
-                    f.write(chunk)
+                    await run_in_threadpool(f.write, chunk)
         except HTTPException:
             if os.path.isfile(file_path):
                 os.remove(file_path)
@@ -270,6 +284,14 @@ def get_files():
     size:1000 的扁平查询——单个文件可能有数百个 chunk，chunk 总数一旦超过
     1000，ES 会静默截断且不保证返回哪些文档的 chunk，导致整份文件从列表中消失。
     聚合的 size 现在受"不同文件数"约束而非"chunk 数"约束，不会再截断。
+
+    有意不做 session_id 过滤（与严格按 session 隔离的 rag_search 不同）：
+    这是前端「资料库」页面（frontend/src/pages/repository）的数据源，该页面
+    调用 api.repository.list() 时不传任何 session_id 参数，展示的就是全部
+    session 上传过的文件、并在每一行显示其 session_id 标签（见
+    repository/index.tsx 的 row.session_id 渲染）——是刻意设计的跨 session
+    全局视图，不是遗漏的越权 bug。单用户 demo 场景下无实际越权影响；若未来
+    引入多用户账户体系，需要在此补充按当前用户过滤（而非按 session 过滤）。
     """
     try:
         es = get_es_client()

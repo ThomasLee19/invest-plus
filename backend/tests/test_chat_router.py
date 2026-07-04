@@ -192,9 +192,16 @@ class _RecordingEs:
 class _RecordingSessionLocal:
     """Fake SessionLocal: a context-manager DB session that records every
     executed statement so tests can assert whether an INSERT was attempted,
-    without a real database."""
+    without a real database.
+
+    session_exists controls the fake answer to the "SELECT 1 FROM sessions
+    WHERE session_id = :sid" existence check chat() runs before persisting;
+    defaults to True so tests that don't care about that check (e.g.
+    StreamMidFailureTests) keep behaving as if the session is real.
+    """
 
     calls: list = []
+    session_exists = True
 
     def __enter__(self):
         return self
@@ -205,9 +212,14 @@ class _RecordingSessionLocal:
     def execute(self, stmt, params=None):
         _RecordingSessionLocal.calls.append((str(stmt), params))
 
+        exists = _RecordingSessionLocal.session_exists
+
         class _Result:
             def fetchall(self_inner):
                 return []
+
+            def fetchone(self_inner):
+                return (1,) if exists else None
 
         return _Result()
 
@@ -235,6 +247,7 @@ class StreamMidFailureTests(unittest.TestCase):
     def setUp(self):
         self.client = _make_client()
         _RecordingSessionLocal.calls = []
+        _RecordingSessionLocal.session_exists = True
         self._orig_session_local = chat_rt.SessionLocal
         self._orig_final_answer = chat_rt.final_answer
         chat_rt.SessionLocal = _RecordingSessionLocal
@@ -243,6 +256,7 @@ class StreamMidFailureTests(unittest.TestCase):
     def tearDown(self):
         chat_rt.SessionLocal = self._orig_session_local
         chat_rt.final_answer = self._orig_final_answer
+        _RecordingSessionLocal.session_exists = True
 
     def test_stream_terminates_cleanly_on_mid_stream_failure(self):
         resp = self.client.post(
@@ -265,6 +279,120 @@ class StreamMidFailureTests(unittest.TestCase):
         self.assertEqual(
             insert_calls, [], "a blank turn must not be persisted after a mid-stream failure"
         )
+
+
+def _ok_final_answer(*args, **kwargs):
+    # A minimal well-formed SSE stream so _persist() has an answer to collect.
+    yield 'data: {"content": "hi there", "thinking": false}\n\n'
+
+
+class SessionExistenceTests(unittest.TestCase):
+    """Fix 1: /chat must reject a well-formed but nonexistent session_id
+    instead of silently persisting an orphan message (messages.session_id has
+    no FK, so the INSERT would otherwise succeed while the sessions row never
+    gets updated)."""
+
+    def setUp(self):
+        self.client = _make_client()
+        _RecordingSessionLocal.calls = []
+        _RecordingSessionLocal.session_exists = True
+        self._orig_session_local = chat_rt.SessionLocal
+        self._orig_final_answer = chat_rt.final_answer
+        chat_rt.SessionLocal = _RecordingSessionLocal
+        chat_rt.final_answer = _ok_final_answer
+
+    def tearDown(self):
+        chat_rt.SessionLocal = self._orig_session_local
+        chat_rt.final_answer = self._orig_final_answer
+        _RecordingSessionLocal.session_exists = True
+
+    def test_chat_rejects_well_formed_but_nonexistent_session_id(self):
+        _RecordingSessionLocal.session_exists = False
+        resp = self.client.post(
+            "/chat", params={"session_id": "sessGHOST"}, json={"message": "hi"}
+        )
+        self.assertEqual(resp.status_code, 404)
+        insert_calls = [
+            c for c in _RecordingSessionLocal.calls if "INSERT INTO messages" in c[0]
+        ]
+        self.assertEqual(
+            insert_calls, [],
+            "no message should be persisted for a session that doesn't exist",
+        )
+
+    def test_chat_proceeds_when_session_exists(self):
+        _RecordingSessionLocal.session_exists = True
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": "hi"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        insert_calls = [
+            c for c in _RecordingSessionLocal.calls if "INSERT INTO messages" in c[0]
+        ]
+        self.assertEqual(len(insert_calls), 1)
+
+
+class _RecordingEsFiles:
+    """Fake ES client for /get_files/: returns a composite-aggregation shaped
+    response spanning two different sessions, so tests can assert the current
+    cross-session (global) behavior of get_files."""
+
+    def search(self, index=None, body=None):
+        return {
+            "aggregations": {
+                "by_file": {
+                    "buckets": [
+                        {
+                            "latest": {
+                                "hits": {
+                                    "hits": [{
+                                        "_source": {
+                                            "docnm_kwd": "sessionA.txt",
+                                            "create_time": "2026-01-01T00:00:00",
+                                            "session_id": "sessAAAA",
+                                        }
+                                    }]
+                                }
+                            }
+                        },
+                        {
+                            "latest": {
+                                "hits": {
+                                    "hits": [{
+                                        "_source": {
+                                            "docnm_kwd": "sessionB.txt",
+                                            "create_time": "2026-01-02T00:00:00",
+                                            "session_id": "sessBBBB",
+                                        }
+                                    }]
+                                }
+                            }
+                        },
+                    ]
+                }
+            }
+        }
+
+
+class GetFilesGlobalViewTests(unittest.TestCase):
+    """Fix 2: get_files intentionally has no session_id filter -- it backs the
+    frontend Repository page (api.repository.list() takes no session_id), which
+    shows uploads across all sessions. This test documents/pins that current
+    behavior so a future accidental narrowing to one session doesn't slip in
+    unnoticed alongside a real bug fix elsewhere."""
+
+    def setUp(self):
+        self.client = _make_client()
+        _ES_HOLDER["client"] = _RecordingEsFiles()
+
+    def tearDown(self):
+        _ES_HOLDER["client"] = None
+
+    def test_get_files_returns_uploads_across_all_sessions(self):
+        resp = self.client.get("/get_files/")
+        self.assertEqual(resp.status_code, 200)
+        session_ids = {row["session_id"] for row in resp.json()}
+        self.assertEqual(session_ids, {"sessAAAA", "sessBBBB"})
 
 
 class DeleteFileScopingTests(unittest.TestCase):
@@ -311,6 +439,191 @@ class DeleteFileScopingTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(file_a.exists(), "caller session's own file should be removed")
         self.assertTrue(file_b.exists(), "another session's file must not be removed")
+
+
+class _HistoryAwareSessionLocal:
+    """Fake SessionLocal for the chat() happy-path test (debug/26_7_4_debug_4.md
+    test-coverage gap): unlike _RecordingSessionLocal (which answers every
+    fetchone/fetchall the same way regardless of query), this one routes based
+    on which statement is being executed, so a single fake DB can serve the
+    session-existence check, the history read, and the persist+rename writes
+    within one request and still return query-appropriate results."""
+
+    calls: list = []
+    history_rows: list = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, stmt, params=None):
+        stmt_text = str(stmt)
+        _HistoryAwareSessionLocal.calls.append((stmt_text, params))
+
+        class _Result:
+            def fetchone(self_inner):
+                if "SELECT 1 FROM sessions" in stmt_text:
+                    return (1,)
+                return None
+
+            def fetchall(self_inner):
+                if "SELECT user_question, model_answer FROM messages" in stmt_text:
+                    return list(_HistoryAwareSessionLocal.history_rows)
+                return []
+
+        return _Result()
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+class ChatSuccessPathTests(unittest.TestCase):
+    """debug/26_7_4_debug_4.md test-coverage gap: chat()'s success path had no
+    test -- the answer must actually get persisted, the session's default name
+    must get renamed on the first message, and history must be read back in
+    the correct (oldest-first) order for a multi-turn conversation."""
+
+    def setUp(self):
+        self.client = _make_client()
+        _HistoryAwareSessionLocal.calls = []
+        _HistoryAwareSessionLocal.history_rows = []
+        self._orig_session_local = chat_rt.SessionLocal
+        self._orig_final_answer = chat_rt.final_answer
+        chat_rt.SessionLocal = _HistoryAwareSessionLocal
+        chat_rt.final_answer = _ok_final_answer
+
+    def tearDown(self):
+        chat_rt.SessionLocal = self._orig_session_local
+        chat_rt.final_answer = self._orig_final_answer
+
+    def test_answer_is_persisted_with_full_collected_content(self):
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": "hi"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        insert_calls = [
+            c for c in _HistoryAwareSessionLocal.calls if "INSERT INTO messages" in c[0]
+        ]
+        self.assertEqual(len(insert_calls), 1)
+        params = insert_calls[0][1]
+        self.assertEqual(params["q"], "hi")
+        self.assertEqual(params["a"], "hi there")  # _ok_final_answer's single chunk
+
+    def test_default_session_name_is_renamed_on_first_message(self):
+        long_question = "what is AAPL's PE ratio and dividend yield this quarter"
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": long_question}
+        )
+        self.assertEqual(resp.status_code, 200)
+        update_calls = [
+            c for c in _HistoryAwareSessionLocal.calls
+            if "UPDATE sessions SET session_name" in c[0]
+        ]
+        self.assertEqual(len(update_calls), 1)
+        params = update_calls[0][1]
+        self.assertEqual(params["name"], long_question[:20] + "...")
+        self.assertEqual(params["default_name"], chat_rt.DEFAULT_SESSION_NAME)
+        self.assertEqual(params["sid"], "sess0001")
+
+    def test_history_passed_to_final_answer_is_reversed_to_oldest_first_order(self):
+        # The DB query orders rows `created_at DESC` (newest first); chat()
+        # must reverse them back to oldest-first before handing them to
+        # final_answer()'s `history` argument.
+        _HistoryAwareSessionLocal.history_rows = [
+            types.SimpleNamespace(user_question="q3", model_answer="a3"),  # newest
+            types.SimpleNamespace(user_question="q2", model_answer="a2"),
+            types.SimpleNamespace(user_question="q1", model_answer="a1"),  # oldest
+        ]
+        captured = {}
+
+        def _capturing_final_answer(question, history=None, session_id=None):
+            captured["history"] = history
+            yield 'data: {"content": "ok", "thinking": false}\n\n'
+
+        chat_rt.final_answer = _capturing_final_answer
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": "q4"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            captured["history"],
+            [
+                {"user": "q1", "assistant": "a1"},
+                {"user": "q2", "assistant": "a2"},
+                {"user": "q3", "assistant": "a3"},
+            ],
+        )
+
+
+class _RecordingEsOfficialExamples:
+    """Fake ES client for /get_official_examples/: returns a terms-aggregation
+    shaped response with two distinct source_kwd values, so the test can
+    assert chunk_method is derived correctly per source and the response shape
+    matches what the frontend expects."""
+
+    def search(self, index=None, body=None):
+        return {
+            "aggregations": {
+                "by_file": {
+                    "buckets": [
+                        {
+                            "latest": {
+                                "hits": {
+                                    "hits": [{
+                                        "_source": {
+                                            "docnm_kwd": "AAPL_10K.htm",
+                                            "create_time": "2026-01-01T00:00:00",
+                                            "source_kwd": "sec_filing",
+                                        }
+                                    }]
+                                }
+                            }
+                        },
+                        {
+                            "latest": {
+                                "hits": {
+                                    "hits": [{
+                                        "_source": {
+                                            "docnm_kwd": "intro-to-pe-ratio.md",
+                                            "create_time": "2026-01-02T00:00:00",
+                                            "source_kwd": "educational",
+                                        }
+                                    }]
+                                }
+                            }
+                        },
+                    ]
+                }
+            }
+        }
+
+
+class GetOfficialExamplesTests(unittest.TestCase):
+    """debug/26_7_4_debug_4.md test-coverage gap: get_official_examples'
+    aggregation/parsing had no test."""
+
+    def setUp(self):
+        self.client = _make_client()
+        _ES_HOLDER["client"] = _RecordingEsOfficialExamples()
+
+    def tearDown(self):
+        _ES_HOLDER["client"] = None
+
+    def test_returns_one_entry_per_file_with_expected_shape(self):
+        resp = self.client.get("/get_official_examples/")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        names = {row["file_name"] for row in body}
+        self.assertEqual(names, {"AAPL_10K.htm", "intro-to-pe-ratio.md"})
+        for row in body:
+            self.assertEqual(row["status"], "Indexed")
+            self.assertIn("chunk_method", row)
+            self.assertIn("updated_at", row)
 
 
 if __name__ == "__main__":

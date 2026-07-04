@@ -14,7 +14,3 @@ let id = 0
 export const createChatId = () => {
   return ++id
 }
-
-export function createChatIdText(id: number) {
-  return `chat-item-${id}`
-}

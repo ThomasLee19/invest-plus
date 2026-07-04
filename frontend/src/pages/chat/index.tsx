@@ -3,11 +3,10 @@ import ComPageLayout from '@/components/page-layout'
 import ComSender from '@/components/sender'
 import { ChatRole, ChatType } from '@/configs'
 import { useLang } from '@/i18n'
-import { deviceActions } from '@/store/device'
 import { sessionState } from '@/store/session'
 import { usePageTransport } from '@/utils'
-import { useMount, useRequest, useUnmount } from 'ahooks'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMount, useRequest } from 'ahooks'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { proxy, useSnapshot } from 'valtio'
 import ChatMessage from './component/chat-message'
@@ -103,12 +102,6 @@ export default function Index() {
   }, [list, history.loading])
   const loadingRef = useRef(loading)
   loadingRef.current = loading
-  useEffect(() => {
-    deviceActions.setChatting(loading)
-  }, [loading])
-  useUnmount(() => {
-    deviceActions.setChatting(false)
-  })
 
   // 发送聊天消息并处理流式响应
   const sendChat = useCallback(

@@ -51,7 +51,11 @@ def query_quote(ticker: str) -> str:
     """
     ticker = ticker.upper().strip()
 
-    t, info, history = _load_ticker(ticker)
+    try:
+        t, info, history = _load_ticker(ticker)
+    except Exception as e:
+        print(f"[FinanceTool] 行情请求失败：{ticker} -> {e}")
+        return "行情服务暂时不可用，请稍后再试。"
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"
@@ -107,7 +111,11 @@ def query_fundamentals(ticker: str) -> str:
     """
     ticker = ticker.upper().strip()
 
-    t, info, history = _load_ticker(ticker)
+    try:
+        t, info, history = _load_ticker(ticker)
+    except Exception as e:
+        print(f"[FinanceTool] 基本面请求失败：{ticker} -> {e}")
+        return "行情服务暂时不可用，请稍后再试。"
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"

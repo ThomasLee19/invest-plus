@@ -1020,6 +1020,11 @@ class RAGFlowPdfParser:
             # "失败" 分支，而不是被一个和真实原因无关的报错掩盖。
             raise ValueError(f"Failed to parse PDF (from={page_from}, to={page_to}): {e}") from e
 
+        # page_images/page_chars 已经把这份 pdfplumber 句柄需要的内容都提取
+        # 出来了，下面 self.pdf 马上要被 pdf2_read 覆盖，先显式关闭，避免原句柄
+        # 只能靠 GC 回收，在高并发上传下堆积文件描述符和内存。
+        self.pdf.close()
+
         self.outlines = []
         try:
             self.pdf = pdf2_read(fnm if isinstance(fnm, str) else BytesIO(fnm))

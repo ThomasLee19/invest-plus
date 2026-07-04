@@ -221,10 +221,20 @@ def index_chunks(es: Elasticsearch, chunks: list[str], doc_id: str, docnm: str,
                   source_kwd: str, extra_fields: dict) -> tuple[int, int, int]:
     """Embed + bulk-index chunks. Returns (written, skipped, failed)."""
     written, skipped, failed = 0, 0, 0
-    operations = []
+    # Keyed by chunk_id: a duplicate _id within this batch overwrites the
+    # earlier entry (last write wins), same as ES's own bulk API applies
+    # multiple index ops sharing an _id within one request. Building the
+    # bulk payload from this dict (instead of appending every chunk
+    # unconditionally) means only one op per unique _id is ever sent, so
+    # `written` -- computed from es.bulk()'s per-item response below --
+    # can't be inflated by a batch-internal duplicate.
+    pending: dict[str, dict] = {}
 
     for chunk in chunks:
-        chunk_id = xxhash.xxh64((chunk + INDEX_NAME).encode("utf-8")).hexdigest()
+        # Namespaced with doc_id so identical chunk text across different
+        # documents (duplicate boilerplate/table headers) doesn't collide on
+        # the same ES _id and silently drop a legitimate chunk.
+        chunk_id = xxhash.xxh64((doc_id + chunk + INDEX_NAME).encode("utf-8")).hexdigest()
 
         if es.exists(index=INDEX_NAME, id=chunk_id):
             skipped += 1
@@ -236,7 +246,7 @@ def index_chunks(es: Elasticsearch, chunks: list[str], doc_id: str, docnm: str,
             continue
         time.sleep(REQUEST_DELAY)
 
-        doc = {
+        pending[chunk_id] = {
             "doc_id": doc_id,
             "docnm_kwd": docnm,
             "source_kwd": source_kwd,
@@ -247,6 +257,9 @@ def index_chunks(es: Elasticsearch, chunks: list[str], doc_id: str, docnm: str,
             f"q_{EMBEDDING_DIMS}_vec": vec,
             **extra_fields,
         }
+
+    operations = []
+    for chunk_id, doc in pending.items():
         operations.extend([
             {"index": {"_index": INDEX_NAME, "_id": chunk_id}},
             doc,

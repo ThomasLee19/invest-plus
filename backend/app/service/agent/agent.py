@@ -46,27 +46,39 @@ ES_INDEX = "finance_kb"
 
 # ── LLM / ES 客户端（进程内单例，避免每次调用重建）────────────────────────────
 
+import threading
+
 _llm_client = None
 _es_client = None
+_llm_client_lock = threading.Lock()
+_es_client_lock = threading.Lock()
 
 
 def _get_llm_client() -> OpenAI:
     """惰性构建并复用同一个 OpenAI 客户端。惰性（而非模块级立即构建）是为了
-    让测试可以在导入后 patch 掉本函数，且不在导入期就触发真实客户端构造。"""
+    让测试可以在导入后 patch 掉本函数，且不在导入期就触发真实客户端构造。
+
+    加锁：chat() 是同步 def，FastAPI 在线程池中并发执行，无锁的
+    check-then-set 可能让两个线程各自构造一个客户端实例。"""
     global _llm_client
     if _llm_client is None:
-        _llm_client = OpenAI(
-            api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
-        )
+        with _llm_client_lock:
+            if _llm_client is None:
+                _llm_client = OpenAI(
+                    api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
+                )
     return _llm_client
 
 
 def _get_es():
     """惰性构建并复用同一个 ES 客户端（凭据/证书策略集中在 get_es_client()，
-    不再在此处硬编码 basic_auth/verify_certs）。惰性化同样便于测试 patch。"""
+    不再在此处硬编码 basic_auth/verify_certs）。惰性化同样便于测试 patch。
+    加锁原因同 _get_llm_client()。"""
     global _es_client
     if _es_client is None:
-        _es_client = get_es_client()
+        with _es_client_lock:
+            if _es_client is None:
+                _es_client = get_es_client()
     return _es_client
 
 
@@ -593,6 +605,29 @@ def _bounded_memory(memory: list[dict]) -> list[dict]:
     return bounded
 
 
+def _bounded_memory_for_final_prompt(memory: list[dict], seen_ref_keys: set) -> list[dict]:
+    """final_answer 最终回答 prompt 专用：在 _bounded_memory 的截断基础上，
+    对已经出现在「参考文档（可引用）」编号列表里的 rag_search 结果条目做进一步
+    精简——避免同一段 content_with_weight 在最终 prompt 中出现两遍（一遍经
+    _bounded_memory 截断，一遍在 reference_block 里完整未截断），纯粹节省
+    token，不影响引用编号（编号仍然只由调用方的 references 列表决定）。
+    should_continue() 没有 reference_block，继续使用普通的 _bounded_memory。"""
+    if not seen_ref_keys:
+        return _bounded_memory(memory)
+    deduped = []
+    for entry in memory:
+        result = entry.get("结果")
+        if isinstance(result, list):
+            new_result = []
+            for item in result:
+                if isinstance(item, dict) and item.get("content_with_weight") in seen_ref_keys:
+                    item = {**item, "content_with_weight": "[完整内容见下方「参考文档（可引用）」编号列表，避免重复]"}
+                new_result.append(item)
+            entry = {**entry, "结果": new_result}
+        deduped.append(entry)
+    return _bounded_memory(deduped)
+
+
 def should_continue(query: str, memory: list[dict]) -> dict:
     """LLM 判断已收集信息是否足以回答问题；若不足则给出补充查询。
 
@@ -719,6 +754,10 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         # 调用创建独立的 seen，若这里不显式传入同一实例，Reflect 阶段重新发起与
         # Act 阶段（或更早的 Reflect 轮次）完全相同的补充查询时不会被识别为重复。
         seen_actions: set = set()
+        # 跟踪本轮 Act+Reflect 中已经问过的 (action_name, prompt)，与 seen_actions
+        # （按结果去重，需先执行才知道 key）不同：这个集合按"问题本身"去重，
+        # 用于在执行/推送提示消息之前就识别出重复请求，见下方 Reflect 循环。
+        seen_prompts: set = {(a["action_name"], a["prompt"]) for a in actions}
 
         # ── Act ──
         memory = process_actions(actions, language, session_id, seen=seen_actions)
@@ -746,8 +785,22 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                 print(f"[loop] LLM 判定信息不足但未给出补充动作（第 {reflection_iteration} 轮），停止：{decision['rationale']}")
                 break
 
-            reflect_actions = _adjust_format(decision["actions"])
+            reflect_actions_all = _adjust_format(decision["actions"])
+            # 过滤掉本轮循环里已经问过的动作（无论 action_name+prompt 是否曾经
+            # 执行过）：LLM 面对未变化的 memory 很容易反复给出同一个补充查询，
+            # 若仍逐一 yield 提示消息，用户会看到多条内容完全相同的"补充调用"
+            # 提示，且会白白多花一次 process_actions 与下一轮 should_continue
+            # 的 LLM 调用（延迟+成本）却拿不到任何新信息。
+            reflect_actions = [
+                a for a in reflect_actions_all
+                if (a["action_name"], a["prompt"]) not in seen_prompts
+            ]
+            if not reflect_actions:
+                print(f"[loop] 第 {reflection_iteration} 轮补充动作均为重复请求，停止")
+                break
+
             for action in reflect_actions:
+                seen_prompts.add((action["action_name"], action["prompt"]))
                 msg = {
                     "role": "agent",
                     "content": (
@@ -757,6 +810,12 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                 }
                 yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
             extra_memory = process_actions(reflect_actions, language, session_id, seen=seen_actions)
+            if not extra_memory:
+                # 所有补充动作按结果去重后都没有产生新信息——即使 prompt 本身
+                # 是新的，也没有必要再让 should_continue 面对同样内容的 memory
+                # 继续空转。
+                print(f"[loop] 第 {reflection_iteration} 轮补充调用未产生新增结果，停止")
+                break
             memory.extend(extra_memory)
         else:
             # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，
@@ -845,7 +904,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 {history_str}
 ## 参考信息
 <untrusted_context>
-{json.dumps(_bounded_memory(memory), ensure_ascii=False, indent=2)}
+{json.dumps(_bounded_memory_for_final_prompt(memory, _seen_ref_keys), ensure_ascii=False, indent=2)}
 </untrusted_context>
 {reference_block}
 ## 用户问题

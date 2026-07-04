@@ -59,6 +59,9 @@ export default function ComSender(
           ? t.fileTooLarge
           : `${file.name} ${t.uploadFailed}`
       window.$app.message.error(msg)
+      // 上传失败的文件不应作为附件出现在后续发送中，且 showUploadList={false}
+      // 导致用户无法手动移除，因此直接从列表中剔除。
+      setFileList((prev) => prev.filter((f) => f.uid !== file.uid))
     } finally {
       setFileList((prev) =>
         prev.map((f) => (f.uid === file.uid ? { ...f, loading: false } : f)),
@@ -76,6 +79,7 @@ export default function ComSender(
           autoSize={{ minRows: 2 }}
           autoFocus
           onPressEnter={(e) => {
+            if (e.nativeEvent.isComposing) return
             if (!e.shiftKey) {
               e.preventDefault()
               send()

@@ -308,11 +308,17 @@ class ProcessActionsDedupPersistenceTests(unittest.TestCase):
 
     def test_final_answer_reflection_loop_does_not_duplicate_identical_supplementary_action(self):
         # should_continue keeps re-requesting the exact same finance_query
-        # action across two reflect iterations. The real process_actions()
-        # dedup (not mocked here) must ensure it lands in memory only once,
-        # even though should_continue "asks" for it three times total (the
-        # initial Act call + two reflect requests).
-        decisions_iter = iter([
+        # action that Act already ran. Two things must hold (debug/
+        # 26_7_4_debug_4.md Medium#1): (a) the real process_actions() dedup
+        # (not mocked here) must ensure the action's result lands in memory
+        # only once, and (b) the reflect loop itself must recognize the
+        # repeated (action_name, prompt) *before* yielding a '补充调用' SSE
+        # message or re-invoking should_continue, so the user never sees a
+        # duplicate "补充调用" prompt and should_continue isn't re-queried for
+        # a decision that can't produce new information (previously this
+        # spun for up to MAX_REFLECTION_ITERATIONS, yielding one duplicate
+        # message per wasted round).
+        decisions = [
             {"sufficient": False, "rationale": "需要更多数据", "actions": [
                 {"action_name": "finance_query", "prompts": ["AAPL price"]}
             ]},
@@ -320,10 +326,13 @@ class ProcessActionsDedupPersistenceTests(unittest.TestCase):
                 {"action_name": "finance_query", "prompts": ["AAPL price"]}
             ]},
             {"sufficient": True, "rationale": "已足够", "actions": []},
-        ])
+        ]
+        call_count = {"n": 0}
 
         def _fake_should_continue(query, memory):
-            return next(decisions_iter)
+            decision = decisions[call_count["n"]]
+            call_count["n"] += 1
+            return decision
 
         fake_chunk = types.SimpleNamespace(
             choices=[types.SimpleNamespace(
@@ -353,13 +362,114 @@ class ProcessActionsDedupPersistenceTests(unittest.TestCase):
              patch.object(agent, "finance_tool", return_value="AAPL: $200"), \
              patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
              patch.object(agent, "_get_llm_client", return_value=fake_client):
-            list(agent.final_answer("AAPL 怎么样", language="en"))
+            events = list(agent.final_answer("AAPL 怎么样", language="en"))
+
+        supplementary_msgs = [e for e in events if "补充调用" in e]
+        self.assertEqual(
+            len(supplementary_msgs), 0,
+            "the re-requested action was already fetched in the Act phase, so "
+            "no '补充调用' message should ever be yielded for it",
+        )
+        self.assertEqual(
+            call_count["n"], 1,
+            "should_continue must not be re-invoked once its only requested "
+            "action is a repeat of something already in memory -- the loop "
+            "must break instead of spinning on a decision that can't change",
+        )
 
         prompt_text = captured["messages"][0]["content"]
         self.assertEqual(
             prompt_text.count("AAPL: $200"), 1,
             "the identical re-requested action must appear only once in the final memory",
         )
+
+    def test_reflect_loop_breaks_early_on_repeated_identical_action_across_iterations(self):
+        # Unlike the test above (repeat of the *Act*-phase action), this
+        # covers a repeat introduced *within* the reflect loop itself: two
+        # separate reflect iterations both ask for the same brand-new
+        # (never seen in Act) action. The second occurrence must be filtered
+        # out before yielding/executing, and the loop must break instead of
+        # continuing to a third should_continue() call.
+        decisions = [
+            {"sufficient": False, "rationale": "第一次要 MSFT", "actions": [
+                {"action_name": "finance_query", "prompts": ["MSFT price"]}
+            ]},
+            {"sufficient": False, "rationale": "又要一次同样的 MSFT", "actions": [
+                {"action_name": "finance_query", "prompts": ["MSFT price"]}
+            ]},
+            {"sufficient": True, "rationale": "不应该被调用到这里", "actions": []},
+        ]
+        call_count = {"n": 0}
+
+        def _fake_should_continue(query, memory):
+            decision = decisions[call_count["n"]]
+            call_count["n"] += 1
+            return decision
+
+        fake_chunk = types.SimpleNamespace(
+            choices=[types.SimpleNamespace(
+                delta=types.SimpleNamespace(content="done", reasoning_content=None),
+                finish_reason="stop",
+            )]
+        )
+        fake_client = types.SimpleNamespace(
+            chat=types.SimpleNamespace(
+                completions=types.SimpleNamespace(create=lambda **kw: [fake_chunk])
+            )
+        )
+
+        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
+             patch.object(agent, "process_actions") as mocked_process_actions, \
+             patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
+             patch.object(agent, "_get_llm_client", return_value=fake_client):
+            mocked_process_actions.side_effect = [
+                [{"提问": "q", "结果": "act-result"}],       # Act call
+                [{"提问": "MSFT price", "结果": "$400"}],     # 1st reflect call (new action)
+            ]
+            events = list(agent.final_answer("MSFT 怎么样", language="en"))
+
+        supplementary_msgs = [e for e in events if "补充调用" in e]
+        self.assertEqual(
+            len(supplementary_msgs), 1,
+            "the first MSFT request is genuinely new and should be yielded "
+            "once; the second, identical one must not be",
+        )
+        self.assertEqual(
+            call_count["n"], 2,
+            "should_continue runs once for the first (new) MSFT request, then "
+            "the loop breaks on the second (duplicate) request instead of "
+            "calling should_continue a third time",
+        )
+        # process_actions must only have been invoked for Act + the one
+        # genuinely-new reflect action -- never for the duplicate.
+        self.assertEqual(mocked_process_actions.call_count, 2)
+
+
+class DetectLanguageTests(unittest.TestCase):
+    """debug/26_7_4_debug_4.md test-coverage gap: _detect_language() (agent.py
+    ~lines 668-680) decides zh vs en purely from the user's input text. Since
+    Japanese/Korean text can contain CJK kanji too, it must exclude Japanese
+    kana and Korean hangul *before* checking for CJK characters, or it would
+    misdetect JP/KR input as Chinese."""
+
+    def test_chinese_input_detected_as_zh(self):
+        self.assertEqual(agent._detect_language("苹果公司的市盈率是多少"), "zh")
+
+    def test_english_input_detected_as_en(self):
+        self.assertEqual(agent._detect_language("What is AAPL's P/E ratio"), "en")
+
+    def test_short_chinese_with_english_ticker_still_detected_as_zh(self):
+        # A short CJK snippet plus a non-Chinese proper noun must still be zh
+        # -- detection is presence-based, not a proportion/length threshold.
+        self.assertEqual(agent._detect_language("Garchomp 配招？"), "zh")
+
+    def test_japanese_kana_input_detected_as_en_not_misdetected_as_zh(self):
+        # Japanese text often contains kanji (CJK characters), but the
+        # presence of hiragana/katakana must force "en" rather than "zh".
+        self.assertEqual(agent._detect_language("これはAAPLの株価です"), "en")
+
+    def test_korean_hangul_input_detected_as_en_not_misdetected_as_zh(self):
+        self.assertEqual(agent._detect_language("이것은 AAPL 주가입니다"), "en")
 
 
 class ReflectionLoopTests(unittest.TestCase):
@@ -482,12 +592,25 @@ class ReflectionLoopTests(unittest.TestCase):
     def test_safety_cap_is_hit_and_distinguishable_when_llm_never_signals_sufficient(self):
         # Always request more actions -> loop should hit MAX_REFLECTION_ITERATIONS
         # and stop via the cap path, never via an LLM sufficient=True signal.
-        never_sufficient = {
-            "sufficient": False,
-            "rationale": "总是觉得不够",
-            "actions": [{"action_name": "web_search", "prompts": ["more info"]}],
-        }
-        decisions = [never_sufficient] * 10  # more than enough to exhaust the cap
+        #
+        # Each reflect iteration asks for a *different* prompt ("more info 1",
+        # "more info 2", ...): the M1 fix (debug/26_7_4_debug_4.md) makes the
+        # loop break early once should_continue() repeats an identical
+        # (action_name, prompt) it already asked for, since re-asking the same
+        # question against unchanged memory can never produce new information.
+        # That early-break behavior is covered by its own test below
+        # (test_reflect_loop_breaks_early_on_repeated_identical_action); this
+        # test instead exercises the genuinely-never-satisfied case where the
+        # LLM keeps asking new (but still fruitless) questions every round, so
+        # the safety cap -- not the dedup break -- is what stops it.
+        decisions = [
+            {
+                "sufficient": False,
+                "rationale": "总是觉得不够",
+                "actions": [{"action_name": "web_search", "prompts": [f"more info {i}"]}],
+            }
+            for i in range(1, 11)  # more than enough to exhaust the cap
+        ]
 
         # See test_llm_signaled_stop_does_not_hit_safety_cap: agent_plan must
         # return a real plan or Act+Reflect (and should_continue with it)
@@ -495,7 +618,7 @@ class ReflectionLoopTests(unittest.TestCase):
         # wrong reason (0 calls, not 5).
         with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
              patch.object(agent, "process_actions", return_value=[{"提问": "q", "结果": "r"}]), \
-             patch.object(agent, "should_continue", side_effect=lambda q, m: never_sufficient) as mocked_sc, \
+             patch.object(agent, "should_continue", side_effect=iter(decisions)) as mocked_sc, \
              patch.object(agent, "OpenAI") as mocked_openai_cls, \
              patch("builtins.print") as mocked_print:
             fake_chunk = types.SimpleNamespace(
@@ -858,6 +981,44 @@ class FinanceToolTickerExtractionTests(unittest.TestCase):
         self.assertIn("未能从问题中识别出股票代码", result)
 
 
+class FinanceToolQueryTypeRoutingTests(unittest.TestCase):
+    """debug/26_7_4_debug_4.md test-coverage gap: finance_tool()'s query-type
+    routing (agent.py ~lines 354-359) picks news/fundamentals/quote based on
+    keyword matches in the (lowercased) query, checked in that priority order
+    (news keywords win over fundamentals keywords). Previously untested."""
+
+    def _captured_kind(self, query: str) -> str:
+        captured = {}
+
+        def _fake_finance_query(kind, ticker=None):
+            captured["kind"] = kind
+            return "stub"
+
+        with patch.object(agent, "_finance_query", side_effect=_fake_finance_query):
+            agent.finance_tool(query)
+        return captured["kind"]
+
+    def test_news_keyword_routes_to_news(self):
+        self.assertEqual(self._captured_kind("AAPL latest news"), "news")
+
+    def test_chinese_news_keyword_routes_to_news(self):
+        self.assertEqual(self._captured_kind("AAPL 最新消息"), "news")
+
+    def test_fundamentals_keyword_routes_to_fundamentals(self):
+        self.assertEqual(self._captured_kind("AAPL fundamentals"), "fundamentals")
+
+    def test_chinese_fundamentals_keyword_routes_to_fundamentals(self):
+        self.assertEqual(self._captured_kind("AAPL 基本面"), "fundamentals")
+
+    def test_plain_query_routes_to_quote(self):
+        self.assertEqual(self._captured_kind("AAPL price"), "quote")
+
+    def test_news_keyword_takes_priority_over_fundamentals_keyword(self):
+        # Both a news keyword and a fundamentals keyword present -- news is
+        # checked first in finance_tool(), so it must win.
+        self.assertEqual(self._captured_kind("AAPL news on fundamentals"), "news")
+
+
 class StripFillerWordsTests(unittest.TestCase):
     """Step 9/10: _strip_filler_words() must remove Chinese/English filler
     and question words while preserving ticker symbols and financial terms,
@@ -1181,6 +1342,85 @@ class IndexFinanceEncodingConsistencyTests(unittest.TestCase):
             # Must not raise.
             w, s, f = self.index_finance.index_educational(_NoOpFakeElasticsearch())
         self.assertGreaterEqual(w, 0)
+
+
+class LazySingletonThreadSafetyTests(unittest.TestCase):
+    """Low (debug/26_7_4_debug_4.md): _get_llm_client()/_get_es() are lazily
+    built module-level singletons with an unlocked check-then-set. chat() is a
+    sync def executed concurrently across FastAPI's threadpool, so two
+    threads racing the first call could each construct their own client
+    instance. Verifies a lock now serializes construction so only one
+    instance is ever built even under concurrent first-call access."""
+
+    def setUp(self):
+        # Reset module globals so this test controls the "first call" race
+        # regardless of what earlier tests in this process already cached.
+        self._orig_llm_client = agent._llm_client
+        self._orig_es_client = agent._es_client
+        agent._llm_client = None
+        agent._es_client = None
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        agent._llm_client = self._orig_llm_client
+        agent._es_client = self._orig_es_client
+
+    def test_get_llm_client_builds_exactly_one_instance_under_concurrent_first_call(self):
+        import threading
+
+        build_calls = []
+        real_lock = threading.Lock()
+
+        def _fake_openai(*args, **kwargs):
+            # Simulate construction taking long enough for a second thread to
+            # reach the outer `if _llm_client is None` check before the first
+            # thread finishes, if the lock weren't there.
+            import time
+            time.sleep(0.02)
+            with real_lock:
+                build_calls.append(1)
+            return object()
+
+        results = []
+
+        def _call():
+            results.append(agent._get_llm_client())
+
+        with patch.object(agent, "OpenAI", side_effect=_fake_openai):
+            threads = [threading.Thread(target=_call) for _ in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        self.assertEqual(len(build_calls), 1, "OpenAI() must be constructed exactly once")
+        self.assertEqual(len(set(id(r) for r in results)), 1, "all callers must receive the same client instance")
+
+    def test_get_es_builds_exactly_one_instance_under_concurrent_first_call(self):
+        import threading
+
+        build_calls = []
+
+        def _fake_get_es_client(*args, **kwargs):
+            import time
+            time.sleep(0.02)
+            build_calls.append(1)
+            return object()
+
+        results = []
+
+        def _call():
+            results.append(agent._get_es())
+
+        with patch.object(agent, "get_es_client", side_effect=_fake_get_es_client):
+            threads = [threading.Thread(target=_call) for _ in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        self.assertEqual(len(build_calls), 1, "get_es_client() must be invoked exactly once")
+        self.assertEqual(len(set(id(r) for r in results)), 1, "all callers must receive the same client instance")
 
 
 if __name__ == "__main__":

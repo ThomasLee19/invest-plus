@@ -32,6 +32,9 @@ ES_INDEX = "finance_kb"
 
 # .txt/.md 路按字符切分（与历史新闻/教育内容一致）
 MAX_CHUNK = 1500
+# text-embedding-v3 输入上限约 8192 token；与 rag/nlp.naive_merge 的
+# _MAX_EMBED_TOKENS 保持一致，留出余量避免单个 chunk 卡在临界值附近越界。
+_MAX_EMBED_TOKENS = 8000
 # PDF 路按 token 切分。FinReportRAG 默认 128 token，偏小，会把财报表格/论述拆碎；
 # 这里取 384 token，约等于上面 1500 字符（英文）的规模，使 PDF chunk 与现有 txt/news
 # chunk 落进同一个索引时尺度一致——BM25 词频饱和与 agent.py 里 _KNN_BOOST=8.0 的混合
@@ -49,16 +52,35 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 def _chunk_text(text: str) -> list[str]:
+    # PDF 路的 naive_merge 是按 token 累积的，天然有 _MAX_EMBED_TOKENS 硬上限；
+    # 这里按字符累积，没有等价保护，需要在每个 chunk 定稿时补上——否则一段没有
+    # 空行分隔的超长段落会原样成为一个 chunk，送进 _embed 时因超模型 token 上限
+    # 而让整份文件一个 chunk 都写不进 ES。
+    from service.core.rag.utils import num_tokens_from_string, truncate
+
+    def _finalize(piece: str) -> None:
+        piece = piece.strip()
+        if not piece:
+            return
+        remaining = piece
+        while remaining and num_tokens_from_string(remaining) > _MAX_EMBED_TOKENS:
+            head = truncate(remaining, _MAX_EMBED_TOKENS)
+            chunks.append(head)
+            remaining = remaining[len(head):]
+        if remaining:
+            chunks.append(remaining)
+
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks, current = [], ""
+    chunks: list[str] = []
+    current = ""
     for para in paragraphs:
         if len(current) + len(para) > MAX_CHUNK and current:
-            chunks.append(current.strip())
+            _finalize(current)
             current = para
         else:
             current = current + "\n\n" + para if current else para
     if current:
-        chunks.append(current.strip())
+        _finalize(current)
     return chunks
 
 

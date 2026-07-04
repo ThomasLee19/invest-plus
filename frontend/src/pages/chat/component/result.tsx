@@ -30,6 +30,12 @@ function openExternal(link?: string) {
   window.open(link, '_blank', 'noopener,noreferrer')
 }
 
+// 引用锚点 id 需要按消息隔离，否则多条带引用的回复会渲染出重复 DOM id，
+// getElementById 只会命中文档中第一个，导致点击后定位到错误的消息。
+function getSourceRefId(messageId: number, index: number) {
+  return `source-ref-${messageId}-${index}`
+}
+
 const Section = (props: {
   title: string
   icon: string
@@ -86,7 +92,7 @@ const Answer = (props: { item: API.ChatItem }) => {
     const index = target.getAttribute('data-reference-index')
     if (index == null) return
 
-    const el = document.getElementById(`source-ref-${index}`)
+    const el = document.getElementById(getSourceRefId(item.id, Number(index)))
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     if (el) {
       el.classList.add(styles['source-highlight'])
@@ -147,7 +153,7 @@ const Source = (props: { item: API.ChatItem }) => {
         {item.reference?.map((doc, index) => (
           <div
             key={index}
-            id={`source-ref-${index}`}
+            id={getSourceRefId(item.id, index)}
             className={styles.item}
             onClick={() => toggleExpanded(index)}
           >
@@ -174,10 +180,10 @@ const Images = (props: { item: API.ChatItem }) => {
   return (
     <Section title={t.imageResultsTitle} icon={IconImage}>
       <div className={styles['chat-message-result__images']}>
-        {item.image_results?.images?.map((item) => (
+        {item.image_results?.images?.map((item, index) => (
           <div
             className={styles.item}
-            key={item.link || item.imageUrl}
+            key={item.link || item.imageUrl || index}
             onClick={() => openExternal(item.link)}
           >
             <div className={styles.box}>
@@ -197,10 +203,10 @@ const Videos = (props: { item: API.ChatItem }) => {
   return (
     <Section title={t.videoResultsTitle} icon={IconVideo}>
       <div className={styles['chat-message-result__videos']}>
-        {item.video_results?.videos?.map((item) => (
+        {item.video_results?.videos?.map((item, index) => (
           <div
             className={styles.item}
-            key={item.link || item.imageUrl}
+            key={item.link || item.imageUrl || index}
             onClick={() => openExternal(item.link)}
           >
             <div className={styles.box}>

@@ -2,10 +2,10 @@ import { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { IRequestPlugin } from './plugin'
 
 function show() {
-  window.$showLoading()
+  window.$showLoading?.()
 }
 function hide() {
-  window.$hideLoading()
+  window.$hideLoading?.()
 }
 
 export const loadingPlugin: IRequestPlugin = {

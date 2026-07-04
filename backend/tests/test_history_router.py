@@ -102,5 +102,105 @@ class EmptySessionIdRejectionTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
 
 
+class _RecordingDb:
+    """Fake `db` object standing in for the Session yielded by get_db's
+    Depends(). Records every executed statement (so tests can assert deletes
+    actually ran) and returns query-appropriate canned rows for the two SELECT
+    endpoints, keyed by a distinguishing substring in the statement text."""
+
+    calls: list = []
+    sessions_rows: list = []
+    messages_rows: list = []
+
+    def execute(self, stmt, params=None):
+        stmt_text = str(stmt)
+        _RecordingDb.calls.append((stmt_text, params))
+
+        class _Result:
+            def fetchall(self_inner):
+                if "FROM sessions" in stmt_text and "SELECT session_id" in stmt_text:
+                    return list(_RecordingDb.sessions_rows)
+                if "FROM messages" in stmt_text and "SELECT user_question" in stmt_text:
+                    return list(_RecordingDb.messages_rows)
+                return []
+
+        return _Result()
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+def _recording_db_override():
+    yield _RecordingDb()
+
+
+class HistoryRouterHappyPathTests(unittest.TestCase):
+    """debug/26_7_4_debug_4.md test-coverage gap: history_rt.py's endpoints had
+    only empty/malformed-session_id rejection tests (above) -- the actual
+    success paths (deleting real rows, listing sessions, listing messages in
+    order) were never exercised."""
+
+    def setUp(self):
+        self.client = _make_client()
+        self.client.app.dependency_overrides[history_rt.get_db] = _recording_db_override
+        _RecordingDb.calls = []
+        _RecordingDb.sessions_rows = []
+        _RecordingDb.messages_rows = []
+
+    def test_delete_session_issues_delete_for_both_tables_and_commits(self):
+        resp = self.client.delete("/sessions", params={"session_id": "sess0001"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"message": "已删除"})
+        deleted_tables = [
+            c[0] for c in _RecordingDb.calls if c[0].startswith("DELETE FROM")
+        ]
+        self.assertTrue(any("messages" in t for t in deleted_tables))
+        self.assertTrue(any("sessions" in t for t in deleted_tables))
+        # Both deletes must be scoped to the requested session_id.
+        for _, params in _RecordingDb.calls:
+            self.assertEqual(params["sid"], "sess0001")
+
+    def test_get_sessions_returns_listed_sessions_shape(self):
+        import datetime
+        _RecordingDb.sessions_rows = [
+            types.SimpleNamespace(
+                session_id="sess0002", session_name="第二次对话",
+                created_at=datetime.datetime(2026, 1, 2, 12, 0, 0),
+            ),
+            types.SimpleNamespace(
+                session_id="sess0001", session_name="第一次对话",
+                created_at=datetime.datetime(2026, 1, 1, 12, 0, 0),
+            ),
+        ]
+        resp = self.client.get("/sessions")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(len(body), 2)
+        self.assertEqual(body[0]["session_id"], "sess0002")
+        self.assertEqual(body[0]["session_name"], "第二次对话")
+        self.assertEqual(body[0]["created_at"], "2026-01-02 12:00:00")
+
+    def test_get_messages_returns_messages_in_ascending_order(self):
+        import datetime
+        _RecordingDb.messages_rows = [
+            types.SimpleNamespace(
+                user_question="q1", model_answer="a1", think=None,
+                created_at=datetime.datetime(2026, 1, 1, 12, 0, 0),
+            ),
+            types.SimpleNamespace(
+                user_question="q2", model_answer="a2", think="thinking...",
+                created_at=datetime.datetime(2026, 1, 1, 12, 5, 0),
+            ),
+        ]
+        resp = self.client.get("/messages", params={"session_id": "sess0001"})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual([m["user_question"] for m in body], ["q1", "q2"])
+        self.assertEqual(body[1]["think"], "thinking...")
+
+
 if __name__ == "__main__":
     unittest.main()

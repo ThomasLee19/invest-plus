@@ -12,6 +12,7 @@ Output:
     data/news/<ticker>/<pubDate>_<id>.md
 """
 
+import re
 from pathlib import Path
 
 import yfinance as yf
@@ -20,6 +21,12 @@ OUTPUT_DIR = Path(__file__).parent.parent / "data" / "news"
 
 TICKERS = ["AAPL", "MSFT", "GOOGL"]
 MAX_ITEMS_PER_TICKER = 8
+
+
+def _sanitize_path_component(value: str) -> str:
+    """Strip anything but safe filename chars so an externally-sourced value
+    (e.g. API response field) can't path-traverse out of the dest directory."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", value)
 
 
 def render_news_md(ticker: str, item: dict) -> str | None:
@@ -59,8 +66,9 @@ def fetch_ticker_news(ticker: str) -> int:
         if md is None:
             continue
 
-        item_id = item.get("id", "unknown")
+        item_id = _sanitize_path_component(str(item.get("id", "unknown")))
         pub_date = item.get("content", {}).get("pubDate", "")[:10] or "unknown-date"
+        pub_date = _sanitize_path_component(pub_date)
         filename = f"{pub_date}_{item_id}.md"
         dest_path = dest_dir / filename
 

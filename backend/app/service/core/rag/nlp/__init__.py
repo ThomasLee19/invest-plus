@@ -87,6 +87,13 @@ def naive_merge_docx(sections, chunk_token_num=128, delimiter="\n。；！？"):
 # 临界值附近（pos 后缀、tokenizer 误差等）导致仍然越界。
 _MAX_EMBED_TOKENS = 8000
 
+# 合并分支单独收紧到比 _MAX_EMBED_TOKENS 更保守的阈值：截断用的 cl100k_base
+# 分词器与实际调用的 text-embedding-v3（DashScope）分词器不同，中文场景下真实
+# token 数普遍偏高，8000→8192 的余量本就偏薄；一个被截断到 8000 token 的超长
+# piece 如果再被拼进已有 chunk，合并后的总 token 数会直接超过模型上限，使
+# _MAX_EMBED_TOKENS 截断的保护形同虚设。留 6000-7000 的安全余量，这里取 6500。
+_MAX_MERGED_CHUNK_TOKENS = 6500
+
 
 def naive_merge(sections, chunk_token_num=128, delimiter="\n。；！？"):
     if not sections:
@@ -109,8 +116,11 @@ def naive_merge(sections, chunk_token_num=128, delimiter="\n。；！？"):
             pos = ""
         if tnum < 8:
             pos = ""
-        # Ensure that the length of the merged chunk does not exceed chunk_token_num  
-        if tk_nums[-1] > chunk_token_num:
+        # Ensure that the length of the merged chunk does not exceed chunk_token_num,
+        # and that merging never pushes the combined chunk past the embedding
+        # model's real input limit (an ~8000-token truncated piece merged onto an
+        # existing small chunk would otherwise still exceed it).
+        if tk_nums[-1] > chunk_token_num or tk_nums[-1] + tnum > _MAX_MERGED_CHUNK_TOKENS:
 
             if t.find(pos) < 0:
                 t += pos

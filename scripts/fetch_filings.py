@@ -11,6 +11,7 @@ Output:
     data/filings/<ticker>/<form>_<filingDate>_<accession>.htm
 """
 
+import re
 import time
 from pathlib import Path
 
@@ -32,6 +33,12 @@ HEADERS = {"User-Agent": "InvestPlusResearch research@investplus.dev"}
 # Most recent filing per form type, fetched per ticker.
 WANTED_FORMS = ["10-K", "10-Q", "8-K"]
 REQUEST_DELAY = 0.3
+
+
+def _sanitize_path_component(value: str) -> str:
+    """Strip anything but safe filename chars so an externally-sourced value
+    (e.g. API response field) can't path-traverse out of the dest directory."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", value)
 
 
 def fetch_submissions(cik: str) -> dict | None:
@@ -70,8 +77,11 @@ def fetch_filing_doc(cik: str, filing: dict, dest_dir: Path) -> bool:
         f"https://www.sec.gov/Archives/edgar/data/{cik_nolead}/"
         f"{accn_nodash}/{filing['primaryDocument']}"
     )
-    ext = Path(filing["primaryDocument"]).suffix or ".htm"
-    filename = f"{filing['form'].replace('/', '-')}_{filing['filingDate']}_{filing['accessionNumber']}{ext}"
+    ext = _sanitize_path_component(Path(filing["primaryDocument"]).suffix) or ".htm"
+    form = _sanitize_path_component(filing["form"].replace("/", "-"))
+    filing_date = _sanitize_path_component(filing["filingDate"])
+    accession = _sanitize_path_component(filing["accessionNumber"])
+    filename = f"{form}_{filing_date}_{accession}{ext}"
     dest_path = dest_dir / filename
 
     if dest_path.exists():

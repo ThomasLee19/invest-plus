@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -6,6 +8,7 @@ from utils.database import get_db
 from router.chat_rt import _validate_session_id
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 USER_ID = "1"
 
@@ -23,13 +26,22 @@ def delete_session(session_id: str = Query(...), db: Session = Depends(get_db)):
     if session_id is None:
         raise HTTPException(status_code=400, detail="session_id is required")
     try:
-        db.execute(text("DELETE FROM messages WHERE session_id = :sid"), {"sid": session_id})
-        db.execute(text("DELETE FROM sessions WHERE session_id = :sid"), {"sid": session_id})
+        db.execute(
+            text("DELETE FROM messages WHERE session_id = :sid AND EXISTS "
+                 "(SELECT 1 FROM sessions WHERE sessions.session_id = messages.session_id "
+                 "AND sessions.user_id = :uid)"),
+            {"sid": session_id, "uid": USER_ID},
+        )
+        db.execute(
+            text("DELETE FROM sessions WHERE session_id = :sid AND user_id = :uid"),
+            {"sid": session_id, "uid": USER_ID},
+        )
         db.commit()
         return {"message": "已删除"}
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("delete_session failed")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
 
 
 @router.get("/sessions")
@@ -43,8 +55,9 @@ def get_sessions(db: Session = Depends(get_db)):
             {"session_id": r.session_id, "session_name": r.session_name, "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S")}
             for r in rows
         ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("get_sessions failed")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
 
 
 @router.get("/messages")
@@ -54,8 +67,12 @@ def get_messages(session_id: str = Query(...), db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="session_id is required")
     try:
         rows = db.execute(
-            text("SELECT user_question, model_answer, think, created_at FROM messages WHERE session_id = :sid ORDER BY created_at ASC"),
-            {"sid": session_id},
+            text("SELECT user_question, model_answer, think, created_at FROM messages "
+                 "WHERE session_id = :sid AND EXISTS "
+                 "(SELECT 1 FROM sessions WHERE sessions.session_id = messages.session_id "
+                 "AND sessions.user_id = :uid) "
+                 "ORDER BY created_at ASC"),
+            {"sid": session_id, "uid": USER_ID},
         ).fetchall()
         return [
             {
@@ -66,5 +83,6 @@ def get_messages(session_id: str = Query(...), db: Session = Depends(get_db)):
             }
             for r in rows
         ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("get_messages failed")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")

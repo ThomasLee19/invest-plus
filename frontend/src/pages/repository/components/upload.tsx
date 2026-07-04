@@ -96,6 +96,7 @@ export default forwardRef(function RepositoryUpload(
     <div className={styles['repository-upload']}>
       <Upload.Dragger
         {...otherProps}
+        accept=".txt,.md,.pdf"
         showUploadList={false}
         maxCount={10}
         fileList={fileList}

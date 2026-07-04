@@ -293,6 +293,8 @@ export function Result(props: {
   onSend?: (text: string) => void
 }) {
   const { item, isEnd, onSend } = props
+  // 点赞/踩目前仅本地状态，未接入后端，刷新或切换消息会重置——这是有意为之的
+  // 未完成特性占位，尚无对应的反馈持久化接口可写。接入后端前请勿依赖其持久性。
   const [liked, setLiked] = useState<'like' | 'dislike' | null>(null)
   const { t } = useLang()
 

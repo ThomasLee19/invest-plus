@@ -350,3 +350,117 @@ Learnings:
 
 Chinese fix report: debug/26_7_4_debug_3_fix_report_zh.md.
 RALPH RUN COMPLETE.
+
+=== US-002 backend router/data layer fixes (fixer-2) ===
+H3 (info leak): replaced raw str(e)/f"...{e}" in HTTPException(detail=...) with generic "内部错误，请稍后重试" + logger.exception at all 6 sites:
+  - chat_rt.py:65 create_session (added logger.exception)
+  - chat_rt.py get_files except (was f"get_files failed: {e}")
+  - chat_rt.py get_official_examples except
+  - chat_rt.py delete_file except
+  - history_rt.py delete_session except (added logging import + logger)
+  - history_rt.py get_sessions except
+  - history_rt.py get_messages except
+M1 (indexes): init.sql — added composite CREATE INDEX idx_messages_session_id_created_at ON messages(session_id, created_at); sessions(user_id) index already existed (idx_sessions_user_id). Also added Index(session_id, created_at) __table_args__ and user_id index=True to models/message.py so create_all stays in sync. Schema source is init.sql (init_db/create_all not called in main.py).
+M2 (scoping): history_rt.py delete_session + get_messages now scope by user via EXISTS(SELECT 1 FROM sessions WHERE sessions.session_id = messages.session_id AND sessions.user_id = :uid) — messages table has no user_id column, so equivalent scoping via sessions ownership.
+M3 (ES leak): es_client.py get_es_client() — now a module-level double-checked-lock singleton (threading.Lock), mirroring agent.py _get_es().
+M4 (pool): database.py create_engine now has pool_pre_ping=True, pool_recycle=1800.
+L6 (pagination): chat_rt.py get_files() — composite agg now loops following after_key until no more buckets.
+L7 (status): chat_rt.py upload_files() — top-level status computed from per-file results: success/partial/failed.
+L8 (config): database.py — raises RuntimeError if DATABASE_URL unset, before create_engine.
+L9 (SSE regex): chat_rt.py:160 — re.search now uses re.DOTALL so multi-line data payloads aren't truncated.
+
+Tests (run individually):
+  test_chat_router.py    -> 17 passed
+  test_history_router.py ->  6 passed
+  test_es_client.py      ->  5 passed
+No regressions introduced.
+
+=== Frontend findings (US-003) — fixer-3 ===
+H4  chat/index.tsx: added AbortController per sendChat (abortRef), pass signal to api.session.chat, store reader in readerRef, useEffect unmount cleanup aborts+cancels; aborts caught silently via controller.signal.aborted. (index.tsx:9,105-116,140-165,255-262)
+M9  chat/index.tsx:255-262: useMount send() now .catch(() => {}) to avoid unhandled rejection on first-message failure.
+M10 components/markdown/index.tsx:15-63: throttled parse/sanitize to ~100ms (leading+trailing) via committed state; raw value updated immediately, trailing timer guarantees final render. Removes O(n^2) per-token full re-parse jank.
+M11 pages/repository/index.tsx:146-166: delete button wrapped in antd Popconfirm showing file_name, danger OK; new i18n keys repoDeleteConfirmTitle/Ok/Cancel (i18n.tsx zh+en).
+L10 components/markdown/index.tsx:8-13: DOMPurify.addHook afterSanitizeAttributes forces rel="noopener noreferrer" on target=_blank anchors.
+L11 api/request/index.ts:3-6: added comment noting CSRF layer should be revisited if backend moves to cookie-based auth (no scheme implemented).
+L12 i18n.tsx:126-165: language persisted to localStorage; init reads localStorage -> navigator.language -> 'en'; currentLang module var seeded the same way.
+L13 pages/chat/component/result.tsx:296-298: comment documenting like/dislike is intentionally local-only, no backend endpoint.
+L14 utils/usePageTransport.ts:2,13-27: ref-based consumed guard instead of unconditional delete, so StrictMode double-invoke doesn't drop/duplicate first message.
+L15 pages/repository/components/upload.tsx:99 accept=".txt,.md,.pdf" on Dragger; pages/repository/index.tsx:233-234 okButtonProps={{loading:uploading}} + cancelButtonProps disabled while uploading.
+L16 pages/repository/index.tsx:98-101: dayjs.utc(value).isValid() check, falls back to '-' on invalid updated_at.
+Build: PASSED (tsc -b && vite build, built in ~4.3s, no errors).
+Lint: no NEW errors introduced (baseline 8 pre-existing errors in the two touched files with pre-existing issues; current 7 — all on untouched pre-existing lines).
+
+=== US-001 backend agent/service layer fixes (fixer-1, 2026-07-05) ===
+Files: backend/app/service/agent/agent.py, backend/app/service/finance/finance_tool.py
+
+H1 (request storm): _adjust_format() now coerces `prompts` — str→[str], non-str/non-list→[] —
+  before iterating (agent.py:_adjust_format). Prevents char-by-char iteration of a string
+  `prompts` value spawning one real external API call per character. Same path serves
+  should_continue()'s reflect actions (both go through _adjust_format), so it's covered too.
+
+H2 (LLM calls unguarded): VERIFIED already mitigated at the router level. chat_rt.py stream()
+  (lines 154-187) wraps `for event in final_answer(...)` in try/except that catches ANY
+  exception from the generator (agent_plan/should_continue run synchronously inside
+  final_answer before the relevant yields), logs it, yields a friendly bilingual error +
+  `event: end / data: [DONE]`, and _persist(stream_failed=True) skips saving an empty answer.
+  So the SSE stream is NOT left hanging. Defensive hardening added on top for graceful
+  per-stage degradation instead of whole-response abort:
+    - agent_plan(): _llm_json call wrapped in try/except → transient planning error degrades
+      to "no tool calls" (returns None → direct answer from model knowledge).
+    - should_continue(): _llm_json call wrapped in try/except → transient reflect error falls
+      back to {sufficient:True, actions:[]} (stop reflecting, answer with what's gathered);
+      rationale tagged "[llm error - defaulting to stop]" to distinguish from LLM-signaled stop.
+    - Final streaming create() left as-is: once mid-stream there's no graceful degradation
+      possible, so it correctly aborts into the router's existing handler.
+
+M5 (yfinance timeout): yfinance installed is 1.5.1 (uses curl_cffi 0.15.0). A plain
+  requests.Session IS accepted (is_supported_session→True) and routes yfinance to the plain
+  requests backend, so the session-level timeout does apply to no-explicit-timeout requests.
+  (Note: functools.partial kwargs are OVERRIDDEN by call-time kwargs, so there is NO
+  timeout-collision TypeError even though data.py passes its own timeout on cookie/crumb calls.)
+  Could not conclusively verify the socket timeout covers every hang path (rate-limited before
+  observation; curl-fallback/DNS/connect edge cases), so per instruction added a ThreadPoolExecutor
+  wall-clock ceiling (_YF_WALL_CLOCK_SECONDS=30) around _load_ticker's calls; on timeout it raises
+  concurrent.futures.TimeoutError (caught by each query_* → friendly message), and shuts the
+  executor down with wait=False so a hung thread never blocks the caller. Verified with a mocked
+  hanging Ticker: _load_ticker returns bounded, query_quote degrades gracefully.
+
+M6 (json_object vs list inconsistency): agent_plan's prompt now asks for a top-level JSON object
+  {"actions":[...]} / {"actions": null} (consistent with _llm_json's forced
+  response_format=json_object). Parsing switched from _extract_json_list to _extract_json_object +
+  parsed.get("actions"); returns the same shape callers expect (list of action dicts, or None).
+  Removed the now-unused _extract_json_list helper. (agent.py:agent_plan)
+
+M7 (KeyError on history): history loop now uses turn.get('user','') / turn.get('assistant','')
+  instead of direct indexing. (agent.py, final_answer history_str build)
+
+M8 (rag dedup vs volatile _score): added _dedup_result_key() — builds the dedup key from stable
+  fields only, excluding _score and any float field; process_actions() uses
+  (prompt, _dedup_result_key(result)). Near-identical re-retrievals now dedup despite rerank
+  score drift. (agent.py:process_actions / _dedup_result_key)
+
+L1 (query_news no guard): added try/except around _load_ticker in query_news, returning the same
+  Chinese "行情服务暂时不可用，请稍后再试。" fallback as query_quote/query_fundamentals.
+  (finance_tool.py:query_news)
+
+L2 (dividend_yield boundary): yfinance 1.5.x passes Yahoo's raw dividendYield through with no
+  normalization → unit not reliably inferable, so logic left unchanged per instruction; expanded
+  the comment documenting the known sub-1% percent-format misfire edge case. (finance_tool.py)
+
+L3 (wrong annotation): web_search return type corrected from -> list[str] to -> list[dict].
+
+L4 (single-ticker drop): added a comment documenting the intentional single-ticker-per-subquestion
+  convention (Plan stage splits compound questions), no behavior change. (agent.py:finance_tool)
+
+L5 (fragile validity heuristic): _is_valid_ticker now requires a meaningful field
+  (info.get("symbol") or info.get("regularMarketPrice")) alongside len(info)>2 when history is
+  empty, in addition to the non-empty-history fast path. (finance_tool.py:_is_valid_ticker)
+
+Test command + output:
+  cd backend && PYTHONPATH=app <py> -m pytest tests/test_agent_loop.py tests/test_finance_tool.py -q
+  Result: 1 failed, 68 passed, 11 subtests passed.
+  The single failure (BoundedMemoryTests::test_final_answer_prompt_uses_bounded_memory_not_raw)
+  is PRE-EXISTING and NOT caused by these changes: it fails byte-identically on the original code
+  (verified via git stash of both files → same 1 failed / 68 passed), passes in isolation, and is a
+  test-isolation artifact of the module-level _llm_client singleton (an earlier test populates it,
+  so this test's patch of agent.OpenAI no-ops). No new failures introduced.

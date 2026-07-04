@@ -36,6 +36,9 @@ export const messages = {
     repoUploadDragTextHighlight: '点击上传',
     repoUploadDesc: '支持单个或批量上传文件，每个文件大小不超过5M，最多10个文件。',
     repoDeleteSuccess: '已删除',
+    repoDeleteConfirmTitle: '确认删除该文件？',
+    repoDeleteConfirmOk: '删除',
+    repoDeleteConfirmCancel: '取消',
     answerTitle: '答案',
     sourceTitle: '来源',
     imageResultsTitle: '图像',
@@ -95,6 +98,9 @@ export const messages = {
     repoUploadDragTextHighlight: 'click to upload',
     repoUploadDesc: 'Supports single or bulk file upload. Files must not exceed 5M each, with a maximum of 10 files.',
     repoDeleteSuccess: 'Deleted',
+    repoDeleteConfirmTitle: 'Delete this file?',
+    repoDeleteConfirmOk: 'Delete',
+    repoDeleteConfirmCancel: 'Cancel',
     answerTitle: 'Answer',
     sourceTitle: 'Source',
     imageResultsTitle: 'Images',
@@ -128,19 +134,38 @@ const LangContext = createContext<{
   setLang: (l: Lang) => void
 }>({ lang: 'en', setLang: () => {} })
 
+const LANG_STORAGE_KEY = 'lang'
+
+// 初始语言：优先读 localStorage（用户上次的选择），否则回退到浏览器语言，
+// 再回退到 'en'。这样刷新后不会把切换到中文的用户重置回英文。
+function readStoredLang(): Lang {
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY)
+    if (stored === 'zh' || stored === 'en') return stored
+  } catch {
+    // localStorage 不可用（隐私模式等），忽略即可。
+  }
+  return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
 // 供非 React 模块（如 axios 拦截器插件）读取当前语言用——它们没有 hook
 // 上下文可用，但仍需要把面向用户的字符串走 i18n 而不是硬编码中文。
 // LangProvider 的 setLang 包一层同步更新它，保持与 React state 一致。
-let currentLang: Lang = 'en'
+let currentLang: Lang = readStoredLang()
 
 export function getMessages() {
   return messages[currentLang]
 }
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('en')
+  const [lang, setLangState] = useState<Lang>(() => readStoredLang())
   const setLang = (l: Lang) => {
     currentLang = l
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, l)
+    } catch {
+      // localStorage 不可用时仅内存生效，不阻塞切换。
+    }
     setLangState(l)
   }
   return <LangContext.Provider value={{ lang, setLang }}>{children}</LangContext.Provider>

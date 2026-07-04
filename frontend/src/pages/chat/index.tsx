@@ -6,7 +6,7 @@ import { useLang } from '@/i18n'
 import { sessionState } from '@/store/session'
 import { usePageTransport } from '@/utils'
 import { useMount, useRequest } from 'ahooks'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { proxy, useSnapshot } from 'valtio'
 import ChatMessage from './component/chat-message'
@@ -103,6 +103,19 @@ export default function Index() {
   const loadingRef = useRef(loading)
   loadingRef.current = loading
 
+  // 保存进行中的流式请求控制器与 reader，组件卸载时中止请求并取消 reader，
+  // 避免用户中途离开后后端连接仍挂着、reader 在后台空转。
+  const abortRef = useRef<AbortController | null>(null)
+  const readerRef =
+    useRef<ReadableStreamDefaultReader<AllowSharedBufferSource> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+      readerRef.current?.cancel().catch(() => {})
+    }
+  }, [])
+
   // 发送聊天消息并处理流式响应
   const sendChat = useCallback(
     // 上传的附件已经在调用方通过 session 范围的 RAG 检索关联到本次会话
@@ -111,18 +124,27 @@ export default function Index() {
     // （见下方 chat.list.push 里的 target.attachments）。
     async (target: API.ChatItem, message: string) => {
       target.loading = true
+      const controller = new AbortController()
+      abortRef.current = controller
       try {
-        const res = await api.session.chat({
-          id: id!,
-          message,
-        })
+        const res = await api.session.chat(
+          {
+            id: id!,
+            message,
+          },
+          { signal: controller.signal },
+        )
 
         // 获取流式响应的reader
         const reader = res.data.getReader()
         if (!reader) return
+        readerRef.current = reader
 
         await read(reader)
       } catch (error: unknown) {
+        // 组件卸载/主动中止导致的取消不是真正的错误：静默返回，避免未处理的
+        // Promise rejection 和控制台噪音。
+        if (controller.signal.aborted) return
         // 展示给用户的是通用提示，而非后端原始错误字符串（可能是英文、未翻译，
         // 或暴露实现细节）；原始错误仍然通过 throw 保留给上层/控制台排查。
         target.error = t.genericError
@@ -254,7 +276,10 @@ export default function Index() {
   // 组件挂载时，处理页面间传递的消息或加载历史记录
   useMount(async () => {
     if (ctx?.data.message) {
-      send(ctx.data.message, ctx.data.attachments)
+      // 与 ComSender 里的 send 调用一致地吞掉 rejection：sendChat 失败时会
+      // 在消息气泡上标记 target.error，这里无需再抛出，否则首屏发送失败会产生
+      // 未处理的 Promise rejection。
+      send(ctx.data.message, ctx.data.attachments).catch(() => {})
     } else {
       history.run()
     }

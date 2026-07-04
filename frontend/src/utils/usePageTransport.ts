@@ -1,5 +1,5 @@
 import { useMount } from 'ahooks'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 const tempMap = new Map<PageTransportKey<any>, any>()
 
@@ -12,11 +12,19 @@ export interface PageTransportKey<T> extends Symbol {}
  */
 export function usePageTransport<T>(key: PageTransportKey<T>) {
   const [data, setData] = useState<T | undefined>(() => tempMap.get(key))
+  // StrictMode 下（仅开发环境）effect 会被双调用；用 ref 守卫保证只消费一次，
+  // 否则第二次调用会读到已被删除的 undefined，导致首条消息重复处理或丢失。
+  const consumedRef = useRef(false)
 
   useMount(() => {
+    if (consumedRef.current) return
+    consumedRef.current = true
+
     const tempData = tempMap.get(key)
-    setData(tempData)
-    tempMap.delete(key)
+    if (tempData !== undefined) {
+      setData(tempData)
+      tempMap.delete(key)
+    }
   })
 
   return {

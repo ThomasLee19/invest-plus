@@ -4,6 +4,7 @@ Finance 工具封装
 对应未来 finance_query 工具的职责：精确数值和结构化事实（行情、基本面、新闻）。
 """
 
+import concurrent.futures
 import contextlib
 import functools
 import io
@@ -17,14 +18,28 @@ def _quiet():
 
 
 def _is_valid_ticker(info: dict, history) -> bool:
-    """无效代码：.info 退化为只有 1-2 个 None 字段的字典，且 .history 为空。"""
-    return not history.empty or len(info) > 2
+    """有效代码：要么有实际的历史行情数据，要么 .info 里带有实质性标识字段。
+
+    仅靠 len(info) > 2 判断很脆弱：某些无效/半识别代码也会返回多于 2 个占位字段。
+    这里补充校验 symbol / regularMarketPrice 等有意义字段非空，配合字段数量一起判断，
+    降低把无效代码误判为有效的概率。"""
+    if not history.empty:
+        return True
+    has_meaningful_field = bool(info.get("symbol") or info.get("regularMarketPrice"))
+    return has_meaningful_field and len(info) > 2
 
 
 # yfinance 底层走 requests，Ticker()/.info/.history() 本身不接受 timeout 参数；
-# 显式传一个共享 requests session（带 timeout）是这个版本里让请求不至于无限挂起
-# 的干净做法，对 .info/.history/.news 三处调用都生效。
+# 显式传一个共享 requests session（带 timeout）是让单个 HTTP 请求不至于无限挂起
+# 的做法，对 .info/.history/.news 三处调用都生效。传入一个纯 requests.Session 时
+# yfinance(1.5.x) 会绕过 curl_cffi 走 requests 后端，此 timeout 对无显式 timeout
+# 的数据请求生效。
 _YF_TIMEOUT_SECONDS = 10
+# 兜底的整体墙钟上限：即便 per-socket timeout 在某些代码路径（curl_cffi 分支、
+# DNS 解析、连接建立等）未能生效，也保证 _load_ticker 不会无限阻塞调用线程
+# （FastAPI 线程池线程）。设得比单请求 timeout 宽松，因一次 _load_ticker 会串行
+# 发起 cookie/crumb/info/history 多个请求，正常也需数秒。
+_YF_WALL_CLOCK_SECONDS = 30
 
 
 def _yf_session():
@@ -35,13 +50,26 @@ def _yf_session():
 
 
 def _load_ticker(ticker: str):
-    """加载一次 yf.Ticker + .info + .history，供 quote/fundamentals/news 共用，避免重复请求。"""
+    """加载一次 yf.Ticker + .info + .history，供 quote/fundamentals/news 共用，避免重复请求。
+
+    在独立线程中执行并施加墙钟超时：一个挂死的请求不会无限占用调用线程；超时会抛出
+    concurrent.futures.TimeoutError，由各 query_* 的 try/except 捕获降级为友好提示。
+    超时后不 join 泄漏线程（shutdown(wait=False)），让其随底层 socket timeout 自行结束。
+    """
     import yfinance as yf
-    with _quiet():
-        t = yf.Ticker(ticker, session=_yf_session())
-        info = t.info
-        history = t.history(period="5d")
-    return t, info, history
+
+    def _do():
+        with _quiet():
+            t = yf.Ticker(ticker, session=_yf_session())
+            info = t.info
+            history = t.history(period="5d")
+        return t, info, history
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        return executor.submit(_do).result(timeout=_YF_WALL_CLOCK_SECONDS)
+    finally:
+        executor.shutdown(wait=False)
 
 
 def query_quote(ticker: str) -> str:
@@ -140,6 +168,10 @@ def query_fundamentals(ticker: str) -> str:
     # （如 0.0044 代表 0.44%），有的已经是百分比数值（如 0.44）。< 1 时按比例
     # 处理（*100），>= 1 时视为已是百分比，避免两种格式下都直接拼 "%" 导致
     # 数值缩小 100 倍或读起来像是股息率超过 100%。
+    # 已知边界误判（当前 yfinance 1.5.x 直接透传 Yahoo 原始值、无归一，单位不可
+    # 靠推断，故保留此启发式不猜测）：若某版本已是百分比格式且数值 < 1%（如 0.8
+    # 表示 0.8%），会被误当作小数比例 *100 放大成 80%。此类超低股息率占比很小，
+    # 在无法从版本可靠确定单位前，维持现有阈值逻辑。
     if dividend_yield is not None:
         dividend_yield_pct = dividend_yield * 100 if dividend_yield < 1 else dividend_yield
         div_str = f"{dividend_yield_pct:.2f}%"
@@ -172,7 +204,11 @@ def query_news(ticker: str, limit: int = 5) -> str:
     """
     ticker = ticker.upper().strip()
 
-    t, info, history = _load_ticker(ticker)
+    try:
+        t, info, history = _load_ticker(ticker)
+    except Exception as e:
+        print(f"[FinanceTool] 新闻请求失败：{ticker} -> {e}")
+        return "行情服务暂时不可用，请稍后再试。"
 
     if not _is_valid_ticker(info, history):
         return f"未找到股票代码：{ticker}，请确认代码是否正确（如 AAPL、MSFT）。"

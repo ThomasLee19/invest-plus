@@ -3,7 +3,7 @@ import IconDelete from '@/assets/repository/action/delete.svg'
 import { useLang } from '@/i18n'
 import { PlusOutlined } from '@ant-design/icons'
 import { useRequest } from 'ahooks'
-import { Button, Modal, Space, Table, Tag } from 'antd'
+import { Button, Modal, Popconfirm, Space, Table, Tag } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -96,7 +96,9 @@ export default function Index() {
         dataIndex: 'updated_at',
         width: 200,
         render(value) {
-          return dayjs.utc(value).utcOffset(8).format('MM/DD/YYYY HH:mm:ss')
+          const parsed = dayjs.utc(value)
+          // updated_at 缺失/格式异常时 format 会渲染成 "Invalid Date"，用占位符代替。
+          return parsed.isValid() ? parsed.utcOffset(8).format('MM/DD/YYYY HH:mm:ss') : '-'
         },
       },
       {
@@ -146,15 +148,18 @@ export default function Index() {
         render(_, row) {
           return (
             <Space>
-              <Button
-                color="default"
-                variant="text"
-                shape="circle"
-                size="small"
-                onClick={() => deleteFile(row)}
+              <Popconfirm
+                title={t.repoDeleteConfirmTitle}
+                description={row.file_name}
+                okText={t.repoDeleteConfirmOk}
+                cancelText={t.repoDeleteConfirmCancel}
+                okButtonProps={{ danger: true }}
+                onConfirm={() => deleteFile(row)}
               >
-                <img src={IconDelete} />
-              </Button>
+                <Button color="default" variant="text" shape="circle" size="small">
+                  <img src={IconDelete} />
+                </Button>
+              </Popconfirm>
             </Space>
           )
         },
@@ -230,6 +235,8 @@ export default function Index() {
           if (uploading) return
           setOpenUpload(false)
         }}
+        okButtonProps={{ loading: uploading }}
+        cancelButtonProps={{ disabled: uploading }}
         onOk={async () => {
           setUploading(true)
           try {

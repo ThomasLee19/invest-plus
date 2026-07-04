@@ -60,9 +60,10 @@ async def create_session(db: Session = Depends(get_db)):
             {"sid": session_id, "name": DEFAULT_SESSION_NAME, "uid": USER_ID},
         )
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("create_session failed")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
     return {"session_id": session_id, "status": "success"}
 
 
@@ -157,7 +158,7 @@ def chat(
             for event in final_answer(question, history=history, session_id=session_id):
                 yield event
                 # 收集 answer / think 内容
-                m = re.search(r"data: (.+)", event)
+                m = re.search(r"data: (.+)", event, re.DOTALL)
                 if m:
                     try:
                         data = json.loads(m.group(1))
@@ -264,7 +265,14 @@ async def upload_files(
                     logger.warning("upload_files failed to remove %s after index error: %s", file_path, rm_err)
             results.append({"file": safe_name, "status": "failed", "error": str(e)})
 
-    return {"status": "success", "results": results}
+    succeeded = sum(1 for r in results if r["status"] == "success")
+    if succeeded == len(results):
+        overall_status = "success"
+    elif succeeded == 0:
+        overall_status = "failed"
+    else:
+        overall_status = "partial"
+    return {"status": overall_status, "results": results}
 
 
 def _chunk_method_for_upload(file_name: str) -> str:
@@ -295,56 +303,71 @@ def get_files():
     """
     try:
         es = get_es_client()
-        resp = es.search(
-            index="finance_kb",
-            body={
-                "size": 0,
-                "query": {"term": {"source_kwd": "user_upload"}},
-                "aggs": {
-                    "by_file": {
-                        "composite": {
-                            "size": 10000,
-                            "sources": [
-                                {"docnm_kwd": {"terms": {"field": "docnm_kwd"}}},
-                                {
-                                    "session_id": {
-                                        "terms": {"field": "session_id", "missing_bucket": True}
-                                    }
-                                },
-                            ],
-                        },
-                        "aggs": {
-                            "latest": {
-                                "top_hits": {
-                                    "size": 1,
-                                    "_source": ["docnm_kwd", "create_time", "session_id"],
-                                }
-                            }
-                        },
-                    }
-                },
-            },
-        )
         results = []
-        for bucket in resp["aggregations"]["by_file"]["buckets"]:
-            src = bucket["latest"]["hits"]["hits"][0]["_source"]
-            name = src.get("docnm_kwd", "")
-            if not name:
-                continue
-            results.append({
-                "file_name": name,
-                # 真实上传时间；存量旧文件无 create_time 时回退为当前时间
-                "updated_at": src.get("create_time") or datetime.utcnow().isoformat(),
-                "chunk_method": _chunk_method_for_upload(name),
-                "status": "Indexed",
-                "session_id": src.get("session_id"),
-            })
+        after_key = None
+        # composite 聚合每页最多 10000 桶：单页只读第一页会在 (docnm_kwd,
+        # session_id) 组合数超过 10000 时静默截断，跟着 after_key 翻页直到
+        # 某一页不再返回桶为止，累积全部结果。
+        while True:
+            composite = {
+                "size": 10000,
+                "sources": [
+                    {"docnm_kwd": {"terms": {"field": "docnm_kwd"}}},
+                    {
+                        "session_id": {
+                            "terms": {"field": "session_id", "missing_bucket": True}
+                        }
+                    },
+                ],
+            }
+            if after_key is not None:
+                composite["after"] = after_key
+            resp = es.search(
+                index="finance_kb",
+                body={
+                    "size": 0,
+                    "query": {"term": {"source_kwd": "user_upload"}},
+                    "aggs": {
+                        "by_file": {
+                            "composite": composite,
+                            "aggs": {
+                                "latest": {
+                                    "top_hits": {
+                                        "size": 1,
+                                        "_source": ["docnm_kwd", "create_time", "session_id"],
+                                    }
+                                }
+                            },
+                        }
+                    },
+                },
+            )
+            agg = resp["aggregations"]["by_file"]
+            buckets = agg["buckets"]
+            if not buckets:
+                break
+            for bucket in buckets:
+                src = bucket["latest"]["hits"]["hits"][0]["_source"]
+                name = src.get("docnm_kwd", "")
+                if not name:
+                    continue
+                results.append({
+                    "file_name": name,
+                    # 真实上传时间；存量旧文件无 create_time 时回退为当前时间
+                    "updated_at": src.get("create_time") or datetime.utcnow().isoformat(),
+                    "chunk_method": _chunk_method_for_upload(name),
+                    "status": "Indexed",
+                    "session_id": src.get("session_id"),
+                })
+            after_key = agg.get("after_key")
+            if after_key is None:
+                break
         return results
     except Exception as e:
         # 不再吞异常返回 []——那会让 ES 故障与"确实没有文件"无法区分，前端会把
         # 后端宕机误显示为空列表。返回 500，让调用方能分辨后端故障与真正的空。
         logger.exception("get_files failed")
-        raise HTTPException(status_code=500, detail=f"get_files failed: {e}")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
 
 
 @router.get("/get_official_examples/")
@@ -392,7 +415,7 @@ def get_official_examples():
     except Exception as e:
         # 同 get_files：不吞异常返回 []，改为 500，区分后端故障与真正的空列表。
         logger.exception("get_official_examples failed")
-        raise HTTPException(status_code=500, detail=f"get_official_examples failed: {e}")
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")
 
 
 @router.delete("/delete_file/")
@@ -450,6 +473,6 @@ def delete_file(file_name: str = Query(...), session_id: str | None = Query(defa
         delete_knowledgebase_entry(file_name, session_id)
 
         return {"message": f"已删除 {file_name}（{deleted} 个分块，{removed_files} 个本地文件）"}
-    except Exception as e:
+    except Exception:
         logger.exception("delete_file failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="内部错误，请稍后重试")

@@ -36,8 +36,12 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- 创建索引
-CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+-- 复合索引：messages 的热查询是 WHERE session_id = ? ORDER BY created_at，
+-- (session_id, created_at) 复合索引可同时命中过滤和排序，避免额外排序；
+-- 该复合索引的最左前缀已覆盖单独按 session_id 查询的场景，因此不再单独建
+-- idx_messages_session_id。
+CREATE INDEX IF NOT EXISTS idx_messages_session_id_created_at ON messages(session_id, created_at);
 
 -- 创建知识库表
 CREATE TABLE IF NOT EXISTS knowledgebases (

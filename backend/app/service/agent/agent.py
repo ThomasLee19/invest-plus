@@ -107,11 +107,6 @@ def _llm_json(prompt: str) -> str:
     return completion.choices[0].message.content
 
 
-def _extract_json_list(text: str) -> str | None:
-    match = re.search(r"(\[[\s\S]*\])", text)
-    return match.group(1) if match else None
-
-
 # ── 工具实现 ──────────────────────────────────────────────────────────────────
 
 def _embed_query(text: str) -> list[float] | None:
@@ -372,6 +367,9 @@ def finance_tool(query: str) -> str:
         )
     # 优先选非虚词候选；只有当全部候选都是虚词时，才退回第一个（保留原行为，
     # 而非误报"未识别到 ticker"）。
+    # 单子问题只查第一个 ticker：agent_plan/should_continue 的 Plan 阶段约定每个
+    # 子问题只带一个大写 ticker，复合问题会被拆成多个子问题分别下发，因此这里
+    # 有意只取首个候选，忽略同一子问题里出现的其他大写词（不做多 ticker 扇出）。
     non_stopwords = [t for t in tickers if t not in _TICKER_STOPWORDS]
     ticker = non_stopwords[0] if non_stopwords else tickers[0]
 
@@ -383,7 +381,7 @@ def finance_tool(query: str) -> str:
     return _finance_query("quote", ticker=ticker)
 
 
-def web_search(query: str, language: str = "en") -> list[str]:
+def web_search(query: str, language: str = "en") -> list[dict]:
     """调用 Serper 网络搜索。language 映射为 Serper 的 hl 区域偏好（zh→zh-cn，en→en）。"""
     try:
         from app.service.web_search.web_search import serper_search, process_search_results
@@ -425,51 +423,65 @@ def agent_plan(query: str) -> list[dict] | None:
    - 示例："美联储最新利率决议"
 
 ## 工具选择规则
-默认不调用任何工具，输出 null；只有当问题清楚匹配下面某个场景时，才调用对应工具：
+默认不调用任何工具，输出 {{"actions": null}}；只有当问题清楚匹配下面某个场景时，才调用对应工具：
 - 精确数值（行情/市值/市盈率）→ finance_query
 - 财报内容/新闻解读/概念解释 → rag_search
 - 最新市场动态 → web_search
 - 复合问题可同时使用多个工具
 
-以下情况一律不调用任何工具，输出 null——这些都属于正常的对话交互，不要为了"兜底"而调用 rag_search 或 web_search：
+以下情况一律不调用任何工具，输出 {{"actions": null}}——这些都属于正常的对话交互，不要为了"兜底"而调用 rag_search 或 web_search：
 - 日常问候（你好、谢谢等）
 - 与金融完全无关的问题（数学、地理、历史等）
 - 询问你的身份或能力（如"你是谁"、"你能做什么"、"介绍一下自己"、"Who are you?"、"What can you do?"）
 - 询问对话历史（如"我之前问过什么"、"我上一个问题是什么"、"what did I ask you before"）
-- 任何不清楚属于上述三个工具适用场景的问题：不确定时默认输出 null，绝不能因为"不知道怎么分类"就默认调用 rag_search 搜索
+- 任何不清楚属于上述三个工具适用场景的问题：不确定时默认输出 {{"actions": null}}，绝不能因为"不知道怎么分类"就默认调用 rag_search 搜索
 
 ## 输出格式
-JSON 列表，每项包含 action_name 和 prompts（子问题列表）：
-[
-  {{
-    "action_name": "工具名称",
-    "prompts": ["子问题1", "子问题2"]
-  }}
-]
+JSON 对象，包含一个 actions 字段（工具调用列表）；每个工具调用含 action_name 和
+prompts（子问题列表）：
+{{
+  "actions": [
+    {{
+      "action_name": "工具名称",
+      "prompts": ["子问题1", "子问题2"]
+    }}
+  ]
+}}
 
 工具名称必须是：rag_search、finance_query、web_search 之一。
-不需要调用工具时输出：null
+不需要调用任何工具时输出：{{"actions": null}}
 
-只输出 JSON，不要输出任何其他内容。
+只输出 JSON 对象，不要输出任何其他内容。
 """.format(query=query, today=_current_date_str())
 
-    result = _llm_json(prompt)
-    print(f"[agent_plan] {result}")
-    json_list = _extract_json_list(result)
+    # LLM 调用失败时（网络/超时/限流）不让异常冲出 final_answer 生成器整体中断，
+    # 而是降级为"不调用任何工具"（返回 None），让流程直接进入 Answer 阶段用模型
+    # 自身知识作答——规划阶段的瞬时故障不应导致整条回答无法生成。
     try:
-        parsed = json.loads(json_list) if json_list else None
+        result = _llm_json(prompt)
+    except Exception as e:
+        print(f"[agent_plan] LLM 调用失败，降级为不调用工具：{e}")
+        return None
+    print(f"[agent_plan] {result}")
+    # _llm_json 强制 response_format=json_object，模型返回顶层 JSON 对象；
+    # 从中读取 actions 字段（工具调用列表，或 null 表示不需要工具）。
+    json_obj = _extract_json_object(result)
+    try:
+        parsed = json.loads(json_obj) if json_obj else None
     except Exception:
         return None
-    # _extract_json_list 的正则是贪婪匹配任意方括号子串——当 LLM 返回裸 JSON 对象
-    # （如 {"action_name":..., "prompts":[...]}）而非要求的 JSON 列表时，会误抓取
-    # 其嵌套的 prompts 数组，parsed 出来是一个字符串列表而非 dict 列表。这里校验
-    # 每一项都是带 action_name 的 dict，否则视为解析失败，安全降级为 null，
+    if not isinstance(parsed, dict):
+        return None
+    actions = parsed.get("actions")
+    if actions is None:
+        return None
+    # 校验每一项都是带 action_name 的 dict，否则视为解析失败，安全降级为 None，
     # 避免 _adjust_format 对字符串调用 .get() 而崩溃。
-    if not isinstance(parsed, list) or not all(
-        isinstance(item, dict) and "action_name" in item for item in parsed
+    if not isinstance(actions, list) or not all(
+        isinstance(item, dict) and "action_name" in item for item in actions
     ):
         return None
-    return parsed
+    return actions
 
 
 def _adjust_format(plan: list[dict]) -> list[dict]:
@@ -483,9 +495,39 @@ def _adjust_format(plan: list[dict]) -> list[dict]:
     for item in plan:
         if not isinstance(item, dict) or not item.get("action_name"):
             continue
-        for prompt in item.get("prompts", []):
+        # prompts 理应是列表，但 LLM 格式漂移时可能返回单个字符串（如
+        # "prompts": "AAPL price"）。若直接 for-in 迭代字符串会逐字符拆解，
+        # 为每个字符生成一次工具调用（每次都是真实外部 API 请求）——请求风暴。
+        # 因此在此归一：字符串包成单元素列表；既非字符串也非列表则视为空。
+        prompts = item.get("prompts", [])
+        if isinstance(prompts, str):
+            prompts = [prompts]
+        elif not isinstance(prompts, list):
+            prompts = []
+        for prompt in prompts:
             adjusted.append({"action_name": item["action_name"], "prompt": prompt})
     return adjusted
+
+
+def _dedup_result_key(result) -> str:
+    """构造去重 key 用的稳定结果表示：剔除易变的评分字段（_score 及任何 float），
+    只保留稳定标识字段（id/document_name/content_with_weight 等）。
+
+    rag_search 的结果每个 dict 含 rerank 打分 _score，同一 chunk 在不同轮次被重新
+    打分时分数会微小变化，若把整个 str(result) 作为 key，near-identical 的重复检索
+    结果会因分数不同而无法去重。"""
+    if isinstance(result, list):
+        stable = []
+        for item in result:
+            if isinstance(item, dict):
+                stable.append({
+                    k: v for k, v in item.items()
+                    if k != "_score" and not isinstance(v, float)
+                })
+            else:
+                stable.append(item)
+        return json.dumps(stable, ensure_ascii=False, sort_keys=True, default=str)
+    return str(result)
 
 
 def process_actions(
@@ -526,8 +568,10 @@ def process_actions(
 
             # 去重：仅当「同一子问题 + 完全相同结果」时才算重复。
             # 用完整 result（不截断）做 key，避免不同查询因前 200 字符相同被误丢
-            # （如行情卡表头格式统一、或 rag 命中同一篇文章首块时撞前缀）。
-            result_key = (prompt, str(result))
+            # （如行情卡表头格式统一、或 rag 命中同一篇文章首块时撞前缀）；
+            # 但排除易变的 _score 评分字段，否则 rerank 分数微小波动会让近乎相同的
+            # 检索结果无法去重（见 _dedup_result_key）。
+            result_key = (prompt, _dedup_result_key(result))
             if result_key in seen:
                 continue
             seen.add(result_key)
@@ -699,7 +743,18 @@ def should_continue(query: str, memory: list[dict]) -> dict:
         memory=json.dumps(_bounded_memory(memory), ensure_ascii=False, indent=2),
     )
 
-    result = _llm_json(prompt)
+    # Reflect 阶段 LLM 调用失败时降级为 sufficient=True（停止反思循环，用已收集
+    # 的信息作答），而非让异常冲出 final_answer 生成器整体中断——单次反思判断的
+    # 瞬时故障不应导致整条回答无法生成。rationale 文案与"LLM 主动判定足够"可区分。
+    try:
+        result = _llm_json(prompt)
+    except Exception as e:
+        print(f"[should_continue] LLM 调用失败，安全降级为停止循环：{e}")
+        return {
+            "sufficient": True,
+            "rationale": f"[llm error - defaulting to stop] {e}",
+            "actions": [],
+        }
     print(f"[should_continue] {result}")
     json_obj = _extract_json_object(result)
     try:
@@ -868,7 +923,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
         # 一样包进 <untrusted_context>，其中的任何"指令"都不得当作命令执行。
         turns = ""
         for turn in history:
-            turns += f"用户：{turn['user']}\n助手：{turn['assistant']}\n\n"
+            turns += f"用户：{turn.get('user', '')}\n助手：{turn.get('assistant', '')}\n\n"
         history_str = (
             "\n## 对话历史\n<untrusted_context>\n" + turns + "</untrusted_context>\n"
         )

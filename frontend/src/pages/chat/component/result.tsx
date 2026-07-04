@@ -17,6 +17,19 @@ import { TokenizerAndRendererExtension } from 'marked'
 import { useMemo, useState } from 'react'
 import styles from './result.module.scss'
 
+// item.link 来自后端转发的网络搜索结果（Serper），不可信；只有 http/https
+// 才允许打开，避免 javascript: 等伪协议造成 XSS/开放重定向。
+function openExternal(link?: string) {
+  if (!link) return
+  try {
+    const { protocol } = new URL(link)
+    if (protocol !== 'http:' && protocol !== 'https:') return
+  } catch {
+    return
+  }
+  window.open(link, '_blank', 'noopener,noreferrer')
+}
+
 const Section = (props: {
   title: string
   icon: string
@@ -33,7 +46,7 @@ const Section = (props: {
   )
 }
 
-const 答案 = (props: { item: API.ChatItem }) => {
+const Answer = (props: { item: API.ChatItem }) => {
   const { item } = props
   const { t } = useLang()
 
@@ -111,7 +124,7 @@ const 答案 = (props: { item: API.ChatItem }) => {
   )
 }
 
-const 来源 = (props: { item: API.ChatItem }) => {
+const Source = (props: { item: API.ChatItem }) => {
   const { item } = props
   const { t } = useLang()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
@@ -133,7 +146,7 @@ const 来源 = (props: { item: API.ChatItem }) => {
       <div className={styles['chat-message-result__source']}>
         {item.reference?.map((doc, index) => (
           <div
-            key={doc.document_id}
+            key={index}
             id={`source-ref-${index}`}
             className={styles.item}
             onClick={() => toggleExpanded(index)}
@@ -154,7 +167,7 @@ const 来源 = (props: { item: API.ChatItem }) => {
   )
 }
 
-const 图像 = (props: { item: API.ChatItem }) => {
+const Images = (props: { item: API.ChatItem }) => {
   const { item } = props
   const { t } = useLang()
 
@@ -165,7 +178,7 @@ const 图像 = (props: { item: API.ChatItem }) => {
           <div
             className={styles.item}
             key={item.link || item.imageUrl}
-            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+            onClick={() => openExternal(item.link)}
           >
             <div className={styles.box}>
               <img className={styles.cover} src={item.thumbnailUrl} />
@@ -177,7 +190,7 @@ const 图像 = (props: { item: API.ChatItem }) => {
   )
 }
 
-const 视频 = (props: { item: API.ChatItem }) => {
+const Videos = (props: { item: API.ChatItem }) => {
   const { item } = props
   const { t } = useLang()
 
@@ -188,7 +201,7 @@ const 视频 = (props: { item: API.ChatItem }) => {
           <div
             className={styles.item}
             key={item.link || item.imageUrl}
-            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+            onClick={() => openExternal(item.link)}
           >
             <div className={styles.box}>
               <img className={styles.cover} src={item.imageUrl} />
@@ -202,7 +215,7 @@ const 视频 = (props: { item: API.ChatItem }) => {
   )
 }
 
-const 相关 = (props: {
+const Related = (props: {
   item: API.ChatItem
   onSend?: (text: string) => void
 }) => {
@@ -263,7 +276,7 @@ export function Result(props: {
 
   return (
     <div className={styles['chat-message-result']}>
-      {item.think || item.content || item.error ? <答案 item={item} /> : null}
+      {item.think || item.content || item.error ? <Answer item={item} /> : null}
 
       {item.loading ? null : (
         <div className={styles['chat-message-result__actions']}>
@@ -303,14 +316,14 @@ export function Result(props: {
         </div>
       )}
 
-      {item.reference?.length ? <来源 item={item} /> : null}
+      {item.reference?.length ? <Source item={item} /> : null}
 
-      {item.image_results?.images?.length ? <图像 item={item} /> : null}
+      {item.image_results?.images?.length ? <Images item={item} /> : null}
 
-      {item.video_results?.videos?.length ? <视频 item={item} /> : null}
+      {item.video_results?.videos?.length ? <Videos item={item} /> : null}
 
       {!item.loading && isEnd && item.recommended_questions?.length ? (
-        <相关 item={item} onSend={onSend} />
+        <Related item={item} onSend={onSend} />
       ) : null}
     </div>
   )

@@ -979,7 +979,7 @@ class RAGFlowPdfParser:
                 self.page_chars = [[{**c, 'top': c['top'], 'bottom': c['bottom']} for c in page.dedupe_chars().chars if self._has_color(c)] for page in self.pdf.pages[page_from:page_to]]
             except Exception as e:
                 logging.warning(f"Failed to extract characters for pages {page_from}-{page_to}: {str(e)}")
-                self.page_chars = [[] for _ in range(page_to - page_from)]  # If failed to extract, using empty list instead.
+                self.page_chars = [[] for _ in self.page_images]  # If failed to extract, using empty list instead.
                 
             self.total_page = len(self.pdf.pages)
         except Exception:

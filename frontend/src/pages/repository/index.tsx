@@ -202,7 +202,6 @@ export default function Index() {
             columns={officialColumns}
             dataSource={officialData}
             scroll={officialScroll}
-            pagination={false}
             loading={officialLoading}
           />
         </div>
@@ -222,7 +221,6 @@ export default function Index() {
           dataSource={data}
           rowSelection={rowSelection}
           scroll={scroll}
-          pagination={false}
           loading={listLoading}
         />
       </div>

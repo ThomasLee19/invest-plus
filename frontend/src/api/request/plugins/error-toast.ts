@@ -29,13 +29,15 @@ export const errorToastPlugin: IRequestPlugin = {
         const status = response?.status
         const messages = getMessages()
         const statusKey = status != null ? NETWORK_ERROR_STATUS_CODES[status] : undefined
-        // 不再回退到 response?.data?.message/.detail/.error 等后端原始字段——
-        // 那些字符串未经过 i18n，且会把后端实现细节直接展示给用户，与
-        // chat/index.tsx 里用 t.genericError 替换原始后端错误的做法矛盾。
-        const message =
-          error instanceof ResponseError
-            ? error.message
-            : (statusKey && messages[statusKey]) || messages.requestError
+        // 展示用文案一律走 i18n，绝不信任 error.message——ResponseError 的
+        // message 携带的是后端原始字符串（见 service.ts 构造时用的
+        // data[MESSAGE_KEY]/detail），未经翻译且可能暴露实现细节，与
+        // chat/index.tsx 里用 t.genericError 替换原始后端错误的做法一致。
+        // 原始文案仅在此保留到控制台供排查。
+        if (error instanceof ResponseError && error.rawMessage) {
+          console.error('[request error]', error.rawMessage)
+        }
+        const message = (statusKey && messages[statusKey]) || messages.requestError
 
         window.$app.message.error(message)
 

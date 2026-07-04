@@ -680,6 +680,35 @@ class UploadBoostTests(unittest.TestCase):
         self.assertEqual([c["id"] for c in result], [1, 2, 3, 4, 5])
 
 
+class FinanceToolTickerExtractionTests(unittest.TestCase):
+    """finance_tool() must not pick a standalone stopword (I/A/US/CEO/PE/EPS)
+    as the ticker when a real ticker is present later in the sub-question."""
+
+    def test_stopword_before_real_ticker_resolves_to_real_ticker(self):
+        captured = {}
+
+        def _fake_finance_query(kind, ticker=None):
+            captured["kind"] = kind
+            captured["ticker"] = ticker
+            return "stub"
+
+        with patch.object(agent, "_finance_query", side_effect=_fake_finance_query):
+            agent.finance_tool("How do I check AAPL price")
+
+        self.assertEqual(captured["ticker"], "AAPL")
+
+    def test_stopword_is_used_only_when_it_is_the_sole_candidate(self):
+        captured = {}
+        with patch.object(agent, "_finance_query", side_effect=lambda k, ticker=None: captured.update(ticker=ticker) or "stub"):
+            agent.finance_tool("I want a quote")
+
+        self.assertEqual(captured["ticker"], "I")
+
+    def test_no_ticker_returns_guidance_message(self):
+        result = agent.finance_tool("how are you today")
+        self.assertIn("未能从问题中识别出股票代码", result)
+
+
 class StripFillerWordsTests(unittest.TestCase):
     """Step 9/10: _strip_filler_words() must remove Chinese/English filler
     and question words while preserving ticker symbols and financial terms,

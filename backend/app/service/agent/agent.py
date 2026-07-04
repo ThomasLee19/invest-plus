@@ -271,8 +271,16 @@ def _rerank_candidates(query: str, candidates: list[dict]) -> list[dict]:
                 f"message={getattr(resp, 'message', None)}"
             )
 
+        # 先把新分数收集到本地 dict，全部 index 校验通过后才提交到 candidates
+        # 并重排；否则一个越界的 r.index 会在循环中途抛 IndexError，此时部分
+        # candidate 的 _score 已被就地改写，降级返回的"原始"列表其实已被污染。
+        new_scores = {}
         for r in resp.output.results:
-            candidates[r.index]["_score"] = r.relevance_score
+            if not (0 <= r.index < len(candidates)):
+                raise IndexError(f"rerank result index {r.index} out of range")
+            new_scores[r.index] = r.relevance_score
+        for idx, score in new_scores.items():
+            candidates[idx]["_score"] = score
         return sorted(candidates, key=lambda c: c["_score"], reverse=True)
     except Exception as e:
         print(f"[_rerank_candidates] rerank 失败，降级返回原始排序：{e}")
@@ -297,7 +305,9 @@ def _apply_upload_boost(candidates: list[dict], boost_docnm: str | None) -> list
         return candidates[:5]
 
     best = max(matches, key=lambda c: c["_score"])
-    best_index = candidates.index(best)
+    # 用 identity 查找（与下面的移除步骤 `c is not best` 一致），避免
+    # list.index 的值相等匹配把另一个 __eq__ 相等的候选当成 best 定位。
+    best_index = next(i for i, c in enumerate(candidates) if c is best)
     if best_index < 5:
         return candidates[:5]
 
@@ -307,6 +317,10 @@ def _apply_upload_boost(candidates: list[dict], boost_docnm: str | None) -> list
 
 
 _TICKER_RE = re.compile(r"\b[A-Z]{1,5}\b")
+# 常见的全大写虚词/金融缩写，会与 _TICKER_RE 撞字并常出现在真正 ticker 之前
+# （如 "How do I read AAPL's price" 会先匹配到 "I"）。选 ticker 时先剔除这些，
+# 除非它们是唯一的候选（保留 "I" 之类恰好是某些语境里唯一大写词的情况）。
+_TICKER_STOPWORDS = {"I", "A", "US", "CEO", "PE", "EPS"}
 _NEWS_KEYWORDS = ("news", "新闻", "headline", "最新消息")
 _FUNDAMENTALS_KEYWORDS = (
     "fundamental", "基本面", "市盈率", "pe ratio", "p/e", "市值", "market cap",
@@ -332,7 +346,10 @@ def finance_tool(query: str) -> str:
             "[finance_query] 未能从问题中识别出股票代码（ticker）。请在问题中包含"
             "大写的股票代码，例如 AAPL、MSFT。"
         )
-    ticker = tickers[0]
+    # 优先选非虚词候选；只有当全部候选都是虚词时，才退回第一个（保留原行为，
+    # 而非误报"未识别到 ticker"）。
+    non_stopwords = [t for t in tickers if t not in _TICKER_STOPWORDS]
+    ticker = non_stopwords[0] if non_stopwords else tickers[0]
 
     query_lower = query.lower()
     if any(kw in query_lower for kw in _NEWS_KEYWORDS):
@@ -717,9 +734,14 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 
     history_str = ""
     if history:
-        history_str = "\n## 对话历史\n"
+        # 历史同样是不可信输入（源自此前用户消息/模型回答），与 memory/references
+        # 一样包进 <untrusted_context>，其中的任何"指令"都不得当作命令执行。
+        turns = ""
         for turn in history:
-            history_str += f"用户：{turn['user']}\n助手：{turn['assistant']}\n\n"
+            turns += f"用户：{turn['user']}\n助手：{turn['assistant']}\n\n"
+        history_str = (
+            "\n## 对话历史\n<untrusted_context>\n" + turns + "</untrusted_context>\n"
+        )
 
     # 引用列表：仅从 rag_search 的结果里抽取（用 content_with_weight 字段判别
     # 形状——web_search 的 结果 同样是 list[dict]，但字段是 title/url/content，

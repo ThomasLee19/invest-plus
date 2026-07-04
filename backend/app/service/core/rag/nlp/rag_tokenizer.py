@@ -53,7 +53,14 @@ class RagTokenizer:
 
             dict_file_cache = fnm + ".trie"
             logging.info(f"[HUQIE]:Build trie cache to {dict_file_cache}")
-            self.trie_.save(dict_file_cache)
+            # Build to a per-process temp file then atomically rename into place
+            # (os.rename is atomic on POSIX) so concurrent first-time builds --
+            # e.g. multiple run_in_threadpool workers racing on the same missing
+            # .trie file -- never leave a reader seeing a partially-written file,
+            # and the last writer to rename simply wins instead of corrupting it.
+            tmp_file_cache = f"{dict_file_cache}.{os.getpid()}.tmp"
+            self.trie_.save(tmp_file_cache)
+            os.replace(tmp_file_cache, dict_file_cache)
             of.close()
         except Exception:
             logging.exception(f"[HUQIE]:Build trie {fnm} failed")

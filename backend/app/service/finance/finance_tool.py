@@ -128,7 +128,15 @@ def query_fundamentals(ticker: str) -> str:
 
     pe_str = f"{trailing_pe:.2f}" if trailing_pe is not None else "未知"
     fpe_str = f"{forward_pe:.2f}" if forward_pe is not None else "未知"
-    div_str = f"{dividend_yield:.2f}%" if dividend_yield is not None else "无"
+    # yfinance 各版本对 dividendYield 的单位不一致：有的返回小数形式的比例
+    # （如 0.0044 代表 0.44%），有的已经是百分比数值（如 0.44）。< 1 时按比例
+    # 处理（*100），>= 1 时视为已是百分比，避免两种格式下都直接拼 "%" 导致
+    # 数值缩小 100 倍或读起来像是股息率超过 100%。
+    if dividend_yield is not None:
+        dividend_yield_pct = dividend_yield * 100 if dividend_yield < 1 else dividend_yield
+        div_str = f"{dividend_yield_pct:.2f}%"
+    else:
+        div_str = "无"
     eps_str = f"{eps:.2f}" if eps is not None else "未知"
     beta_str = f"{beta:.2f}" if beta is not None else "未知"
     range_str = (

@@ -91,6 +91,10 @@ export default function Index() {
           })
         })
       },
+      onError() {
+        // /messages 拉取失败时给出提示，避免渲染成一个静默的空会话。
+        window.$app.message.error(t.genericError)
+      },
     },
   )
 
@@ -225,55 +229,33 @@ export default function Index() {
       if (loadingRef.current) return
       if (!message) return
 
-      if (chat.list.length === 0) {
-        // 首次发送消息，创建用户消息和AI回复占位
-        chat.list.push({
-          id: createChatId(),
-          role: ChatRole.User,
-          type: ChatType.Text,
-          content: message,
-          attachments,
-        })
+      // 首次与后续发送逻辑一致：追加用户消息 + 统一形状的 AI 回复占位。
+      chat.list.push({
+        id: createChatId(),
+        role: ChatRole.User,
+        type: ChatType.Text,
+        content: message,
+        attachments,
+      })
 
-        chat.list.push({
-          id: createChatId(),
-          role: ChatRole.Assistant,
-          type: ChatType.Document,
-          documents: [],
-        })
+      chat.list.push({
+        id: createChatId(),
+        role: ChatRole.Assistant,
+        type: ChatType.Document,
+        content: '',
+      })
+      scrollToBottom()
 
-        const target = chat.list[chat.list.length - 1]
+      const target = chat.list[chat.list.length - 1]
 
-        await sendChat(target, message!)
-      } else {
-        // 非首次发送，添加新的对话项
-        chat.list.push({
-          id: createChatId(),
-          role: ChatRole.User,
-          type: ChatType.Text,
-          content: message,
-          attachments,
-        })
-
-        chat.list.push({
-          id: createChatId(),
-          role: ChatRole.Assistant,
-          type: ChatType.Document,
-          content: '',
-        })
-        scrollToBottom()
-
-        const target = chat.list[chat.list.length - 1]
-
-        await sendChat(target, message!)
-      }
+      await sendChat(target, message)
     },
     [chat, sendChat],
   )
   // 组件挂载时，处理页面间传递的消息或加载历史记录
   useMount(async () => {
     if (ctx?.data.message) {
-      send(ctx.data.message)
+      send(ctx.data.message, ctx.data.attachments)
     } else {
       history.run()
     }

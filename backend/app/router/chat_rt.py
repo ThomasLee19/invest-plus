@@ -70,23 +70,31 @@ async def create_session(db: Session = Depends(get_db)):
 def chat(
     session_id: str = Query(...),
     request: ChatRequest = Body(...),
-    db: Session = Depends(get_db),
 ):
     # 同步 def（而非 async def）：FastAPI 会把它扔进线程池执行，避免下面这条
     # 同步 db.execute 历史查询阻塞事件循环——这个 handler 本身也没有需要
     # await 的地方（流式部分是普通同步生成器，不是 async generator）。
     session_id = _validate_session_id(session_id)
+    # 空字符串 / 非法 session_id 立即拒绝：否则 session_id=None 会一路走到
+    # _persist 的 INSERT，撞 messages.session_id NOT NULL 约束，异常被吞掉，
+    # 流式答案被静默丢弃、从不入库。
+    if session_id is None:
+        raise HTTPException(status_code=400, detail="session_id is required")
     question = request.message
 
-    # 查询该 session 的历史对话（最近 5 轮）
-    rows = db.execute(
-        text(
-            "SELECT user_question, model_answer FROM messages "
-            "WHERE session_id = :sid ORDER BY created_at DESC LIMIT 5"
-        ),
-        {"sid": session_id},
-    ).fetchall()
-    history = [{"user": r.user_question, "assistant": r.model_answer} for r in reversed(rows)]
+    # 查询该 session 的历史对话（最近 5 轮）。用独立的短生命周期 session：
+    # Depends(get_db) 的连接直到整个 StreamingResponse body（Plan→Act→Reflect
+    # →Answer 全流程，可能数十秒）被消费完才 close，会把连接池占满；这里查完
+    # 立即归还连接，与 _persist 的写库同理。
+    with SessionLocal() as read_db:
+        rows = read_db.execute(
+            text(
+                "SELECT user_question, model_answer FROM messages "
+                "WHERE session_id = :sid ORDER BY created_at DESC LIMIT 5"
+            ),
+            {"sid": session_id},
+        ).fetchall()
+        history = [{"user": r.user_question, "assistant": r.model_answer} for r in reversed(rows)]
 
     # 流式生成，同时收集完整回答用于存库
     collected_answer: list[str] = []
@@ -159,7 +167,11 @@ async def upload_files(
             status_code=400,
             detail=f"单次最多上传 {MAX_FILES_PER_REQUEST} 个文件",
         )
-    results = []
+
+    # 先整体校验每个文件的文件名/扩展名，任何一个不合法就整批拒绝——在写盘/
+    # 索引任何一个文件之前。否则批次中靠后的非法文件会导致整个请求抛异常，而
+    # 靠前的文件已被写盘并索引进 ES + Postgres，重试时又会重复索引。
+    safe_names = []
     for file in files:
         safe_name = _safe_filename(file.filename)
         suffix = os.path.splitext(safe_name)[1].lower()
@@ -168,7 +180,10 @@ async def upload_files(
                 status_code=400,
                 detail=f"{safe_name} 不支持，仅支持 .txt、.md 和 .pdf 文件",
             )
+        safe_names.append(safe_name)
 
+    results = []
+    for file, safe_name in zip(files, safe_names):
         save_dir = os.path.join(STORAGE_DIR, session_id or "global")
         os.makedirs(save_dir, exist_ok=True)
         file_path = os.path.join(save_dir, safe_name)
@@ -203,6 +218,13 @@ async def upload_files(
             await run_in_threadpool(insert_knowledgebase, USER_ID, safe_name, session_id)
             results.append({"file": safe_name, "status": "success"})
         except Exception as e:
+            # 索引失败时清理已写盘的文件，避免留下无对应 ES/PG 记录的孤儿文件
+            # （否则重试会与残留文件叠加，且磁盘上多出无法通过接口删除的垃圾）。
+            if os.path.isfile(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError as rm_err:
+                    logger.warning("upload_files failed to remove %s after index error: %s", file_path, rm_err)
             results.append({"file": safe_name, "status": "failed", "error": str(e)})
 
     return {"status": "success", "results": results}
@@ -273,9 +295,11 @@ def get_files():
                 "session_id": src.get("session_id"),
             })
         return results
-    except Exception:
+    except Exception as e:
+        # 不再吞异常返回 []——那会让 ES 故障与"确实没有文件"无法区分，前端会把
+        # 后端宕机误显示为空列表。返回 500，让调用方能分辨后端故障与真正的空。
         logger.exception("get_files failed")
-        return []
+        raise HTTPException(status_code=500, detail=f"get_files failed: {e}")
 
 
 @router.get("/get_official_examples/")
@@ -320,9 +344,10 @@ def get_official_examples():
                 "status": "Indexed",
             })
         return results
-    except Exception:
+    except Exception as e:
+        # 同 get_files：不吞异常返回 []，改为 500，区分后端故障与真正的空列表。
         logger.exception("get_official_examples failed")
-        return []
+        raise HTTPException(status_code=500, detail=f"get_official_examples failed: {e}")
 
 
 @router.delete("/delete_file/")

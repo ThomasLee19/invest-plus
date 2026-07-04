@@ -4,7 +4,7 @@ import copy
 from collections import Counter
 import logging
 import chardet
-from service.core.rag.utils import num_tokens_from_string
+from service.core.rag.utils import num_tokens_from_string, truncate
 from PIL import Image
 
 def is_english(texts):
@@ -83,6 +83,11 @@ def naive_merge_docx(sections, chunk_token_num=128, delimiter="\n。；！？"):
     return cks, images
 
 
+# text-embedding-v3 的输入上限约 8192 token；留出余量避免单个 chunk 卡在
+# 临界值附近（pos 后缀、tokenizer 误差等）导致仍然越界。
+_MAX_EMBED_TOKENS = 8000
+
+
 def naive_merge(sections, chunk_token_num=128, delimiter="\n。；！？"):
     if not sections:
         return []
@@ -94,6 +99,12 @@ def naive_merge(sections, chunk_token_num=128, delimiter="\n。；！？"):
     def add_chunk(t, pos):
         nonlocal cks, tk_nums, delimiter
         tnum = num_tokens_from_string(t)
+        # 单个 piece 本身就超过 embedding 模型输入上限时（delimiter 切分后仍无
+        # 分隔符命中的超长文本框），必须在这里硬截断，否则会原样传到 _embed
+        # 并让整份文件的上传因这一个 chunk 失败。
+        if tnum > _MAX_EMBED_TOKENS:
+            t = truncate(t, _MAX_EMBED_TOKENS)
+            tnum = _MAX_EMBED_TOKENS
         if not pos:
             pos = ""
         if tnum < 8:

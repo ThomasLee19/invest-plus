@@ -13,7 +13,6 @@ import {
 export type IRouteObject = {
   children?: IRouteObject[]
   name?: string
-  auth?: boolean
   pure?: boolean
   meta?: any
 } & Omit<RouteObject, 'children'>
@@ -71,10 +70,6 @@ function helper(route: IRouteObject) {
 
   if (_route.children) {
     _route.children = _route.children.map((child: any) => helper(child))
-  }
-
-  if (_route.auth === undefined) {
-    _route.auth = true
   }
 
   return _route as RouteObject

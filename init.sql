@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS messages (
     session_id VARCHAR(16) NOT NULL,
     user_question TEXT NOT NULL,
     model_answer TEXT NOT NULL,
-    documents  TEXT,  -- 修改为 jsonb 类型
+    documents  TEXT,  -- 存储序列化后的 JSON 字符串（列类型为 TEXT，非 jsonb）
     recommended_questions TEXT,  
     think TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- 创建时间

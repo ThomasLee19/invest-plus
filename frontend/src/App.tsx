@@ -3,7 +3,7 @@ import { LangProvider, useLang } from '@/i18n'
 import { App as AntdApp, ConfigProvider, Spin } from 'antd'
 import enUS from 'antd/es/locale/en_US'
 import zhCN from 'antd/es/locale/zh_CN'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 function App() {
   return (
     <LangProvider>
@@ -34,7 +34,10 @@ function AppContent() {
 }
 
 function MountApi() {
-  window.$app = AntdApp.useApp()
+  const app = AntdApp.useApp()
+  useEffect(() => {
+    window.$app = app
+  }, [app])
   const { t } = useLang()
 
   const [loading, setLoading] = useState(false)

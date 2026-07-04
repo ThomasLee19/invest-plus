@@ -12,11 +12,14 @@ export default function ComSender(
     className?: string
     loading?: boolean
     sessionId?: string
+    // 主页在首个附件上传前尚无会话；此回调懒创建并返回一个会话 id，
+    // 让上传与后续发送/跳转复用同一个会话。聊天页已有 sessionId，无需传。
+    ensureSessionId?: () => Promise<string | undefined>
     onSend?: (value: string, files: string[]) => void | Promise<void>
     onContract?: () => void
   }>,
 ) {
-  const { className, onSend, loading, sessionId, ...rest } = props
+  const { className, onSend, loading, sessionId, ensureSessionId, ...rest } = props
   const { t } = useLang()
   const [value, setValue] = useState('')
   const [fileList, setFileList] = useState<(UploadFile & { loading?: boolean })[]>([])
@@ -44,7 +47,8 @@ export default function ComSender(
   async function upload(file: UploadFile & { loading?: boolean }) {
     setFileList((prev) => [...prev, { ...file, loading: true }])
     try {
-      await api.session.upload({ files: file as any, session_id: sessionId })
+      const session_id = ensureSessionId ? await ensureSessionId() : sessionId
+      await api.session.upload({ files: file as any, session_id })
       window.$app.message.success(`${file.name} ${t.uploadSuccess}`)
     } catch {
       window.$app.message.error(`${file.name} ${t.uploadFailed}`)

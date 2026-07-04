@@ -58,6 +58,10 @@ ES_URL = os.getenv("ES_URL", "http://localhost:1200")
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
 
+_openai_client = OpenAI(
+    api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
+)
+
 # Dynamic-template regex (below, in ensure_index) that auto-maps any field
 # matching this pattern to ES `keyword` type. Hoisted to a named constant
 # (rather than left as an inline string literal) so tests can import and
@@ -124,9 +128,8 @@ def ensure_index(es: Elasticsearch):
 
 
 def generate_embedding(text: str) -> list[float] | None:
-    client = OpenAI(api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL)
     try:
-        resp = client.embeddings.create(
+        resp = _openai_client.embeddings.create(
             model=EMBEDDING_MODEL,
             input=text,
             dimensions=EMBEDDING_DIMS,
@@ -191,7 +194,11 @@ def parse_filing_html(html: str) -> str:
     # Modern EDGAR filings are inline-XBRL: the cover-page facts are
     # duplicated into a hidden <ix:header> block that would otherwise dump
     # raw XBRL tag/context noise ahead of the actual filing text.
-    for hidden in soup.find_all("ix:header"):
+    # NOTE: matched namespace-agnostically (tag.name.split(":")[-1] == "header")
+    # since lxml's HTML parser commonly mangles/flattens namespaced tag names
+    # like "ix:header", so a literal soup.find_all("ix:header") can silently
+    # match nothing. Best-effort fix; not verified against a live iXBRL sample.
+    for hidden in soup.find_all(lambda tag: tag.name and tag.name.split(":")[-1] == "header"):
         hidden.decompose()
     for hidden in soup.select('[style*="display:none"], [style*="display: none"]'):
         hidden.decompose()
@@ -235,8 +242,8 @@ def index_chunks(es: Elasticsearch, chunks: list[str], doc_id: str, docnm: str,
             "source_kwd": source_kwd,
             "content_with_weight": chunk,
             "content_ltks": re.sub(r"[#\-\*`|]", " ", chunk).lower(),
-            "create_time": str(datetime.datetime.now())[:19],
-            "create_timestamp_flt": datetime.datetime.now().timestamp(),
+            "create_time": str(datetime.datetime.now(datetime.timezone.utc))[:19],
+            "create_timestamp_flt": datetime.datetime.now(datetime.timezone.utc).timestamp(),
             f"q_{EMBEDDING_DIMS}_vec": vec,
             **extra_fields,
         }

@@ -1,4 +1,5 @@
 import * as api from '@/api'
+import { ResponseError } from '@/api/request/error'
 import IconUpload from '@/assets/repository/upload.svg'
 import { useLang } from '@/i18n'
 import { Upload, UploadFile, UploadProps } from 'antd'
@@ -58,7 +59,14 @@ export default forwardRef(function RepositoryUpload(
               }),
             )
           } catch (error: any) {
-            window.$app.message.error(error?.message || t.uploadFailed)
+            // 后端错误（ResponseError）的 message 是未经 i18n 的原始文案，统一
+            // 显示 t.uploadFailed；仅本地抛出的已翻译错误（如文件过大）才用其
+            // message 展示。
+            const msg =
+              error instanceof ResponseError
+                ? t.uploadFailed
+                : error?.message || t.uploadFailed
+            window.$app.message.error(msg)
             hasError = true
             setFileList((prev) =>
               prev.map((item) => {
@@ -66,7 +74,7 @@ export default forwardRef(function RepositoryUpload(
                   return {
                     ...item,
                     status: 'error',
-                    response: error?.message,
+                    response: msg,
                   }
                 }
                 return item

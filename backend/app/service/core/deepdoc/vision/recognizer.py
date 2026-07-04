@@ -61,19 +61,10 @@ class Recognizer(object):
                 model_file_path))
 
         def cuda_is_available():
-            # GPU inference needs both a CUDA-capable torch AND onnxruntime's CUDA EP.
-            # onnxruntime-cpu reports no CUDAExecutionProvider even when torch sees a GPU
-            # (e.g. WSL2), so requiring the EP avoids selecting a gpu:0 arena the session
-            # can't actually use.
-            if "CUDAExecutionProvider" not in ort.get_available_providers():
-                return False
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    return True
-            except Exception:
-                return False
-            return False
+            # onnxruntime-cpu never reports CUDAExecutionProvider, so checking the
+            # installed providers is sufficient to know whether GPU inference is
+            # actually usable -- no need for a separate torch CUDA probe.
+            return "CUDAExecutionProvider" in ort.get_available_providers()
 
         # https://github.com/microsoft/onnxruntime/issues/9509#issuecomment-951546580
         # Shrink GPU memory after execution

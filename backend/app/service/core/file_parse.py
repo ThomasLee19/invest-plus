@@ -178,7 +178,9 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
     es = get_es_client()
 
     # 整个文件的所有 chunk 用同一上传时间戳（字段名与 index_smogon.py 保持一致）
-    create_time = str(datetime.datetime.utcnow())[:19]
+    upload_time = datetime.datetime.now(datetime.timezone.utc)
+    create_time = str(upload_time)[:19]
+    create_timestamp_flt = upload_time.timestamp()
 
     docs = []
     for (display, embed_text), vec in zip(items, vectors):
@@ -199,6 +201,7 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
                 # BM25 检索 + 与向量同源：去标记后的干净文本
                 "content_ltks": embed_text,
                 "create_time": create_time,
+                "create_timestamp_flt": create_timestamp_flt,
                 "q_1024_vec": vec,
             },
         })
@@ -209,3 +212,13 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
     # 不强制立即刷新整个 shard，只等下一次自然 refresh。
     success, errors = bulk(es, docs, raise_on_error=False, refresh="wait_for")
     print(f"[file_parse] {file_name}: {success} chunks 写入 ES，{len(errors)} 失败")
+    if errors and success == 0:
+        raise RuntimeError(
+            f"{file_name}: all {len(errors)} chunk(s) failed to index into ES "
+            f"(0 succeeded) — first error: {errors[0]}"
+        )
+    if errors:
+        logging.warning(
+            "[file_parse] %s: %d/%d chunks failed to index into ES",
+            file_name, len(errors), len(docs),
+        )

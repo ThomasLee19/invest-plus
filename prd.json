@@ -1,67 +1,361 @@
 {
-  "title": "Phase 1: Agent Loop Architecture Upgrade",
-  "sourcePlan": ".omc/plans/finance-agent-migration-plan.md",
-  "scope": "Phase 1 only (steps 1-5). Does not touch finance tools, FinReportRAG, prompts, or frontend.",
+  "title": "Fix all findings in debug/26_7_4_debug_2.md (severity-ordered)",
+  "sourcePlan": "debug/26_7_4_debug_2.md",
+  "scope": "Fix all 34 findings (3 High, 12 Medium, 19 Low) from the second code-review report, highest severity first. Verify existing functionality after each fix. Mark each fixed finding as 已完成 (Completed) in debug/26_7_4_debug_2.md. Write a bug-fix report when done.",
   "stories": [
     {
-      "id": "US-1",
-      "title": "Extract should_continue() with structured LLM-judgment contract",
-      "description": "Refactor reflection(query, memory) in backend/app/service/agent/agent.py into should_continue(query, memory), whose LLM prompt requires a structured JSON response {\"sufficient\": bool, \"rationale\": str, \"actions\": [...]}, parsed into that exact dict shape. The function remains the LLM-calling boundary (not a hardcoded heuristic) - the continue/stop judgment comes from the LLM's own output every time.",
+      "id": "H1",
+      "title": "chat_rt.py holds DB session across entire streaming response",
+      "description": "Fetch chat history in a short-lived SessionLocal() block instead of a request-scoped Depends(get_db) session held open for the whole SSE stream.",
       "acceptanceCriteria": [
-        "should_continue(query, memory) exists in agent.py and returns a dict with keys 'sufficient' (bool), 'rationale' (str), 'actions' (list)",
-        "The LLM prompt explicitly requires the model to output sufficient/rationale/actions as JSON, not the old bare list-or-null contract",
-        "On JSON parse failure, should_continue returns a safe default of {'sufficient': True, 'rationale': '<parse error note>', 'actions': []} rather than raising or returning None",
-        "No call site still references the old reflection() name or its list|None return contract"
+        "chat() no longer depends on a request-scoped db session held open across the StreamingResponse body",
+        "History fetch uses a short-lived session (opened and closed before streaming starts), mirroring _persist's pattern",
+        "Existing chat tests / manual smoke check still produce correct history-aware answers",
+        "backend/tests/test_agent_loop.py still passes"
       ],
       "passes": true
     },
     {
-      "id": "US-2",
-      "title": "Replace single hardcoded reflection call with bounded LLM-driven while-loop",
-      "description": "In final_answer(), replace the single reflect_plan = reflection(query, memory) call with a while loop (safety cap, e.g. 5 iterations) that repeatedly calls should_continue(), executes any requested actions via process_actions(), appends results to memory, and stops only when should_continue() signals sufficient=True or the safety cap is hit. Cap-stops must be logged/markered distinctly from LLM-signaled stops.",
+      "id": "H2",
+      "title": "Raw backend error strings leak via ResponseError (service.ts)",
+      "description": "Stop constructing ResponseError.message from raw backend message/detail fields; map to translated messages in error-toast.ts instead.",
       "acceptanceCriteria": [
-        "final_answer() contains a while loop (not a single if-block) driving the reflection/act cycle",
-        "The loop calls should_continue() each iteration and reads its 'sufficient' field to decide whether to continue",
-        "A safety cap (explicit constant, e.g. MAX_REFLECTION_ITERATIONS = 5) bounds the loop",
-        "When the cap is hit without an LLM sufficient=True signal, a distinct log/marker is emitted (e.g. a different log message or a flag) than when the LLM itself signals sufficient",
-        "A mocked-dependency test drives final_answer()'s generator through at least 2 reflection iterations before stopping, proving the loop iterates more than once when should_continue() keeps requesting actions",
-        "A separate mocked-dependency test proves the cap path is hit and distinctly logged when should_continue() never signals sufficient"
+        "ResponseError no longer carries the raw backend message/detail string for display purposes",
+        "error-toast.ts displays a translated/mapped message instead of a raw backend string for non-chat request failures",
+        "npm run build succeeds",
+        "npm run lint succeeds"
       ],
       "passes": true
     },
     {
-      "id": "US-3",
-      "title": "Propagate tool execution errors into memory instead of swallowing them",
-      "description": "In process_actions(), when a tool call raises an Exception, append a structured error entry to the memory list (not just print/traceback) so that should_continue()'s LLM call can observe the failure and react (retry, fall back, or flag incompleteness) on the next iteration.",
+      "id": "H3",
+      "title": "Home-page file attachments orphaned from the session they're sent in",
+      "description": "Ensure a session exists before uploading on the home page (or defer upload until the session exists) and thread session_id/attachments through correctly.",
       "acceptanceCriteria": [
-        "process_actions() appends an entry to memory on tool exception (e.g. {'提问': prompt, '结果': '<error summary>', '错误': True} or equivalent structured shape)",
-        "The exception is still logged via print/traceback for operator visibility (no silent regression of existing logging)",
-        "A unit test simulates a tool raising an exception and asserts the returned memory list contains an entry reflecting that failure, distinguishable from a successful result"
+        "Uploading a file on the home page results in the file being associated with the session the resulting conversation actually uses",
+        "attachments are no longer silently dropped by useSendMessage",
+        "npm run build succeeds"
       ],
       "passes": true
     },
     {
-      "id": "US-4",
-      "title": "Stream reflection rationale into existing SSE content field",
-      "description": "When the while-loop (US-2) executes a reflection-triggered action, the SSE message yielded to the frontend must include should_continue()'s stated rationale in the existing 'content' string (role: 'agent' event), not just the action name/prompt as before. No new SSE schema field is added unless this approach proves insufficient.",
+      "id": "M1",
+      "title": "Ticker regex picks first ALL-CAPS token (agent.py)",
+      "description": "Filter out single-letter/common finance-acronym stopwords from ticker candidates before taking the first match.",
       "acceptanceCriteria": [
-        "The yielded SSE message for reflection-triggered actions includes the rationale text from should_continue()'s 'rationale' field in its 'content' string",
-        "The SSE event still uses the existing {'role': 'agent', 'content': ...} shape (no new top-level field added)",
-        "A test inspects the yielded event payloads from a mocked-dependency run of final_answer() and confirms the rationale text appears in the content string of at least one reflection-stage message"
+        "finance_tool no longer picks 'I'/'A' (or other configured stopwords) as a ticker when a real ticker is present in the same sub-question",
+        "backend/tests/test_agent_loop.py passes",
+        "A new or updated test demonstrates the stopword-filtering behavior"
       ],
       "passes": true
     },
     {
-      "id": "US-5",
-      "title": "Unit test suite for should_continue() against mocked LLM responses, no live network calls",
-      "description": "Add backend/tests/test_agent_loop.py with unittest-based tests that stub the openai/pokeapi_tool imports (so the test suite runs with zero installed third-party dependencies and zero network access) and mock the LLM-calling boundary to drive should_continue() through representative scenarios using Pokemon-domain memory fixtures (rag_search/pokeapi_query/web_search), per the plan's instruction to validate against existing Pokemon tools since the finance tool doesn't exist yet.",
+      "id": "M2",
+      "title": "Router HTTP layer has zero test coverage",
+      "description": "Add TestClient-based tests for chat_rt.py covering session_id validation, upload size/extension enforcement, and delete_file session-scoping.",
       "acceptanceCriteria": [
-        "backend/tests/test_agent_loop.py exists and is runnable via `python3 -m unittest backend.tests.test_agent_loop` (or equivalent invocation) with zero installed third-party packages and zero network access",
-        "Test: memory with a clear/sufficient answer present → should_continue() returns sufficient=True with empty/no further actions",
-        "Test: memory with an empty/error tool result → should_continue() returns sufficient=False with at least one retry-style action",
-        "Test: malformed/non-JSON LLM output → should_continue() falls back to the safe default (sufficient=True, empty actions) rather than raising",
-        "Test: process_actions() error-propagation (US-3) produces a memory entry distinguishable from success",
-        "Full test run output captured and all tests pass (fresh evidence, not assumed)"
+        "New test file uses fastapi.testclient.TestClient",
+        "Tests cover: invalid session_id rejected, oversized upload rejected/cleaned up, disallowed extension rejected, delete_file cannot delete another session's file",
+        "New tests pass in a fresh run"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M3",
+      "title": "Partial success on multi-file upload leaves orphaned files/duplicate risk",
+      "description": "Validate all filenames/extensions up front before processing any file in a batch; clean up written files on per-file indexing failure.",
+      "acceptanceCriteria": [
+        "upload_files validates every file's extension before writing/indexing any file in the batch",
+        "A file that fails indexing after being written to disk is deleted rather than left orphaned",
+        "backend/tests/test_agent_loop.py passes; new/updated test covers the cleanup behavior"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M4",
+      "title": "get_files/get_official_examples swallow exceptions as empty list",
+      "description": "Return a 5xx (or explicit error flag) on ES/backend failure instead of silently returning [].",
+      "acceptanceCriteria": [
+        "get_files and get_official_examples surface backend failures distinctly from a genuinely empty result",
+        "Existing success-path behavior unchanged",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M5",
+      "title": "Empty session_id silently drops the chat turn",
+      "description": "Reject empty/invalid session_id on /chat with 400 instead of silently coercing to None and losing the persisted turn.",
+      "acceptanceCriteria": [
+        "/chat with an empty or invalid session_id returns 400 instead of streaming an answer that fails to persist",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M6",
+      "title": "index_finance.py rebuilds embeddings client per chunk with no timeout",
+      "description": "Hoist a single module-level OpenAI client with timeout/max_retries matching file_parse.py, reuse across chunks.",
+      "acceptanceCriteria": [
+        "generate_embedding no longer constructs a new OpenAI client per call",
+        "The shared client has an explicit timeout and max_retries",
+        "Script still runs (py_compile / dry-run check)"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M7",
+      "title": "execute_insert_process swallows ES bulk-index failures",
+      "description": "Check bulk() error/success counts and raise on failure so the route marks the file failed instead of writing a success KB row.",
+      "acceptanceCriteria": [
+        "execute_insert_process raises (or returns a failure signal) when bulk indexing reports errors or zero successes",
+        "chat_rt.py's exception handling marks the file failed in this case, and no KB row is written for a fully-failed index",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M8",
+      "title": "Dead pokeapi package in a finance app",
+      "description": "Remove the unused backend/app/service/pokeapi package (not wired into the agent's tool list).",
+      "acceptanceCriteria": [
+        "backend/app/service/pokeapi/ is deleted",
+        "No remaining import references to pokeapi_tool anywhere in app/",
+        "backend/tests/test_agent_loop.py passes (its openai/pokeapi_tool stubbing still works or is updated accordingly)"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M9",
+      "title": "window.open on unvalidated backend-relayed URLs (result.tsx)",
+      "description": "Validate the URL scheme (http/https only) before calling window.open on image/video result links.",
+      "acceptanceCriteria": [
+        "Both window.open call sites in result.tsx only navigate when the link's protocol is http: or https:",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M10",
+      "title": "Upload modal surfaces raw error.message to the user",
+      "description": "Show a translated generic upload-failure message for backend-originated errors instead of the raw ResponseError.message.",
+      "acceptanceCriteria": [
+        "Backend-originated upload failures show t.uploadFailed (or equivalent translated message), not a raw backend string",
+        "The client-side file-too-large message (already localized) still displays correctly",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M11",
+      "title": "No error/empty state when chat history fails to load",
+      "description": "Add an onError handler and error UI/state for the chat history useRequest call.",
+      "acceptanceCriteria": [
+        "chat/index.tsx's history request has an onError handler",
+        "A visible error state (toast or inline message) is shown when history fails to load",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "M12",
+      "title": "send() has duplicated, subtly divergent first-message/subsequent-message branches",
+      "description": "Collapse into a single path with a uniformly-shaped assistant placeholder and consistent scrollToBottom call.",
+      "acceptanceCriteria": [
+        "send() no longer has two near-duplicate branches with divergent placeholder shapes",
+        "scrollToBottom is called consistently on every send",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L1",
+      "title": "history_str not wrapped in <untrusted_context> like memory/references",
+      "description": "Wrap history_str the same way memory/references are wrapped in the final_answer prompt.",
+      "acceptanceCriteria": [
+        "history_str is wrapped in <untrusted_context> tags consistent with memory/references",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L2",
+      "title": "No auth / CORS wildcard for a hardcoded single user",
+      "description": "Given this is an intentional single-user demo, lock CORS allow_origins to the actual frontend origin (env-configurable) instead of '*', and document the single-user/no-auth decision inline. Do not build a full auth system (out of scope).",
+      "acceptanceCriteria": [
+        "app_main.py's CORS allow_origins is no longer a bare wildcard '*' by default in a way that's silently insecure - it reads from an env-configurable origin (falling back to the known dev frontend origin) with a short comment documenting the single-user/no-auth design decision",
+        "Backend still starts and serves the frontend without CORS errors in local dev"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L3",
+      "title": "_apply_upload_boost uses value-equality index() instead of identity",
+      "description": "Use identity-based lookup for best_index consistent with the removal step.",
+      "acceptanceCriteria": [
+        "_apply_upload_boost finds best_index via identity (is), not candidates.index(best)",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L4",
+      "title": "_rerank_candidates partially mutates _score before an IndexError fallback",
+      "description": "Score into a local copy and only commit if every r.index is valid.",
+      "acceptanceCriteria": [
+        "_rerank_candidates no longer leaves partially-mutated state when falling back after an invalid index",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L5",
+      "title": "ChatRequest.message has no min_length",
+      "description": "Add min_length=1 to ChatRequest.message.",
+      "acceptanceCriteria": [
+        "ChatRequest.message rejects empty string via pydantic validation",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L6",
+      "title": "naive_merge can produce a chunk exceeding the embedding token limit",
+      "description": "Hard-cap any remaining oversized piece after delimiter splitting before it reaches _embed.",
+      "acceptanceCriteria": [
+        "naive_merge (or its caller) truncates/splits any piece still above a safe token ceiling after delimiter splitting",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L7",
+      "title": "index_finance.py uses naive local time; file_parse never sets create_timestamp_flt",
+      "description": "Use timezone-aware UTC in index_finance.py; populate create_timestamp_flt in file_parse.py too.",
+      "acceptanceCriteria": [
+        "index_finance.py uses datetime.now(timezone.utc) instead of naive local time",
+        "file_parse.py's insert path also sets create_timestamp_flt",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L8",
+      "title": "finance_tool assumes dividendYield is already a percentage",
+      "description": "Verify/normalize dividendYield representation defensively.",
+      "acceptanceCriteria": [
+        "finance_tool normalizes dividendYield defensively (handles both fraction and percentage representations without a 100x silent error)",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L9",
+      "title": "pdf_parser __images__ fallback sizes page_chars to requested range, not rendered pages",
+      "description": "Size page_chars to len(self.page_images) instead of page_to - page_from.",
+      "acceptanceCriteria": [
+        "The __images__ failure fallback sizes page_chars to the actual rendered page count",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L10",
+      "title": "torch is a required heavy dependency used only for a CUDA probe",
+      "description": "Detect CUDA via onnxruntime.get_available_providers() instead of importing torch.",
+      "acceptanceCriteria": [
+        "ocr.py/recognizer.py no longer import torch to probe CUDA availability",
+        "CUDA detection uses onnxruntime.get_available_providers() (or an equivalent onnxruntime-based check)",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L11",
+      "title": "init.sql stale jsonb comment / no FKs / user_id type mismatch",
+      "description": "Fix the stale comment and reconcile the type story or add FKs where integrity matters, as feasible without breaking existing data assumptions.",
+      "acceptanceCriteria": [
+        "The stale 'jsonb' comment on messages.documents is corrected to match reality (either the column is migrated to jsonb, or the comment is fixed to say TEXT)",
+        "Change is documented in the migration/init file with no breaking change to existing single-user demo data flow"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L12",
+      "title": "iXBRL hidden-header stripping may not match namespaced tags under lxml",
+      "description": "Verify and, if unmatched, use a namespace-agnostic predicate or XML-aware parser.",
+      "acceptanceCriteria": [
+        "parse_filing_html's hidden-header stripping is verified against a representative iXBRL sample and fixed if it doesn't match, or documented as verified-working with evidence"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L13",
+      "title": "rag_tokenizer lazy trie-cache build is racy under concurrent first uploads",
+      "description": "Guard the lazy build with a lock or atomic write-and-rename.",
+      "acceptanceCriteria": [
+        "Concurrent first-time trie cache builds no longer risk a corrupt/partial cache file (lock or atomic write-and-rename in place)",
+        "backend/tests/test_agent_loop.py passes"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L14",
+      "title": "hot-questions debounce recreated every render",
+      "description": "Wrap debounce in useMemo/useCallback so one instance persists across renders.",
+      "acceptanceCriteria": [
+        "The debounced click handler in hot-questions is stable across re-renders",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L15",
+      "title": "window.$app assigned during render instead of in an effect",
+      "description": "Move the window.$app assignment into a useEffect.",
+      "acceptanceCriteria": [
+        "MountApi assigns window.$app inside useEffect, not directly in the render body",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L16",
+      "title": "Dead 'auth' route metadata implies protection that doesn't exist",
+      "description": "Remove the unused auth field defaulting in routes.tsx helper().",
+      "acceptanceCriteria": [
+        "The unused route.auth defaulting is removed (or an actual guard is implemented, whichever is simpler)",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L17",
+      "title": "Non-unique React key in source-reference list (result.tsx)",
+      "description": "Key by index instead of document_id.",
+      "acceptanceCriteria": [
+        "The source-reference list uses a unique key (index or composite) instead of a possibly-duplicate document_id",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L18",
+      "title": "Chinese-language component identifiers in result.tsx",
+      "description": "Rename Chinese-named subcomponents to English equivalents.",
+      "acceptanceCriteria": [
+        "The Chinese-named subcomponents in result.tsx are renamed to English (Answer/Source/Images/Videos/Related)",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L19",
+      "title": "Repository tables render with pagination={false} and no virtualization",
+      "description": "Enable pagination for the document tables.",
+      "acceptanceCriteria": [
+        "Both document tables in repository/index.tsx use real pagination instead of pagination={false}",
+        "npm run build succeeds"
       ],
       "passes": true
     }

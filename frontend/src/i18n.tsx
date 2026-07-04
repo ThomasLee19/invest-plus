@@ -8,7 +8,7 @@ export const messages = {
     bannerTitle: 'Invest+ 投研助手',
     bannerSubtitle: '你的 AI 金融投研助手，欢迎问我任何投资相关问题~',
     placeholder: '按 Enter 发送，Shift + Enter 换行',
-    attachment: '附件（.txt / .md）',
+    attachment: '附件（.txt / .md / .pdf）',
     hotQuestions: [
       { emoji: '🍎', title: 'AAPL 最新的10-K报告披露了哪些风险因素？' },
       { emoji: '📈', title: 'MSFT 现在的股价和市盈率是多少？' },
@@ -67,7 +67,7 @@ export const messages = {
     bannerTitle: 'Invest+ Research Assistant',
     bannerSubtitle: 'Your AI-powered equity research assistant. Ask me anything about the market!',
     placeholder: 'Press Enter to send, Shift + Enter for new line',
-    attachment: 'Attachment (.txt / .md)',
+    attachment: 'Attachment (.txt / .md / .pdf)',
     hotQuestions: [
       { emoji: '🍎', title: 'What risk factors did AAPL disclose in its latest 10-K?' },
       { emoji: '📈', title: "What's MSFT's current stock price and P/E ratio?" },

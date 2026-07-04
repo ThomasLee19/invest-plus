@@ -90,7 +90,7 @@ export default function ComSender(
         <div className="com-sender__actions">
           <Space className="com-sender__actions-left" size={12}>
             <Upload
-              accept=".txt,.md"
+              accept=".txt,.md,.pdf"
               showUploadList={false}
               beforeUpload={(file) => { upload(file); return false }}
             >

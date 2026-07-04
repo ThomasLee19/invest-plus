@@ -24,7 +24,7 @@ services:
       memlock:
         soft: -1
         hard: -1
-    restart: on-failure
+    restart: unless-stopped
 
   pg:
     container_name: investplus-pg
@@ -40,7 +40,7 @@ services:
     volumes:
       - investplus_pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: on-failure
+    restart: unless-stopped
 
 volumes:
   investplus_esdata:

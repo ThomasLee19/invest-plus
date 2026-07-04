@@ -6,6 +6,9 @@ import { useRequest } from 'ahooks'
 import { Button, Modal, Space, Table, Tag } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 import { useMemo, useRef, useState } from 'react'
 import { FileIcon } from './components/file-icon'
 import { Status } from './components/status'
@@ -93,7 +96,7 @@ export default function Index() {
         dataIndex: 'updated_at',
         width: 200,
         render(value) {
-          return dayjs(value).format('MM/DD/YYYY HH:mm:ss')
+          return dayjs.utc(value).utcOffset(8).format('MM/DD/YYYY HH:mm:ss')
         },
       },
       {

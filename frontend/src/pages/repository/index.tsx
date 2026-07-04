@@ -5,7 +5,6 @@ import { PlusOutlined } from '@ant-design/icons'
 import { useRequest } from 'ahooks'
 import { Button, Modal, Space, Table, Tag } from 'antd'
 import { ColumnsType } from 'antd/es/table'
-import { TableRowSelection } from 'antd/es/table/interface'
 import dayjs from 'dayjs'
 import { useMemo, useRef, useState } from 'react'
 import { FileIcon } from './components/file-icon'
@@ -171,16 +170,6 @@ export default function Index() {
     }
   }, [officialColumns])
 
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
-
-  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
-    setSelectedRowKeys(newSelectedRowKeys)
-  }
-  const rowSelection: TableRowSelection<IRepository> = {
-    selectedRowKeys,
-    onChange: onSelectChange,
-  }
-
   /* 上传 */
   const [openUpload, setOpenUpload] = useState(false)
   const uploadRef = useRef<RepositoryUploadRef>(null)
@@ -219,7 +208,6 @@ export default function Index() {
           rowKey="id"
           columns={columns}
           dataSource={data}
-          rowSelection={rowSelection}
           scroll={scroll}
           loading={listLoading}
         />

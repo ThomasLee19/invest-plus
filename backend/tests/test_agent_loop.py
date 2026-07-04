@@ -279,6 +279,89 @@ class ProcessActionsErrorPropagationTests(unittest.TestCase):
         self.assertNotIn("错误", memory[0])
 
 
+class ProcessActionsDedupPersistenceTests(unittest.TestCase):
+    """L4: process_actions()'s dedup set must be able to persist across
+    multiple calls (Act + each Reflect iteration within one chat turn) when
+    the caller shares a single `seen` set, instead of being recreated fresh
+    on every call."""
+
+    def test_shared_seen_dedups_identical_action_across_separate_calls(self):
+        actions = [{"action_name": "finance_query", "prompt": "AAPL price"}]
+        seen: set = set()
+        with patch.object(agent, "finance_tool", return_value="AAPL: $200"):
+            first = agent.process_actions(actions, seen=seen)
+            second = agent.process_actions(actions, seen=seen)
+
+        self.assertEqual(len(first), 1)
+        self.assertEqual(second, [], "identical action re-issued with a shared seen set must be deduped")
+
+    def test_without_shared_seen_each_call_dedups_independently(self):
+        # Preserves the old per-call behavior for direct callers (e.g. these
+        # unit tests) that don't pass a seen set explicitly.
+        actions = [{"action_name": "finance_query", "prompt": "AAPL price"}]
+        with patch.object(agent, "finance_tool", return_value="AAPL: $200"):
+            first = agent.process_actions(actions)
+            second = agent.process_actions(actions)
+
+        self.assertEqual(len(first), 1)
+        self.assertEqual(len(second), 1)
+
+    def test_final_answer_reflection_loop_does_not_duplicate_identical_supplementary_action(self):
+        # should_continue keeps re-requesting the exact same finance_query
+        # action across two reflect iterations. The real process_actions()
+        # dedup (not mocked here) must ensure it lands in memory only once,
+        # even though should_continue "asks" for it three times total (the
+        # initial Act call + two reflect requests).
+        decisions_iter = iter([
+            {"sufficient": False, "rationale": "需要更多数据", "actions": [
+                {"action_name": "finance_query", "prompts": ["AAPL price"]}
+            ]},
+            {"sufficient": False, "rationale": "还是需要同样的数据", "actions": [
+                {"action_name": "finance_query", "prompts": ["AAPL price"]}
+            ]},
+            {"sufficient": True, "rationale": "已足够", "actions": []},
+        ])
+
+        def _fake_should_continue(query, memory):
+            return next(decisions_iter)
+
+        fake_chunk = types.SimpleNamespace(
+            choices=[types.SimpleNamespace(
+                delta=types.SimpleNamespace(content="done", reasoning_content=None),
+                finish_reason="stop",
+            )]
+        )
+
+        # Patch _get_llm_client() directly (as its own docstring recommends)
+        # rather than the OpenAI class: _get_llm_client() caches its client in
+        # a module-level global on first use, so patching `agent.OpenAI` here
+        # would have no effect if an earlier test in this same process
+        # already populated that cache -- this sidesteps that hazard entirely.
+        captured = {}
+
+        def _fake_create(**kwargs):
+            captured["messages"] = kwargs["messages"]
+            return [fake_chunk]
+
+        fake_client = types.SimpleNamespace(
+            chat=types.SimpleNamespace(
+                completions=types.SimpleNamespace(create=_fake_create)
+            )
+        )
+
+        with patch.object(agent, "agent_plan", return_value=[{"action_name": "finance_query", "prompts": ["AAPL price"]}]), \
+             patch.object(agent, "finance_tool", return_value="AAPL: $200"), \
+             patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
+             patch.object(agent, "_get_llm_client", return_value=fake_client):
+            list(agent.final_answer("AAPL 怎么样", language="en"))
+
+        prompt_text = captured["messages"][0]["content"]
+        self.assertEqual(
+            prompt_text.count("AAPL: $200"), 1,
+            "the identical re-requested action must appear only once in the final memory",
+        )
+
+
 class ReflectionLoopTests(unittest.TestCase):
     """US-2/US-4: the bounded while-loop in final_answer() must be genuinely
     LLM-driven (iterates more than once when asked to, stops on sufficient,
@@ -564,6 +647,72 @@ class DocumentsSSEEventTests(unittest.TestCase):
                 },
             ],
         )
+
+
+class BoundedMemoryTests(unittest.TestCase):
+    """M2: _bounded_memory() must cap both long string fields and list[dict]
+    fields (rag_search/web_search results), and final_answer()'s final-answer
+    prompt must use the bounded version rather than raw unbounded memory."""
+
+    def test_long_string_field_is_truncated(self):
+        long_str = "x" * (agent._MAX_MEMORY_ENTRY_CHARS + 500)
+        memory = [{"提问": "q", "结果": long_str}]
+        bounded = agent._bounded_memory(memory)
+
+        self.assertLessEqual(len(bounded[0]["结果"]), agent._MAX_MEMORY_ENTRY_CHARS + len("…[已截断]"))
+        self.assertTrue(bounded[0]["结果"].endswith("…[已截断]"))
+
+    def test_list_field_is_capped_in_item_count(self):
+        web_results = [{"title": f"t{i}", "url": f"u{i}", "content": f"c{i}"} for i in range(20)]
+        memory = [{"提问": "q", "结果": web_results}]
+        bounded = agent._bounded_memory(memory)
+
+        capped = bounded[0]["结果"]
+        # _MAX_MEMORY_LIST_ITEMS real items + one "...omitted" marker string
+        self.assertEqual(len(capped), agent._MAX_MEMORY_LIST_ITEMS + 1)
+        self.assertIsInstance(capped[-1], str)
+        self.assertIn("已省略", capped[-1])
+
+    def test_list_item_string_fields_are_truncated(self):
+        long_content = "y" * (agent._MAX_MEMORY_LIST_ITEM_STR_CHARS + 200)
+        web_results = [{"title": "t", "url": "u", "content": long_content}]
+        memory = [{"提问": "q", "结果": web_results}]
+        bounded = agent._bounded_memory(memory)
+
+        capped_content = bounded[0]["结果"][0]["content"]
+        self.assertLessEqual(
+            len(capped_content), agent._MAX_MEMORY_LIST_ITEM_STR_CHARS + len("…[已截断]")
+        )
+        self.assertTrue(capped_content.endswith("…[已截断]"))
+
+    def test_short_values_are_unaffected(self):
+        memory = [{"提问": "q", "结果": "short answer", "错误": True}]
+        bounded = agent._bounded_memory(memory)
+        self.assertEqual(bounded, memory)
+
+    def test_final_answer_prompt_uses_bounded_memory_not_raw(self):
+        long_str = "z" * (agent._MAX_MEMORY_ENTRY_CHARS + 500)
+        process_actions_result = [{"提问": "q", "结果": long_str}]
+        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
+
+        fake_chunk = types.SimpleNamespace(
+            choices=[types.SimpleNamespace(
+                delta=types.SimpleNamespace(content="done", reasoning_content=None),
+                finish_reason="stop",
+            )]
+        )
+        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
+             patch.object(agent, "process_actions", return_value=process_actions_result), \
+             patch.object(agent, "should_continue", side_effect=iter(decisions)), \
+             patch.object(agent, "OpenAI") as mocked_openai_cls:
+            mocked_client = mocked_openai_cls.return_value
+            mocked_client.chat.completions.create.return_value = [fake_chunk]
+            list(agent.final_answer("test query", language="en"))
+
+        sent_messages = mocked_client.chat.completions.create.call_args.kwargs["messages"]
+        prompt_text = sent_messages[0]["content"]
+        self.assertNotIn(long_str, prompt_text)
+        self.assertIn("…[已截断]", prompt_text)
 
 
 class RerankCandidatesTests(unittest.TestCase):
@@ -923,6 +1072,115 @@ class KeywordDynamicTemplateRegexTests(unittest.TestCase):
         # the assertion above would be meaningless (e.g. matching anything).
         pattern = self.index_finance.KEYWORD_DYNAMIC_TEMPLATE_REGEX
         self.assertNotRegex("session_title", pattern)
+
+
+class _BulkResultFakeElasticsearch:
+    """Never finds an existing doc (exists() always False, so every chunk is
+    attempted) and returns a bulk() response with one successful and one
+    failed item, standing in for a live ES whose bulk call partially fails
+    without raising."""
+
+    def __init__(self, bulk_response):
+        self._bulk_response = bulk_response
+        self.bulk_calls = []
+
+    def exists(self, index=None, id=None):
+        return False
+
+    def bulk(self, operations=None, refresh=None, timeout=None):
+        self.bulk_calls.append(operations)
+        return self._bulk_response
+
+
+class IndexChunksBulkResultTests(unittest.TestCase):
+    """L6: index_chunks must inspect es.bulk()'s per-item response and only
+    count actual successes in `written`, not every chunk it attempted to
+    write -- otherwise a partially-failed bulk call is reported as fully
+    successful."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.index_finance = _import_index_finance_module()
+
+    def test_written_reflects_only_successful_bulk_items(self):
+        fake_resp = {
+            "errors": True,
+            "items": [
+                {"index": {"_id": "a", "status": 201}},
+                {"index": {"_id": "b", "status": 400, "error": {"type": "mapper_parsing_exception"}}},
+            ],
+        }
+        fake_es = _BulkResultFakeElasticsearch(fake_resp)
+        with patch.object(self.index_finance, "generate_embedding", return_value=[0.0] * 1024):
+            written, skipped, failed = self.index_finance.index_chunks(
+                fake_es, ["chunk one", "chunk two"], "doc1", "name.md", "news", {},
+            )
+        self.assertEqual(written, 1, "only the item with a 2xx status should count as written")
+        self.assertEqual(failed, 1, "the item with a 400 status should count as failed")
+        self.assertEqual(skipped, 0)
+
+    def test_all_items_succeeding_counts_all_as_written(self):
+        fake_resp = {
+            "errors": False,
+            "items": [
+                {"index": {"_id": "a", "status": 201}},
+                {"index": {"_id": "b", "status": 200}},
+            ],
+        }
+        fake_es = _BulkResultFakeElasticsearch(fake_resp)
+        with patch.object(self.index_finance, "generate_embedding", return_value=[0.0] * 1024):
+            written, skipped, failed = self.index_finance.index_chunks(
+                fake_es, ["chunk one", "chunk two"], "doc1", "name.md", "news", {},
+            )
+        self.assertEqual(written, 2)
+        self.assertEqual(failed, 0)
+
+
+class _NoOpFakeElasticsearch:
+    def exists(self, index=None, id=None):
+        return False
+
+    def bulk(self, operations=None, refresh=None, timeout=None):
+        items = operations[0::2]
+        return {"errors": False, "items": [{"index": {"_id": op["index"]["_id"], "status": 201}} for op in items]}
+
+
+class IndexFinanceEncodingConsistencyTests(unittest.TestCase):
+    """L7: filings already read with errors="ignore"; news/educational must
+    apply the same defensive decoding so a non-UTF-8 file doesn't raise
+    UnicodeDecodeError and abort the whole indexing run."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.index_finance = _import_index_finance_module()
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self._tmp = Path(tempfile.mkdtemp(prefix="index_finance_test_"))
+        self.addCleanup(shutil.rmtree, self._tmp, ignore_errors=True)
+
+    def test_index_news_survives_non_utf8_file(self):
+        ticker_dir = self._tmp / "AAPL"
+        ticker_dir.mkdir()
+        # 0xff is not valid UTF-8 on its own; plain .read_text(encoding="utf-8")
+        # would raise UnicodeDecodeError here.
+        (ticker_dir / "story.md").write_bytes(b"headline \xff\xfe garbled bytes")
+
+        with patch.object(self.index_finance, "NEWS_DIR", self._tmp), \
+             patch.object(self.index_finance, "generate_embedding", return_value=[0.0] * 1024):
+            # Must not raise.
+            w, s, f = self.index_finance.index_news(_NoOpFakeElasticsearch())
+        self.assertGreaterEqual(w, 0)
+
+    def test_index_educational_survives_non_utf8_file(self):
+        (self._tmp / "article.md").write_bytes(b"intro \xff\xfe garbled bytes")
+
+        with patch.object(self.index_finance, "EDUCATIONAL_DIR", self._tmp), \
+             patch.object(self.index_finance, "generate_embedding", return_value=[0.0] * 1024):
+            # Must not raise.
+            w, s, f = self.index_finance.index_educational(_NoOpFakeElasticsearch())
+        self.assertGreaterEqual(w, 0)
 
 
 if __name__ == "__main__":

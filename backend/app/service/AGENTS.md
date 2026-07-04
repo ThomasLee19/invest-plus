@@ -49,7 +49,7 @@ hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
 - `serper_search()` → `make_request()` POSTs to `google.serper.dev/search` with
   `SERPER_API_KEY`. `hl` is the region/language preference (zh-cn / en).
 - `process_search_results()` extracts `{title, url, content}` snippets from
-  `organic`. (`serper_images`/`serper_videos` exist but the agent only uses search.)
+  `organic`.
 
 ### core/file_parse.py
 - `execute_insert_process`: split on blank lines into ≤ `MAX_CHUNK = 1500`-char

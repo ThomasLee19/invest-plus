@@ -47,11 +47,18 @@ export default function ComSender(
   async function upload(file: UploadFile & { loading?: boolean }) {
     setFileList((prev) => [...prev, { ...file, loading: true }])
     try {
+      if ((file.size ?? 0) > 5 * 1024 * 1024) {
+        throw new Error(t.fileTooLarge)
+      }
       const session_id = ensureSessionId ? await ensureSessionId() : sessionId
       await api.session.upload({ files: file as any, session_id })
       window.$app.message.success(`${file.name} ${t.uploadSuccess}`)
-    } catch {
-      window.$app.message.error(`${file.name} ${t.uploadFailed}`)
+    } catch (error) {
+      const msg =
+        error instanceof Error && error.message === t.fileTooLarge
+          ? t.fileTooLarge
+          : `${file.name} ${t.uploadFailed}`
+      window.$app.message.error(msg)
     } finally {
       setFileList((prev) =>
         prev.map((f) => (f.uid === file.uid ? { ...f, loading: false } : f)),

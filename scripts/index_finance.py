@@ -251,10 +251,21 @@ def index_chunks(es: Elasticsearch, chunks: list[str], doc_id: str, docnm: str,
             {"index": {"_index": INDEX_NAME, "_id": chunk_id}},
             doc,
         ])
-        written += 1
 
     if operations:
-        es.bulk(operations=operations, refresh=False, timeout="60s")
+        # es.bulk()'s top-level call succeeding doesn't mean every op inside it
+        # did -- individual items can fail (mapping conflicts, timeouts, etc.)
+        # while the response itself is 200. Count actual per-item successes
+        # instead of assuming every op attempted was written.
+        resp = es.bulk(operations=operations, refresh=False, timeout="60s")
+        for item in resp.get("items", []):
+            action = item.get("index", {})
+            status = action.get("status")
+            if status is not None and 200 <= status < 300:
+                written += 1
+            else:
+                failed += 1
+                print(f"  [bulk index failed] id={action.get('_id')} error={action.get('error')}")
 
     return written, skipped, failed
 
@@ -304,7 +315,7 @@ def index_news(es: Elasticsearch) -> tuple[int, int, int]:
         ticker = ticker_dir.name
 
         for news_path in sorted(ticker_dir.glob("*.md")):
-            text = news_path.read_text(encoding="utf-8")
+            text = news_path.read_text(encoding="utf-8", errors="ignore")
             prefix = f"{ticker} news"
             chunks = chunk_text(text, prefix)
 
@@ -327,7 +338,7 @@ def index_educational(es: Elasticsearch) -> tuple[int, int, int]:
         return total_w, total_s, total_f
 
     for article_path in sorted(EDUCATIONAL_DIR.glob("*.md")):
-        text = article_path.read_text(encoding="utf-8")
+        text = article_path.read_text(encoding="utf-8", errors="ignore")
         title = article_path.stem.replace("_", " ").title()
         chunks = chunk_text(text, title)
 

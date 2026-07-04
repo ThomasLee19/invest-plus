@@ -39,7 +39,14 @@ class RAGFlowPdfParser:
     # 降低实际渲染分辨率，而不是拒绝整页解析。
     MAX_PAGE_RENDER_PIXELS = 30_000_000
 
-    def _safe_render_resolution(self, page, zoomin):
+    # 所有页栅格化后同时驻留内存的像素总量上限：单页上限只管住"某一页"，但
+    # MAX_PDF_PAGES（业务侧的每文件页数上限，见 file_parse.py）× 单页上限仍可
+    # 乘出数 GB（如 50 页 × 30M 像素 × 3 字节/像素 ≈ 4.5GB）。这里在渲染每一页
+    # 之前，把"剩余总预算 / 剩余页数"也当作该页的上限一起取 min，从而把同时
+    # 持有的位图总内存钳制在一个与页数无关的常数范围内。
+    MAX_TOTAL_RENDER_PIXELS = 300_000_000
+
+    def _safe_render_resolution(self, page, zoomin, pixel_budget=None):
         resolution = 72 * zoomin
         try:
             width_px = float(page.width) * resolution / 72
@@ -47,8 +54,11 @@ class RAGFlowPdfParser:
         except Exception:
             return resolution
         area = width_px * height_px
-        if area > self.MAX_PAGE_RENDER_PIXELS:
-            scale = (self.MAX_PAGE_RENDER_PIXELS / area) ** 0.5
+        cap = self.MAX_PAGE_RENDER_PIXELS
+        if pixel_budget is not None:
+            cap = min(cap, pixel_budget)
+        if area > cap:
+            scale = (cap / area) ** 0.5
             resolution = max(1.0, resolution * scale)
         return resolution
 
@@ -970,20 +980,45 @@ class RAGFlowPdfParser:
         self.page_cum_height = [0]
         self.page_layout = []
         self.page_from = page_from
+        # 提前初始化为 []：即便下面 try 里刚打开 PDF 就失败，这两个属性也总是
+        # 存在的列表，而不是让后续代码（如 range(len(self.page_chars))）在一个
+        # 从未被赋值的属性上炸出无关的 AttributeError。
+        self.page_images = []
+        self.page_chars = []
         try:
             self.pdf = pdfplumber.open(fnm) if isinstance(
                 fnm, str) else pdfplumber.open(BytesIO(fnm))
-            self.page_images = [p.to_image(resolution=self._safe_render_resolution(p, zoomin)).annotated for i, p in
-                                enumerate(self.pdf.pages[page_from:page_to])]
+            pages = self.pdf.pages[page_from:page_to]
+
+            # 逐页渲染并即时累计已用像素预算，而不是一次性把所有页的位图都摊在
+            # self.page_images 里驻留——否则单页上限 MAX_PAGE_RENDER_PIXELS 乘以
+            # 页数，总内存仍可被一份构造出超大 MediaBox 的 PDF 炸到 GB 级（见类
+            # 注释）。每页的上限取「单页上限」与「剩余总预算 / 剩余页数」的
+            # 较小值，使同时持有的位图总内存钳制在与页数无关的常数范围内。
+            remaining_budget = self.MAX_TOTAL_RENDER_PIXELS
+            for idx, p in enumerate(pages):
+                remaining_pages = len(pages) - idx
+                per_page_budget = remaining_budget / remaining_pages
+                resolution = self._safe_render_resolution(p, zoomin, per_page_budget)
+                img = p.to_image(resolution=resolution).annotated
+                self.page_images.append(img)
+                remaining_budget = max(0.0, remaining_budget - img.size[0] * img.size[1])
+
             try:
-                self.page_chars = [[{**c, 'top': c['top'], 'bottom': c['bottom']} for c in page.dedupe_chars().chars if self._has_color(c)] for page in self.pdf.pages[page_from:page_to]]
+                self.page_chars = [[{**c, 'top': c['top'], 'bottom': c['bottom']} for c in page.dedupe_chars().chars if self._has_color(c)] for page in pages]
             except Exception as e:
                 logging.warning(f"Failed to extract characters for pages {page_from}-{page_to}: {str(e)}")
                 self.page_chars = [[] for _ in self.page_images]  # If failed to extract, using empty list instead.
-                
+
             self.total_page = len(self.pdf.pages)
-        except Exception:
+        except Exception as e:
             logging.exception("RAGFlowPdfParser __images__")
+            # 之前这里只记录日志就吞掉异常，self.page_images/self.page_chars
+            # 留空之后，下面依赖它们的代码会在毫不相关的位置抛出 AttributeError
+            # 或 IndexError。改为显式抛出一个含义清晰的错误，让调用方（如
+            # file_parse.py -> chat_rt.py 现有的每文件 try/except）走已有的
+            # "失败" 分支，而不是被一个和真实原因无关的报错掩盖。
+            raise ValueError(f"Failed to parse PDF (from={page_from}, to={page_to}): {e}") from e
 
         self.outlines = []
         try:

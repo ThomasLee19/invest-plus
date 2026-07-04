@@ -100,11 +100,17 @@ def chat(
     collected_answer: list[str] = []
     collected_think: list[str] = []
 
-    def _persist():
+    def _persist(stream_failed: bool = False):
         # 用独立的短生命周期 session 做落库写入，而不是复用请求作用域的
         # db（那个连接会在整个流式生成期间被占用）。落库放在 finally 里，
         # 这样客户端中途断连（generator 被 GeneratorExit 提前关闭）时这条
         # 回答依然会被写入，而不是随着流一起被静默丢弃。
+        # stream_failed=True 且尚未收集到任何回答内容时跳过落库：final_answer()
+        # 中途抛出异常，此时写入一条空 model_answer 的记录会被历史列表当作一次
+        # "成功但无话可说"的回答展示给用户，而实际上这轮请求根本没有成功过。
+        if stream_failed and not collected_answer:
+            print(f"[chat_rt] 跳过落库：session={session_id} 流式生成失败且未收集到任何回答内容")
+            return
         with SessionLocal() as write_db:
             try:
                 write_db.execute(
@@ -136,6 +142,7 @@ def chat(
                 print(f"[chat_rt] 写入消息失败：{e}")
 
     def stream():
+        stream_failed = False
         try:
             for event in final_answer(question, history=history, session_id=session_id):
                 yield event
@@ -150,8 +157,24 @@ def chat(
                             collected_think.append(data.get("content", ""))
                     except Exception:
                         pass
+        except Exception as e:
+            # final_answer() 是同步生成器：LLM/ES 等下游调用中途抛出的异常会在
+            # 这里的 for 循环里传播出来。不捕获的话，异常会一路冲出 StreamingResponse
+            # 的 body 迭代，客户端连接被服务器直接中断、永远收不到结束信号（前端
+            # 的 SSE 解析器会一直挂起等待下一行），而 finally 里的 _persist() 仍会
+            # 照常执行并把一条空 model_answer 当作成功对话写入历史。
+            stream_failed = True
+            logger.exception("[chat_rt] final_answer stream 中途失败：%s", e)
+            err_msg = {
+                "role": "assistant",
+                "content": "抱歉，生成回答时发生错误，请稍后重试。 / "
+                           "Sorry, an error occurred while generating the answer. Please try again.",
+                "thinking": False,
+            }
+            yield f"event: message\ndata: {json.dumps(err_msg, ensure_ascii=False)}\n\n"
+            yield "event: end\ndata: [DONE]\n\n"
         finally:
-            _persist()
+            _persist(stream_failed)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 

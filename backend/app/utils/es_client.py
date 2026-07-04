@@ -1,12 +1,16 @@
 import os
+from urllib.parse import urlparse
 
 from elasticsearch import Elasticsearch
 
-_LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "es01", "elasticsearch")
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "es01", "elasticsearch"}
 
 
 def _is_loopback(url: str) -> bool:
-    return any(host in url for host in _LOOPBACK_HOSTS)
+    """精确匹配 URL 的 hostname（而非子串匹配）：`host in url` 会被形似
+    "notlocalhost.evil.com" 或 "elasticsearch.attacker.net" 这类域名绕过，
+    错误地将其判定为回环地址并关闭证书校验（verify_certs=False）。"""
+    return urlparse(url).hostname in _LOOPBACK_HOSTS
 
 
 def get_es_client() -> Elasticsearch:

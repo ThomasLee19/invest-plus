@@ -462,11 +462,26 @@ def _adjust_format(plan: list[dict]) -> list[dict]:
     return adjusted
 
 
-def process_actions(actions: list[dict], language: str = "en", session_id: str | None = None) -> list[dict]:
+def process_actions(
+    actions: list[dict],
+    language: str = "en",
+    session_id: str | None = None,
+    seen: set | None = None,
+) -> list[dict]:
     """执行工具调用，返回 memory 列表。language 决定 web_search 的检索区域偏好，
-    session_id 决定 rag_search 的检索范围（seed 语料 + 全局上传 + 当前 session 上传）。"""
+    session_id 决定 rag_search 的检索范围（seed 语料 + 全局上传 + 当前 session 上传）。
+
+    seen：去重集合，由调用方传入以跨多次 process_actions 调用持久化。
+    final_answer() 的 Act + Reflect 循环里，Act 阶段与每一轮 Reflect 补充查询各自
+    调用一次 process_actions；若每次都在函数内部新建 seen，只能查重"本次调用内部"
+    的重复，Reflect 第二轮重新发起与 Act 阶段完全相同的补充查询时不会被识别为
+    重复，导致同一结果被重复写入 memory。调用方在整轮对话开始时创建一个 set 并
+    在循环内所有调用间复用同一实例，即可让去重贯穿整轮反思循环。默认 None 时
+    退化为仅在本次调用内去重（保持独立单测调用 process_actions 时的原有行为）。
+    """
     memory = []
-    seen = set()
+    if seen is None:
+        seen = set()
 
     for action in actions:
         action_name = action["action_name"]
@@ -516,6 +531,13 @@ def _extract_json_object(text: str) -> str | None:
 # 会随反思迭代无界增长，每轮又整体塞进 should_continue 与最终 prompt。此处按条
 # 截断，给上下文一个固定上界；语义足够判断"是否够答"，无需完整原文。
 _MAX_MEMORY_ENTRY_CHARS = 2000
+# rag_search/web_search 等工具返回的 list[dict]（"结果"字段）本身也需要设界：
+# rag_search 经 _apply_upload_boost 已固定为 top-5，但 web_search 单次可返回多达
+# 20 条 snippet，且每条 dict 内的字符串字段（content_with_weight/content 等）不会
+# 被上面按 str 字段做的截断处理触达（那段只截断 entry 顶层的 str 值，list 本身
+# 原样保留），故需单独限制列表条数与列表内每个字符串字段的长度。
+_MAX_MEMORY_LIST_ITEMS = 5
+_MAX_MEMORY_LIST_ITEM_STR_CHARS = 500
 # references 去重后允许进入最终答案引用块的上限。
 _MAX_REFERENCES = 20
 # 与判定为"假"的字符串取值集合（大小写不敏感）：LLM 常把布尔当字符串输出，
@@ -534,15 +556,39 @@ def _coerce_bool(value) -> bool:
     return bool(value)
 
 
+def _bound_memory_value(val):
+    """按值类型对单个 memory 字段设界：过长字符串截断；list（rag_search/
+    web_search 的"结果"）截断条数，并对列表内每个 dict 项的字符串字段再截断一次
+    （这些嵌套字符串不会被上层按 entry 顶层 str 字段做的截断触达）。"""
+    if isinstance(val, str) and len(val) > _MAX_MEMORY_ENTRY_CHARS:
+        return val[:_MAX_MEMORY_ENTRY_CHARS] + "…[已截断]"
+    if isinstance(val, list):
+        bounded_items = []
+        for item in val[:_MAX_MEMORY_LIST_ITEMS]:
+            if isinstance(item, dict):
+                bounded_item = dict(item)
+                for k, v in bounded_item.items():
+                    if isinstance(v, str) and len(v) > _MAX_MEMORY_LIST_ITEM_STR_CHARS:
+                        bounded_item[k] = v[:_MAX_MEMORY_LIST_ITEM_STR_CHARS] + "…[已截断]"
+                bounded_items.append(bounded_item)
+            else:
+                bounded_items.append(item)
+        omitted = len(val) - _MAX_MEMORY_LIST_ITEMS
+        if omitted > 0:
+            bounded_items.append(f"…[还有 {omitted} 条已省略]")
+        return bounded_items
+    return val
+
+
 def _bounded_memory(memory: list[dict]) -> list[dict]:
     """返回 memory 的浅拷贝，其中过长的字符串字段被截断到 _MAX_MEMORY_ENTRY_CHARS，
-    给注入 prompt 的上下文一个固定上界（非 str 的 结果——如 rag 的 list——原样保留）。"""
+    list 字段（rag_search/web_search 的"结果"）被截断到 _MAX_MEMORY_LIST_ITEMS 条，
+    给注入 prompt 的上下文一个固定上界（should_continue 与最终答案 prompt 共用）。"""
     bounded = []
     for entry in memory:
         clipped = dict(entry)
         for key, val in clipped.items():
-            if isinstance(val, str) and len(val) > _MAX_MEMORY_ENTRY_CHARS:
-                clipped[key] = val[:_MAX_MEMORY_ENTRY_CHARS] + "…[已截断]"
+            clipped[key] = _bound_memory_value(val)
         bounded.append(clipped)
     return bounded
 
@@ -669,8 +715,13 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     # 仍触发检索，即使 agent_plan 本身已正确返回 null）。
     memory = []
     if actions:
+        # 跨 Act + 所有 Reflect 迭代共用同一个去重集合：process_actions() 默认按
+        # 调用创建独立的 seen，若这里不显式传入同一实例，Reflect 阶段重新发起与
+        # Act 阶段（或更早的 Reflect 轮次）完全相同的补充查询时不会被识别为重复。
+        seen_actions: set = set()
+
         # ── Act ──
-        memory = process_actions(actions, language, session_id)
+        memory = process_actions(actions, language, session_id, seen=seen_actions)
 
         # ── Reflect (循环直到 LLM 自己判定足够，或触达安全上限) ──
         # 循环本身不做任何"该不该继续/调用什么"的判断——每一轮的决策都来自
@@ -705,7 +756,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                     ),
                 }
                 yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
-            extra_memory = process_actions(reflect_actions, language, session_id)
+            extra_memory = process_actions(reflect_actions, language, session_id, seen=seen_actions)
             memory.extend(extra_memory)
         else:
             # while 的 else 分支：循环条件（reflection_iteration < MAX）变为假而自然退出，
@@ -794,7 +845,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
 {history_str}
 ## 参考信息
 <untrusted_context>
-{json.dumps(memory, ensure_ascii=False, indent=2)}
+{json.dumps(_bounded_memory(memory), ensure_ascii=False, indent=2)}
 </untrusted_context>
 {reference_block}
 ## 用户问题

@@ -426,10 +426,6 @@ addUserDict = tokenizer.addUserDict
 tradi2simp = tokenizer._tradi2simp
 strQ2B = tokenizer._strQ2B
 
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
 if __name__ == '__main__':
     tknzr = RagTokenizer(debug=True)
     # huqie.addUserDict("/tmp/tmp.new.tks.dict")

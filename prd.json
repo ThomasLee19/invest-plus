@@ -1,360 +1,236 @@
 {
-  "title": "Fix all findings in debug/26_7_4_debug_2.md (severity-ordered)",
-  "sourcePlan": "debug/26_7_4_debug_2.md",
-  "scope": "Fix all 34 findings (3 High, 12 Medium, 19 Low) from the second code-review report, highest severity first. Verify existing functionality after each fix. Mark each fixed finding as 已完成 (Completed) in debug/26_7_4_debug_2.md. Write a bug-fix report when done.",
+  "title": "Fix all findings in debug/26_7_4_debug_3.md (severity-ordered)",
+  "sourcePlan": "debug/26_7_4_debug_3.md",
+  "scope": "Fix all 22 findings (6 Medium, 16 Low) from the third code-review report, highest severity first. Verify existing functionality (backend unit tests, frontend build/lint) after each fix. Mark each fixed finding as done (checkbox) in debug/26_7_4_debug_3.md and debug/26_7_4_debug_3_zh.md. Write a Chinese bug-fix report when done.",
   "stories": [
     {
-      "id": "H1",
-      "title": "chat_rt.py holds DB session across entire streaming response",
-      "description": "Fetch chat history in a short-lived SessionLocal() block instead of a request-scoped Depends(get_db) session held open for the whole SSE stream.",
-      "acceptanceCriteria": [
-        "chat() no longer depends on a request-scoped db session held open across the StreamingResponse body",
-        "History fetch uses a short-lived session (opened and closed before streaming starts), mirroring _persist's pattern",
-        "Existing chat tests / manual smoke check still produce correct history-aware answers",
-        "backend/tests/test_agent_loop.py still passes"
-      ],
-      "passes": true
-    },
-    {
-      "id": "H2",
-      "title": "Raw backend error strings leak via ResponseError (service.ts)",
-      "description": "Stop constructing ResponseError.message from raw backend message/detail fields; map to translated messages in error-toast.ts instead.",
-      "acceptanceCriteria": [
-        "ResponseError no longer carries the raw backend message/detail string for display purposes",
-        "error-toast.ts displays a translated/mapped message instead of a raw backend string for non-chat request failures",
-        "npm run build succeeds",
-        "npm run lint succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "H3",
-      "title": "Home-page file attachments orphaned from the session they're sent in",
-      "description": "Ensure a session exists before uploading on the home page (or defer upload until the session exists) and thread session_id/attachments through correctly.",
-      "acceptanceCriteria": [
-        "Uploading a file on the home page results in the file being associated with the session the resulting conversation actually uses",
-        "attachments are no longer silently dropped by useSendMessage",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
       "id": "M1",
-      "title": "Ticker regex picks first ALL-CAPS token (agent.py)",
-      "description": "Filter out single-letter/common finance-acronym stopwords from ticker candidates before taking the first match.",
+      "title": "Uncaught LLM/stream errors abort SSE with no terminator and persist a blank turn",
+      "description": "backend/app/service/agent/agent.py (_llm_json call sites in agent_plan/should_continue, final_answer streaming loop) and backend/app/router/chat_rt.py stream(): wrap the final_answer generator consumption in an except that yields a translated error event + event: end/data: [DONE], and skip (or explicitly error-mark) _persist() when no answer content was collected.",
       "acceptanceCriteria": [
-        "finance_tool no longer picks 'I'/'A' (or other configured stopwords) as a ticker when a real ticker is present in the same sub-question",
-        "backend/tests/test_agent_loop.py passes",
-        "A new or updated test demonstrates the stopword-filtering behavior"
+        "stream() in chat_rt.py catches exceptions raised while iterating final_answer() and yields a well-formed SSE error event followed by a proper stream terminator instead of letting the exception propagate uncaught",
+        "When no answer content was collected due to an upstream failure, _persist() does not silently write a blank successful turn (either skipped or persisted with an explicit error marker)",
+        "backend/tests/test_agent_loop.py and backend/tests/test_chat_router.py still pass",
+        "A new test exercises the mid-stream LLM-failure path (simulating an exception from final_answer) and asserts the stream terminates cleanly without persisting a blank turn"
       ],
       "passes": true
     },
     {
       "id": "M2",
-      "title": "Router HTTP layer has zero test coverage",
-      "description": "Add TestClient-based tests for chat_rt.py covering session_id validation, upload size/extension enforcement, and delete_file session-scoping.",
+      "title": "Final-answer prompt uses unbounded raw memory instead of _bounded_memory",
+      "description": "backend/app/service/agent/agent.py: the final answer prompt does json.dumps(memory, ...) on raw memory while should_continue uses _bounded_memory(memory). Also _bounded_memory never bounds list[dict] fields (rag_search/web_search results).",
       "acceptanceCriteria": [
-        "New test file uses fastapi.testclient.TestClient",
-        "Tests cover: invalid session_id rejected, oversized upload rejected/cleaned up, disallowed extension rejected, delete_file cannot delete another session's file",
-        "New tests pass in a fresh run"
+        "The final-answer prompt uses a bounded version of memory (same _bounded_memory used by should_continue, or an extended variant)",
+        "List-valued memory fields (e.g. web_search/rag_search results) are capped in count/size, not just str fields",
+        "backend/tests/test_agent_loop.py still passes"
       ],
       "passes": true
     },
     {
       "id": "M3",
-      "title": "Partial success on multi-file upload leaves orphaned files/duplicate risk",
-      "description": "Validate all filenames/extensions up front before processing any file in a batch; clean up written files on per-file indexing failure.",
+      "title": "Aggregate PDF rasterization memory is unbounded despite per-page pixel cap",
+      "description": "backend/app/service/core/deepdoc/parser/pdf_parser.py:976 - all pages are materialized into self.page_images simultaneously; MAX_PDF_PAGES x MAX_PAGE_RENDER_PIXELS can multiply to ~4.5GB. Enforce an aggregate budget or release page images incrementally.",
       "acceptanceCriteria": [
-        "upload_files validates every file's extension before writing/indexing any file in the batch",
-        "A file that fails indexing after being written to disk is deleted rather than left orphaned",
-        "backend/tests/test_agent_loop.py passes; new/updated test covers the cleanup behavior"
+        "An aggregate pixel/byte budget across all rendered pages is enforced (or page images are processed and released in a streaming fashion) so total held rasterized memory is bounded regardless of per-page MediaBox size",
+        "Existing PDF parsing tests (if any) and backend/tests/test_agent_loop.py / test_chat_router.py still pass",
+        "A normal, reasonably-sized PDF still parses correctly and produces the same output as before"
       ],
       "passes": true
     },
     {
       "id": "M4",
-      "title": "get_files/get_official_examples swallow exceptions as empty list",
-      "description": "Return a 5xx (or explicit error flag) on ES/backend failure instead of silently returning [].",
+      "title": "Corrupt/mislabeled PDF raises opaque AttributeError instead of failing cleanly",
+      "description": "backend/app/service/core/deepdoc/parser/pdf_parser.py __images__: self.page_images/self.page_chars are only set inside the try block; if pdfplumber.open() fails, the except swallows the error but later code (range(len(self.page_chars))) crashes with an unrelated AttributeError.",
       "acceptanceCriteria": [
-        "get_files and get_official_examples surface backend failures distinctly from a genuinely empty result",
-        "Existing success-path behavior unchanged",
-        "backend/tests/test_agent_loop.py passes"
+        "self.page_images and self.page_chars are initialized to [] before the try block",
+        "On a pdfplumber.open() failure, the function returns early or raises a clear, typed error instead of allowing a later AttributeError",
+        "A test uploading a corrupt/non-PDF file renamed to .pdf results in a clean failed status via the router's existing exception handling, not an opaque AttributeError",
+        "backend/tests/test_chat_router.py still passes"
       ],
       "passes": true
     },
     {
       "id": "M5",
-      "title": "Empty session_id silently drops the chat turn",
-      "description": "Reject empty/invalid session_id on /chat with 400 instead of silently coercing to None and losing the persisted turn.",
+      "title": "ResearchLoading indicator renders under every prior user message, not just the in-flight one",
+      "description": "frontend/src/pages/chat/component/chat-message.tsx:86-95 - status computed per-item as loading?'processing':'success' and rendered under every ChatRole.User bubble whenever deepResearch/useDeep is on.",
       "acceptanceCriteria": [
-        "/chat with an empty or invalid session_id returns 400 instead of streaming an answer that fails to persist",
-        "backend/tests/test_agent_loop.py passes"
+        "The ResearchLoading indicator only renders under the last user message (or otherwise only reflects the actually in-flight request), not under every historical user message",
+        "npm run build succeeds",
+        "npm run lint shows no new issues vs baseline"
       ],
       "passes": true
     },
     {
       "id": "M6",
-      "title": "index_finance.py rebuilds embeddings client per chunk with no timeout",
-      "description": "Hoist a single module-level OpenAI client with timeout/max_retries matching file_parse.py, reuse across chunks.",
+      "title": "Markdown rendering disables GFM, breaking tables in finance answers",
+      "description": "frontend/src/components/markdown/index.tsx:21-23 - marked.parse(..., { gfm: false }) disables GitHub-flavored markdown (tables etc).",
       "acceptanceCriteria": [
-        "generate_embedding no longer constructs a new OpenAI client per call",
-        "The shared client has an explicit timeout and max_retries",
-        "Script still runs (py_compile / dry-run check)"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M7",
-      "title": "execute_insert_process swallows ES bulk-index failures",
-      "description": "Check bulk() error/success counts and raise on failure so the route marks the file failed instead of writing a success KB row.",
-      "acceptanceCriteria": [
-        "execute_insert_process raises (or returns a failure signal) when bulk indexing reports errors or zero successes",
-        "chat_rt.py's exception handling marks the file failed in this case, and no KB row is written for a fully-failed index",
-        "backend/tests/test_agent_loop.py passes"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M8",
-      "title": "Dead pokeapi package in a finance app",
-      "description": "Remove the unused backend/app/service/pokeapi package (not wired into the agent's tool list).",
-      "acceptanceCriteria": [
-        "backend/app/service/pokeapi/ is deleted",
-        "No remaining import references to pokeapi_tool anywhere in app/",
-        "backend/tests/test_agent_loop.py passes (its openai/pokeapi_tool stubbing still works or is updated accordingly)"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M9",
-      "title": "window.open on unvalidated backend-relayed URLs (result.tsx)",
-      "description": "Validate the URL scheme (http/https only) before calling window.open on image/video result links.",
-      "acceptanceCriteria": [
-        "Both window.open call sites in result.tsx only navigate when the link's protocol is http: or https:",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M10",
-      "title": "Upload modal surfaces raw error.message to the user",
-      "description": "Show a translated generic upload-failure message for backend-originated errors instead of the raw ResponseError.message.",
-      "acceptanceCriteria": [
-        "Backend-originated upload failures show t.uploadFailed (or equivalent translated message), not a raw backend string",
-        "The client-side file-too-large message (already localized) still displays correctly",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M11",
-      "title": "No error/empty state when chat history fails to load",
-      "description": "Add an onError handler and error UI/state for the chat history useRequest call.",
-      "acceptanceCriteria": [
-        "chat/index.tsx's history request has an onError handler",
-        "A visible error state (toast or inline message) is shown when history fails to load",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "M12",
-      "title": "send() has duplicated, subtly divergent first-message/subsequent-message branches",
-      "description": "Collapse into a single path with a uniformly-shaped assistant placeholder and consistent scrollToBottom call.",
-      "acceptanceCriteria": [
-        "send() no longer has two near-duplicate branches with divergent placeholder shapes",
-        "scrollToBottom is called consistently on every send",
+        "gfm is enabled (true) for markdown rendering unless there is a documented reason not to",
+        "A markdown string containing a table renders as an actual table element, not raw pipe text",
         "npm run build succeeds"
       ],
       "passes": true
     },
     {
       "id": "L1",
-      "title": "history_str not wrapped in <untrusted_context> like memory/references",
-      "description": "Wrap history_str the same way memory/references are wrapped in the final_answer prompt.",
+      "title": "history_rt empty session_id causes false-success no-ops",
+      "description": "backend/app/router/history_rt.py delete_session/get_messages: empty session_id passes Query(...) validation but _validate_session_id('') returns None, causing delete_session to report success while deleting nothing.",
       "acceptanceCriteria": [
-        "history_str is wrapped in <untrusted_context> tags consistent with memory/references",
-        "backend/tests/test_agent_loop.py passes"
+        "delete_session and get_messages reject/handle empty or invalid session_id consistently with chat()'s existing 400 behavior instead of silently no-oping",
+        "A new test confirms delete_session with an empty session_id returns an error rather than a false-success message",
+        "backend/tests/test_chat_router.py (or a new history router test file) passes"
       ],
       "passes": true
     },
     {
       "id": "L2",
-      "title": "No auth / CORS wildcard for a hardcoded single user",
-      "description": "Given this is an intentional single-user demo, lock CORS allow_origins to the actual frontend origin (env-configurable) instead of '*', and document the single-user/no-auth decision inline. Do not build a full auth system (out of scope).",
+      "title": "es_client loopback detection uses substring match instead of exact host match",
+      "description": "backend/app/utils/es_client.py:5-9 _is_loopback uses `any(host in url for host in _LOOPBACK_HOSTS)`, a substring test vulnerable to lookalike hostnames.",
       "acceptanceCriteria": [
-        "app_main.py's CORS allow_origins is no longer a bare wildcard '*' by default in a way that's silently insecure - it reads from an env-configurable origin (falling back to the known dev frontend origin) with a short comment documenting the single-user/no-auth design decision",
-        "Backend still starts and serves the frontend without CORS errors in local dev"
+        "Loopback detection parses the URL and compares the exact hostname against the loopback list rather than doing substring matching",
+        "Existing ES client behavior for real localhost/127.0.0.1 URLs is unchanged",
+        "backend/tests/test_agent_loop.py / test_chat_router.py still pass"
       ],
       "passes": true
     },
     {
       "id": "L3",
-      "title": "_apply_upload_boost uses value-equality index() instead of identity",
-      "description": "Use identity-based lookup for best_index consistent with the removal step.",
+      "title": "Delete unused dead-code scaffolding (serper_images/videos, knowledgebase_operations helpers)",
+      "description": "backend/app/service/web_search/web_search.py serper_images/serper_videos and backend/app/database/knowledgebase_operations.py verify_user_knowledgebase/get_user_kb_files have zero call sites.",
       "acceptanceCriteria": [
-        "_apply_upload_boost finds best_index via identity (is), not candidates.index(best)",
-        "backend/tests/test_agent_loop.py passes"
+        "Confirmed via grep that serper_images, serper_videos, verify_user_knowledgebase, get_user_kb_files have no callers anywhere in app/, scripts/, tests/",
+        "Those functions are removed (or, if kept intentionally, documented with a comment explaining why)",
+        "backend/tests/test_agent_loop.py and test_chat_router.py still pass"
       ],
       "passes": true
     },
     {
       "id": "L4",
-      "title": "_rerank_candidates partially mutates _score before an IndexError fallback",
-      "description": "Score into a local copy and only commit if every r.index is valid.",
+      "title": "process_actions dedup set resets per call, allowing duplicate memory entries across reflection iterations",
+      "description": "backend/app/service/agent/agent.py:469-494,684-709 - the seen dedup set is recreated on every process_actions call rather than persisting across reflection iterations.",
       "acceptanceCriteria": [
-        "_rerank_candidates no longer leaves partially-mutated state when falling back after an invalid index",
-        "backend/tests/test_agent_loop.py passes"
+        "Duplicate supplementary actions (e.g. the same finance_query re-issued in a later reflection iteration) are not appended to memory a second time",
+        "backend/tests/test_agent_loop.py still passes, and a new/updated test demonstrates the dedup persists across iterations"
       ],
       "passes": true
     },
     {
       "id": "L5",
-      "title": "ChatRequest.message has no min_length",
-      "description": "Add min_length=1 to ChatRequest.message.",
+      "title": "_embed silently drops trailing chunks on embedding count mismatch",
+      "description": "backend/app/service/core/file_parse.py:76-95,176-186 - no assertion that len(vectors) == len(items); zip() silently truncates on mismatch and the file is still marked success.",
       "acceptanceCriteria": [
-        "ChatRequest.message rejects empty string via pydantic validation",
-        "backend/tests/test_agent_loop.py passes"
+        "A length mismatch between requested items and returned vectors is detected and raises (or returns an explicit failure) rather than silently truncating via zip",
+        "backend/tests/test_agent_loop.py / test_chat_router.py (or a new file_parse test) covers the mismatch case and passes"
       ],
       "passes": true
     },
     {
       "id": "L6",
-      "title": "naive_merge can produce a chunk exceeding the embedding token limit",
-      "description": "Hard-cap any remaining oversized piece after delimiter splitting before it reaches _embed.",
+      "title": "index_finance.py never checks bulk-index result, same class as previously-fixed file_parse.py issue",
+      "description": "scripts/index_finance.py:256-259 - es.bulk(...) per-item errors are discarded while `written` is incremented unconditionally beforehand.",
       "acceptanceCriteria": [
-        "naive_merge (or its caller) truncates/splits any piece still above a safe token ceiling after delimiter splitting",
-        "backend/tests/test_agent_loop.py passes"
+        "The bulk response's per-item errors are inspected and `written` (or an equivalent success count) reflects actual indexing success, not attempted count",
+        "Script still runs correctly against a normal successful indexing batch (smoke-checked or unit tested if feasible)"
       ],
       "passes": true
     },
     {
       "id": "L7",
-      "title": "index_finance.py uses naive local time; file_parse never sets create_timestamp_flt",
-      "description": "Use timezone-aware UTC in index_finance.py; populate create_timestamp_flt in file_parse.py too.",
+      "title": "index_finance.py inconsistent encoding handling across content types",
+      "description": "scripts/index_finance.py:278 vs :307,330 - filings use errors='ignore' but news/educational content use plain utf-8 read_text, which can raise UnicodeDecodeError and abort the whole run.",
       "acceptanceCriteria": [
-        "index_finance.py uses datetime.now(timezone.utc) instead of naive local time",
-        "file_parse.py's insert path also sets create_timestamp_flt",
-        "backend/tests/test_agent_loop.py passes"
+        "All three read paths (filings, news, educational) apply the same defensive encoding handling (errors='ignore' or find_codec)",
+        "A non-UTF-8 file no longer aborts the entire indexing run"
       ],
       "passes": true
     },
     {
       "id": "L8",
-      "title": "finance_tool assumes dividendYield is already a percentage",
-      "description": "Verify/normalize dividendYield representation defensively.",
+      "title": "file_parse.py doc_id hash collision causes duplicate-content chunks to silently overwrite each other in ES",
+      "description": "backend/app/service/core/file_parse.py:189 - doc_id hash includes chunk text; two chunks with identical content collide and the later bulk op overwrites the earlier one.",
       "acceptanceCriteria": [
-        "finance_tool normalizes dividendYield defensively (handles both fraction and percentage representations without a 100x silent error)",
-        "backend/tests/test_agent_loop.py passes"
+        "doc_id incorporates a per-chunk ordinal (or other uniqueness guarantee) so identical-content chunks no longer collide and overwrite each other",
+        "backend/tests/test_chat_router.py / test_agent_loop.py still pass, and a new test confirms two identical-content chunks both get indexed with distinct ids"
       ],
       "passes": true
     },
     {
       "id": "L9",
-      "title": "pdf_parser __images__ fallback sizes page_chars to requested range, not rendered pages",
-      "description": "Size page_chars to len(self.page_images) instead of page_to - page_from.",
+      "title": "rag_tokenizer.py calls logging.basicConfig as an import side effect",
+      "description": "backend/app/service/core/rag/nlp/rag_tokenizer.py:429-431 plus a duplicate `import logging` at line 17 - basicConfig mutates root logger config on import.",
       "acceptanceCriteria": [
-        "The __images__ failure fallback sizes page_chars to the actual rendered page count",
-        "backend/tests/test_agent_loop.py passes"
+        "The module-level logging.basicConfig call and the duplicate import are removed; the app's own logging setup is left untouched by importing this module",
+        "backend/tests/test_agent_loop.py still passes"
       ],
       "passes": true
     },
     {
       "id": "L10",
-      "title": "torch is a required heavy dependency used only for a CUDA probe",
-      "description": "Detect CUDA via onnxruntime.get_available_providers() instead of importing torch.",
+      "title": "ensureSessionId caches a rejected promise, wedging the home page until reload",
+      "description": "frontend/src/pages/index/index.tsx:22-29 - sessionPromiseRef.current is never cleared on rejection, so every subsequent call reuses the same rejected promise.",
       "acceptanceCriteria": [
-        "ocr.py/recognizer.py no longer import torch to probe CUDA availability",
-        "CUDA detection uses onnxruntime.get_available_providers() (or an equivalent onnxruntime-based check)",
-        "backend/tests/test_agent_loop.py passes"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L11",
-      "title": "init.sql stale jsonb comment / no FKs / user_id type mismatch",
-      "description": "Fix the stale comment and reconcile the type story or add FKs where integrity matters, as feasible without breaking existing data assumptions.",
-      "acceptanceCriteria": [
-        "The stale 'jsonb' comment on messages.documents is corrected to match reality (either the column is migrated to jsonb, or the comment is fixed to say TEXT)",
-        "Change is documented in the migration/init file with no breaking change to existing single-user demo data flow"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L12",
-      "title": "iXBRL hidden-header stripping may not match namespaced tags under lxml",
-      "description": "Verify and, if unmatched, use a namespace-agnostic predicate or XML-aware parser.",
-      "acceptanceCriteria": [
-        "parse_filing_html's hidden-header stripping is verified against a representative iXBRL sample and fixed if it doesn't match, or documented as verified-working with evidence"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L13",
-      "title": "rag_tokenizer lazy trie-cache build is racy under concurrent first uploads",
-      "description": "Guard the lazy build with a lock or atomic write-and-rename.",
-      "acceptanceCriteria": [
-        "Concurrent first-time trie cache builds no longer risk a corrupt/partial cache file (lock or atomic write-and-rename in place)",
-        "backend/tests/test_agent_loop.py passes"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L14",
-      "title": "hot-questions debounce recreated every render",
-      "description": "Wrap debounce in useMemo/useCallback so one instance persists across renders.",
-      "acceptanceCriteria": [
-        "The debounced click handler in hot-questions is stable across re-renders",
+        "On api.session.create() rejection, sessionPromiseRef.current is cleared so a subsequent call retries instead of reusing a permanently-rejected promise",
         "npm run build succeeds"
       ],
       "passes": true
     },
     {
-      "id": "L15",
-      "title": "window.$app assigned during render instead of in an effect",
-      "description": "Move the window.$app assignment into a useEffect.",
+      "id": "L11",
+      "title": "App.tsx assigns window.$showLoading/$hideLoading during render, inconsistent with the $app useEffect fix",
+      "description": "frontend/src/App.tsx:46-59 - $showLoading/$hideLoading are still assigned in the render body while $app was previously moved into useEffect.",
       "acceptanceCriteria": [
-        "MountApi assigns window.$app inside useEffect, not directly in the render body",
+        "window.$showLoading and window.$hideLoading are assigned inside a useEffect (alongside or consistent with $app), not during the render body",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L12",
+      "title": "ComSender upload has no client-side file size check",
+      "description": "frontend/src/components/sender/index.tsx:47-60 - no size guard, unlike upload.tsx's 5MB check.",
+      "acceptanceCriteria": [
+        "ComSender's upload() rejects files over the same size threshold used in upload.tsx (5MB) with an appropriate user-facing message before making the network request",
+        "npm run build succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L13",
+      "title": "Repository page has dead rowSelection UI with no bulk action",
+      "description": "frontend/src/pages/repository/index.tsx:174-182 - rowSelection/selectedRowKeys wired up but selectedRowKeys never read anywhere.",
+      "acceptanceCriteria": [
+        "rowSelection and its associated unused state are removed from the uploaded-docs table (no bulk action is implemented in this pass)",
+        "npm run build succeeds and the repository page's document table still renders/functions correctly"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L14",
+      "title": "ResearchLoading 'failed' status is unreachable dead code",
+      "description": "frontend/src/pages/chat/component/chat-message.tsx:32-51 - the 'failed' branch is never produced by the only call site.",
+      "acceptanceCriteria": [
+        "The unreachable 'failed' status branch/type is removed from ResearchLoading (or wired to a real failure signal if deemed worth keeping)",
+        "npm run build succeeds with no new type errors"
+      ],
+      "passes": true
+    },
+    {
+      "id": "L15",
+      "title": "SSE reader drops a final unterminated event after stream done",
+      "description": "frontend/src/pages/chat/index.tsx:165-170 - after done, the final decoder flush isn't re-scanned for a leftover data: line without a trailing newline.",
+      "acceptanceCriteria": [
+        "After the read loop ends (done), any remaining buffered content starting with 'data: ' is parsed in one final pass instead of being silently dropped",
         "npm run build succeeds"
       ],
       "passes": true
     },
     {
       "id": "L16",
-      "title": "Dead 'auth' route metadata implies protection that doesn't exist",
-      "description": "Remove the unused auth field defaulting in routes.tsx helper().",
+      "title": "useSendMessage/hot-questions have no error handling around session creation, risking undefined session_id navigation",
+      "description": "frontend/src/utils/useSendMessage.ts:11-18, frontend/src/components/hot-questions/index.tsx:20-24, frontend/src/pages/index/index.tsx:33 - no try/catch around session.create(), no guard against navigating with an undefined session_id.",
       "acceptanceCriteria": [
-        "The unused route.auth defaulting is removed (or an actual guard is implemented, whichever is simpler)",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L17",
-      "title": "Non-unique React key in source-reference list (result.tsx)",
-      "description": "Key by index instead of document_id.",
-      "acceptanceCriteria": [
-        "The source-reference list uses a unique key (index or composite) instead of a possibly-duplicate document_id",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L18",
-      "title": "Chinese-language component identifiers in result.tsx",
-      "description": "Rename Chinese-named subcomponents to English equivalents.",
-      "acceptanceCriteria": [
-        "The Chinese-named subcomponents in result.tsx are renamed to English (Answer/Source/Images/Videos/Related)",
-        "npm run build succeeds"
-      ],
-      "passes": true
-    },
-    {
-      "id": "L19",
-      "title": "Repository tables render with pagination={false} and no virtualization",
-      "description": "Enable pagination for the document tables.",
-      "acceptanceCriteria": [
-        "Both document tables in repository/index.tsx use real pagination instead of pagination={false}",
+        "Navigation to /chat/:sessionId is guarded so it never occurs with an undefined/falsy session_id",
+        "The session-creation call sites explicitly handle rejection (not just relying on the global error-toast plugin) so callers don't proceed as if a session_id exists",
         "npm run build succeeds"
       ],
       "passes": true

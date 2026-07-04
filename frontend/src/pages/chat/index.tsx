@@ -164,6 +164,12 @@ export default function Index() {
 
           if (done) {
             temp += decoder.decode()
+            // 循环按 '\n' 逐行解析；流结束后缓冲区里可能还剩一段没有换行符
+            // 收尾的 "data: " 内容（比如最后一个事件恰好没有以 \n 结束），
+            // 需要在这里补一次解析，否则会被静默丢弃。
+            if (temp.startsWith('data: ')) {
+              parseData(temp)
+            }
             target.loading = false
             break
           }

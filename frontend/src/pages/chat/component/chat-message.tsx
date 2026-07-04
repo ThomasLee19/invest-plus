@@ -29,23 +29,15 @@ function UserMessage(props: { item: API.ChatItem }) {
   )
 }
 
-function ResearchLoading(props: {
-  status: 'processing' | 'success' | 'failed'
-}) {
+function ResearchLoading(props: { status: 'processing' | 'success' }) {
   const { status } = props
   const { t } = useLang()
   if (status === 'success') return null
 
   return (
     <div className={styles['chat-status']}>
-      {status === 'processing' ? (
-        <>
-          {t.thinking}
-          <SyncOutlined spin style={{ marginLeft: 8 }} />
-        </>
-      ) : (
-        t.failed
-      )}
+      {t.thinking}
+      <SyncOutlined spin style={{ marginLeft: 8 }} />
     </div>
   )
 }
@@ -81,6 +73,13 @@ export default function ChatMessage(props: {
 }) {
   const { list, onSend } = props
 
+  const lastUserIndex = useMemo(() => {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].role === ChatRole.User) return i
+    }
+    return -1
+  }, [list])
+
   return (
     <div className={styles['chat-message']}>
       {list.map((item, index) => {
@@ -90,7 +89,9 @@ export default function ChatMessage(props: {
           return (
             <div className={styles['user-message--wrapper']} key={item.id}>
               <UserMessage item={item} />
-              {props.deepResearch && <ResearchLoading status={status} />}
+              {props.deepResearch && index === lastUserIndex && (
+                <ResearchLoading status={status} />
+              )}
             </div>
           )
         }

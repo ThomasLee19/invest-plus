@@ -20,32 +20,6 @@ def serper_search(q="apple inc", hl="en", num=20):
     """
     return make_request(q, hl, "/search", num)
 
-def serper_images(q="apple inc", hl="zh-cn"):
-    """
-    使用 Serper API 进行图片搜索的函数
-
-    参数:
-        q (str): 搜索关键词，默认为 "apple inc"
-        hl (str): 语言，默认为 "zh-cn"（中文）
-
-    返回:
-        dict: 图片搜索结果的 JSON 数据
-    """
-    return make_request(q, hl, "/images")
-
-def serper_videos(q="apple inc", hl="zh-cn"):
-    """
-    使用 Serper API 进行视频搜索的函数
-
-    参数:
-        q (str): 搜索关键词，默认为 "apple inc"
-        hl (str): 语言，默认为 "zh-cn"（中文）
-
-    返回:
-        dict: 视频搜索结果的 JSON 数据
-    """
-    return make_request(q, hl, "/videos")
-
 _REQUEST_TIMEOUT_SECONDS = 10
 
 

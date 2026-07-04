@@ -89,6 +89,13 @@ def _embed(texts: list[str]) -> list[list[float]]:
             raise RuntimeError(
                 f"embedding batch {i // _EMBED_BATCH} (chunks {i}-{i + len(batch) - 1}) failed: {e}"
             ) from e
+        # 数量对不上就必须报错，而不是让下游 zip(items, vectors) 静默截断掉尾部
+        # chunk——那样文件仍会被标记为 success，实际上部分内容根本没有写入 ES。
+        if len(resp.data) != len(batch):
+            raise RuntimeError(
+                f"embedding batch {i // _EMBED_BATCH} (chunks {i}-{i + len(batch) - 1}) "
+                f"returned {len(resp.data)} vectors for {len(batch)} inputs"
+            )
         # 按 index 排序后再取 embedding，不依赖 provider 返回顺序与输入顺序一致，
         # 否则一旦顺序不一致，向量会错位挂到错误的 chunk 上。
         vectors.extend(item.embedding for item in sorted(resp.data, key=lambda item: item.index))
@@ -183,10 +190,12 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
     create_timestamp_flt = upload_time.timestamp()
 
     docs = []
-    for (display, embed_text), vec in zip(items, vectors):
+    for i, ((display, embed_text), vec) in enumerate(zip(items, vectors)):
         # scope 哨兵值随 doc_id 一起哈希：不同 session（含 global）上传同名同内容
         # 文件时不会产生相同的 _id，避免第二次写入静默覆盖第一次（跨 scope 冲突）。
-        doc_id = hashlib.md5(f"{session_id or 'global'}{file_name}{display}".encode()).hexdigest()
+        # 序号 i 同样加入哈希：重复内容（如相同的表头/样板文字）的 chunk 若不带序号
+        # 会算出相同的 doc_id，导致后写入的 chunk 在 ES 里静默覆盖先写入的那个。
+        doc_id = hashlib.md5(f"{session_id or 'global'}{file_name}{i}{display}".encode()).hexdigest()
         docs.append({
             "_index": ES_INDEX,
             "_id": doc_id,

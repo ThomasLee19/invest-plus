@@ -2,6 +2,7 @@ import * as api from '@/api'
 import HomeBanner from '@/components/home-banner'
 import HotQuestions from '@/components/hot-questions'
 import ComSender from '@/components/sender'
+import { useLang } from '@/i18n'
 import { transportToChatEnter } from '@/pages/chat/shared'
 import { setPageTransport } from '@/utils'
 import { useCallback, useRef } from 'react'
@@ -10,6 +11,7 @@ import styles from './index.module.scss'
 
 export default function Index() {
   const navigate = useNavigate()
+  const { t } = useLang()
   // 会话必须在首个附件上传之前就存在，否则上传会带着 session_id: undefined
   // 发出，之后创建的会话再也关联不到它。因此在首次上传/发送时懒创建一个会话，
   // 并缓存其 id，让上传和跳转复用同一个会话。
@@ -24,19 +26,37 @@ export default function Index() {
       sessionPromiseRef.current = api.session
         .create()
         .then((res) => res.data.session_id)
+        .catch((error) => {
+          // 缓存的是失败的 Promise 会导致后续所有调用永远复用同一个已拒绝的
+          // Promise；清空引用让下一次调用重新发起创建请求。
+          sessionPromiseRef.current = undefined
+          throw error
+        })
     }
     return sessionPromiseRef.current
   }, [])
 
   const send = useCallback(
     async (message: string, files: string[]) => {
-      const session_id = await ensureSessionId()
+      let session_id: string | undefined
+      try {
+        session_id = await ensureSessionId()
+      } catch {
+        window.$app.message.error(t.genericError)
+        return
+      }
+
+      if (!session_id) {
+        window.$app.message.error(t.genericError)
+        return
+      }
+
       setPageTransport(transportToChatEnter, {
         data: { message, attachments: files },
       })
       navigate(`/chat/${session_id}`)
     },
-    [ensureSessionId, navigate],
+    [ensureSessionId, navigate, t],
   )
 
   return (

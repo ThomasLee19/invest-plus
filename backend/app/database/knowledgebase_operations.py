@@ -17,30 +17,6 @@ def insert_knowledgebase(user_id: str, file_name: str, session_id: str | None = 
         db.close()
 
 
-def verify_user_knowledgebase(user_id: str) -> bool:
-    db = SessionLocal()
-    try:
-        row = db.execute(
-            text("SELECT 1 FROM knowledgebases WHERE user_id = :uid LIMIT 1"),
-            {"uid": user_id},
-        ).fetchone()
-        return row is not None
-    finally:
-        db.close()
-
-
-def get_user_kb_files(user_id: str) -> list[str]:
-    db = SessionLocal()
-    try:
-        rows = db.execute(
-            text("SELECT file_name FROM knowledgebases WHERE user_id = :uid"),
-            {"uid": user_id},
-        ).fetchall()
-        return [r.file_name for r in rows]
-    finally:
-        db.close()
-
-
 def delete_knowledgebase_entry(file_name: str, session_id: str | None = None) -> None:
     """删除 knowledgebases 表中匹配 file_name 且属于指定 scope 的行。
 

@@ -43,12 +43,12 @@ function MountApi() {
   const [loading, setLoading] = useState(false)
   const [loadingText, setLoadingText] = useState('')
   const loadingCount = useRef(0)
-  window.$showLoading = useCallback(({ title }: { title?: string } = {}) => {
+  const showLoading = useCallback(({ title }: { title?: string } = {}) => {
     loadingCount.current++
     setLoading(true)
     setLoadingText(title ?? '')
   }, [])
-  window.$hideLoading = useCallback(() => {
+  const hideLoading = useCallback(() => {
     loadingCount.current--
     setTimeout(() => {
       if (loadingCount.current <= 0) {
@@ -57,6 +57,10 @@ function MountApi() {
       }
     }, 100)
   }, [])
+  useEffect(() => {
+    window.$showLoading = showLoading
+    window.$hideLoading = hideLoading
+  }, [showLoading, hideLoading])
 
   return (
     <>

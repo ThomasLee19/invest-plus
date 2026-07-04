@@ -296,3 +296,57 @@ phase of the 5-phase finance-agent migration plan
 complete. Stopped the uvicorn dev server that was started for this
 session's live verification (not something the user asked to keep
 running indefinitely).
+
+---
+
+RALPH RUN (2026-07-05): Fixed all 22 findings (6 Medium, 16 Low) from
+debug/26_7_4_debug_3.md. Work split across 3 parallel executor agents by
+domain:
+- fixer-backend-api: M1, M2, L1-L4 (chat_rt.py, history_rt.py, agent.py,
+  es_client.py, web_search.py, knowledgebase_operations.py)
+- fixer-backend-rag: M3, M4, L5-L9 (pdf_parser.py, file_parse.py,
+  index_finance.py, rag_tokenizer.py)
+- fixer-frontend: M5, M6, L10-L16 (chat-message.tsx, markdown/index.tsx,
+  App.tsx, sender/index.tsx, repository/index.tsx, chat/index.tsx,
+  useSendMessage.ts, hot-questions/index.tsx, pages/index/index.tsx)
+
+Architect verification (Step 7, THOROUGH tier/opus): APPROVED. Re-ran all
+verification fresh (77 backend tests OK, frontend build success, lint at
+exact 20-error/9-warning baseline), traced M1's exception handling, the
+M3/M4 interaction inside the same pdf_parser.py method (no conflict
+confirmed), L4's per-turn (not module-level) dedup set, and L8's doc_id
+ordinal fix preserving re-upload idempotency.
+
+Deslop pass (Step 7.5): reviewed all 27 changed files (incl. 4 new test
+files). No duplication, dead code, or needless abstraction found -
+comments are all non-obvious "why" explanations, deletions (serper_images/
+videos, verify_user_knowledgebase/get_user_kb_files, dead rowSelection UI,
+logging.basicConfig side effect) are clean. No edits made.
+
+Regression re-verification (Step 7.6): re-ran full suite post-deslop
+(no changes to re-verify against, but ran anyway per protocol) - 77/77
+backend tests OK, frontend build succeeds, lint unchanged at 29/20/9.
+
+Learnings:
+- The 3-domain split (backend-api / backend-rag / frontend) from the
+  review round carried over cleanly to the fix round with zero file
+  overlap between workers - no merge conflicts.
+- Two closely-related backend findings (L5 embedding-count-mismatch and
+  L8 doc_id-hash-collision) both live in file_parse.py and were correctly
+  assigned to the same worker (fixer-backend-rag) to avoid split
+  ownership of one file.
+- Pre-existing test-isolation issue found (not part of this round's 22
+  fixes): `python -m unittest discover -s tests` fails on
+  test_knowledgebase_operations.py because test_agent_loop.py's global
+  sys.modules stub for "database.knowledgebase_operations" collides with
+  it when run in the same discover process. Confirmed pre-existing
+  (reproduces without this round's new test files too). All this round's
+  verification runs used explicit module names, not discover, so it
+  didn't affect results. Worth fixing in a future round if discover-mode
+  test running is ever needed.
+- Checkmarks were added by the team lead centrally to debug_3.md and
+  debug_3_zh.md (not by the fixer agents) to avoid 3-way concurrent-edit
+  conflicts on the same two report files.
+
+Chinese fix report: debug/26_7_4_debug_3_fix_report_zh.md.
+RALPH RUN COMPLETE.

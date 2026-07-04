@@ -189,6 +189,84 @@ class _RecordingEs:
         return {"deleted": 0}
 
 
+class _RecordingSessionLocal:
+    """Fake SessionLocal: a context-manager DB session that records every
+    executed statement so tests can assert whether an INSERT was attempted,
+    without a real database."""
+
+    calls: list = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, stmt, params=None):
+        _RecordingSessionLocal.calls.append((str(stmt), params))
+
+        class _Result:
+            def fetchall(self_inner):
+                return []
+
+        return _Result()
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+def _failing_final_answer(*args, **kwargs):
+    # A generator function (has a `yield`, even if unreachable) so calling it
+    # returns an iterator lazily -- the RuntimeError only fires once stream()
+    # actually starts iterating it, mirroring a real mid-stream LLM/API failure.
+    raise RuntimeError("upstream LLM boom")
+    yield  # pragma: no cover
+
+
+class StreamMidFailureTests(unittest.TestCase):
+    """M1: an exception raised while iterating final_answer() must not escape
+    stream() uncaught -- it must yield a well-formed SSE error event plus a
+    proper terminator, and _persist() must not write a blank successful turn
+    when no answer content was ever collected."""
+
+    def setUp(self):
+        self.client = _make_client()
+        _RecordingSessionLocal.calls = []
+        self._orig_session_local = chat_rt.SessionLocal
+        self._orig_final_answer = chat_rt.final_answer
+        chat_rt.SessionLocal = _RecordingSessionLocal
+        chat_rt.final_answer = _failing_final_answer
+
+    def tearDown(self):
+        chat_rt.SessionLocal = self._orig_session_local
+        chat_rt.final_answer = self._orig_final_answer
+
+    def test_stream_terminates_cleanly_on_mid_stream_failure(self):
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": "hi"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.text
+        self.assertIn("event: end", body)
+        self.assertIn("data: [DONE]", body)
+        self.assertIn('"role": "assistant"', body)
+
+    def test_blank_turn_is_not_persisted_when_no_answer_collected(self):
+        resp = self.client.post(
+            "/chat", params={"session_id": "sess0001"}, json={"message": "hi"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        insert_calls = [
+            c for c in _RecordingSessionLocal.calls if "INSERT INTO messages" in c[0]
+        ]
+        self.assertEqual(
+            insert_calls, [], "a blank turn must not be persisted after a mid-stream failure"
+        )
+
+
 class DeleteFileScopingTests(unittest.TestCase):
     """(d) delete_file must scope to the caller's session — it cannot delete a
     different session's same-named file, in ES or on disk."""

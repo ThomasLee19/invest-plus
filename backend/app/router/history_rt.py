@@ -16,6 +16,12 @@ USER_ID = "1"
 @router.delete("/sessions")
 def delete_session(session_id: str = Query(...), db: Session = Depends(get_db)):
     session_id = _validate_session_id(session_id)
+    # 空字符串同样要拒绝：_validate_session_id("") 返回 None（其"全局 scope"
+    # 语义在 chat()/upload_files 里是合法的可选参数），但这里 session_id 是
+    # 必填路径参数，None 一路传给下面的 DELETE ... WHERE session_id = :sid
+    # 只会匹配 0 行，却仍返回"已删除"，造成假成功。与 chat() 的 400 行为保持一致。
+    if session_id is None:
+        raise HTTPException(status_code=400, detail="session_id is required")
     try:
         db.execute(text("DELETE FROM messages WHERE session_id = :sid"), {"sid": session_id})
         db.execute(text("DELETE FROM sessions WHERE session_id = :sid"), {"sid": session_id})
@@ -44,6 +50,8 @@ def get_sessions(db: Session = Depends(get_db)):
 @router.get("/messages")
 def get_messages(session_id: str = Query(...), db: Session = Depends(get_db)):
     session_id = _validate_session_id(session_id)
+    if session_id is None:
+        raise HTTPException(status_code=400, detail="session_id is required")
     try:
         rows = db.execute(
             text("SELECT user_question, model_answer, think, created_at FROM messages WHERE session_id = :sid ORDER BY created_at ASC"),

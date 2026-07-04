@@ -17,8 +17,8 @@ export default function HotQuestions() {
   // debounce 实例必须在多次渲染间保持同一个，否则每次重渲染都会重置计时器。
   const handleClick = useMemo(
     () =>
-      debounce(300, (question: HotQuestion) => {
-        sendMessage(question.title)
+      debounce(300, async (question: HotQuestion) => {
+        await sendMessage(question.title)
       }),
     [sendMessage],
   )

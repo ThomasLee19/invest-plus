@@ -40,8 +40,8 @@ running uvicorn is **this directory**.
 - `chat.py` — `ChatRequest { message: str }`. The only request schema.
 
 ### database/
-- `knowledgebase_operations.py` — `insert_knowledgebase` / `verify_user_knowledgebase`
-  / `get_user_kb_files` on the `knowledgebases` table.
+- `knowledgebase_operations.py` — `insert_knowledgebase` / `delete_knowledgebase_entry`
+  / `get_latest_user_upload` on the `knowledgebases` table.
 
 ### utils/
 - `database.py` — reads `DATABASE_URL`, builds the engine + `SessionLocal`, exposes

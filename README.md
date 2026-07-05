@@ -51,7 +51,12 @@ DASHSCOPE_API_KEY=your_dashscope_key
 DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 SERPER_API_KEY=your_serper_key
 ES_URL=http://localhost:1200
-DATABASE_URL=postgresql://postgres:pg123456@localhost:5432/investplus
+ELASTIC_PASSWORD=your_elastic_password
+TIMEZONE=Asia/Shanghai
+MEM_LIMIT=4294967296
+PG_MEM_LIMIT=1073741824
+POSTGRES_PASSWORD=your_postgres_password
+DATABASE_URL=postgresql://postgres:your_postgres_password@localhost:5432/investplus
 ```
 
 ### 2. Start infrastructure
@@ -130,6 +135,8 @@ no RAGFlow dependency):
 
 Scores from both branches are summed (vector branch boosted to balance
 magnitudes); if query embedding fails, it degrades gracefully to BM25-only.
+Combined candidates are then reranked with qwen3-vl-rerank before an
+upload-recency boost narrows the final set to the top 5.
 This mechanism was validated against a Chinese conversational query on an
 English-source corpus: BM25-only recall was **0%**, while hybrid (BM25 +
 vector) recall was **100%** — the retrieval layer itself is unchanged from
@@ -232,8 +239,12 @@ same tool/RAG layer.
 
 ## License / Attribution
 
-Application and agent code is original; the hybrid retrieval is hand-rolled
-on native Elasticsearch (no RAGFlow). Finance filings via
-[SEC EDGAR](https://www.sec.gov/edgar), market data via
-[yfinance](https://github.com/ranaroussi/yfinance). LLMs via Alibaba Cloud
-DashScope.
+Application and agent code is original; the hybrid retrieval (`rag_search`
+in `agent.py`) is hand-rolled directly on native Elasticsearch, with no
+RAGFlow dependency. The PDF parsing pipeline (`service/core/deepdoc`,
+`service/core/rag`), however, is ported from
+[RAGFlow](https://github.com/infiniflow/ragflow) (Apache License 2.0,
+Copyright The InfiniFlow Authors) — see the license headers in that
+directory. Finance filings via [SEC EDGAR](https://www.sec.gov/edgar),
+market data via [yfinance](https://github.com/ranaroussi/yfinance). LLMs via
+Alibaba Cloud DashScope.

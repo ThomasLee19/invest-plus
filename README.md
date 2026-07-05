@@ -11,9 +11,11 @@ information to stop.
 - **Autonomous agent pipeline** — Plan → Act → Reflect → Answer. The agent
   decides which tools to call, breaks questions into sub-queries, and keeps
   reflecting/gathering more information until it judges the answer complete
-  (bounded by a safety cap so it can't loop forever). No hardcoded
-  decision tree — every continue/stop/retry choice comes from the LLM's own
-  judgment.
+  (bounded by a safety cap so it can't loop forever — if the cap is hit
+  before the LLM signals completion, the final answer discloses that
+  information may be incomplete rather than presenting a partial result as
+  exhaustive). No hardcoded decision tree — every continue/stop/retry choice
+  comes from the LLM's own judgment.
 - **Three research tools**:
   - `rag_search` — a hybrid (BM25 + vector) search over a knowledge base of
     SEC filings (10-K/10-Q/8-K), news, and educational reference articles
@@ -137,7 +139,7 @@ that validation and carries the same behavior into the finance domain.
 
 | Layer | Technology | Role |
 |---|---|---|
-| LLM | Qwen — qwq-plus (final answer), qwen-plus (plan/reflection) via DashScope | Reasoning + tool decisions |
+| LLM | Qwen — qwen3.7-max (final answer), qwen-plus (plan/reflection) via DashScope | Reasoning + tool decisions |
 | Agent Framework | Custom Plan→Act→Reflect→Answer pipeline (no LangChain) | Tool orchestration + self-correction |
 | Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads) | Hybrid retrieval (BM25 + vector) |
 | Real-time Data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
@@ -169,7 +171,16 @@ InvestPlus/
 │       └── utils/database.py
 │   └── tests/
 │       ├── test_agent_loop.py       # Loop-mechanism unit tests (should_continue, error propagation)
+│       ├── test_chat_router.py      # /chat SSE + related router endpoints
+│       ├── test_history_router.py   # /sessions, /messages
+│       ├── test_finance_tool.py     # yfinance wrapper, degrade-on-failure, ticker cache
+│       ├── test_file_parse.py       # .txt/.md/.pdf chunking + ES indexing
+│       ├── test_pdf_parser.py       # DeepDoc PDF parser
+│       ├── test_es_client.py        # Elasticsearch client singleton/config
+│       ├── test_knowledgebase_operations.py
+│       ├── test_index_finance.py    # Bulk corpus indexer
 │       └── test_e2e_finance.py      # Live end-to-end smoke test against a running backend
+├── eval/                             # Quantitative agent/RAG evaluation harness (see below)
 ├── frontend/
 │   └── src/
 │       ├── i18n.tsx                 # Bilingual text (zh/en)
@@ -185,9 +196,31 @@ InvestPlus/
 └── .env                             # API keys and config
 ```
 
+## Quantitative Evaluation
+
+A reproducible evaluation harness (`eval/`) drives the live backend
+end-to-end (real agent/RAG/Elasticsearch logic, no mocks) against a labeled
+dataset built from the actual indexed corpus:
+
+| Metric | Result | Basis |
+|---|---|---|
+| RAG retrieval/answer accuracy | 14/14 = 100% | fact-based QA pairs checked against the actual filings/news/educational corpus (1 additional question excluded as a flawed test design — see `eval/report.md`) |
+| Tool-routing accuracy (lenient — required tool present) | 17/17 = 100% | questions spanning finance_query / rag_search / web_search / no-tool / compound intents |
+| Tool-routing accuracy (strict — exact tool set match) | 10/17 = 58.8% | same dataset; the gap reflects a real, documented over-triggering tendency in the Reflect loop, not a routing bug — the required tool is always called, but `web_search` is often additionally (and unnecessarily) triggered as a fallback |
+| Response latency | TTFT 2.1s avg; full response p50 29.9s / p90 85.6s | 32 real streaming requests; multi-round Reflect cases drive the long tail |
+| Edge-case robustness | 4/4 = 100% (1 case inconclusive — see report) | empty input, oversized input, invalid ticker, non-existent session — all handled gracefully with no 5xx/uncaught exceptions |
+
+Methodology, full dataset, and raw transcripts: [`eval/report.md`](eval/report.md),
+[`eval/dataset.py`](eval/dataset.py), [`eval/results_final.json`](eval/results_final.json).
+Re-run against a live backend with `python eval/run_eval.py`.
+
+**Honesty notes:** the corpus is the project's own bundled test data (some
+AI-generated, dated in the future) — RAG accuracy measures faithfulness to
+the indexed corpus, not validation against real-world financial data.
+
 ## Known Limitations
 
-- **Finance KB retrieval gaps** — a fixed 9-query eval against the live `finance_kb` index measured 7/9 (78%) recall; the 2 misses are thin filings (e.g. a 7-chunk 8-K) or generically-phrased queries getting crowded out by much larger filings in the same shared, un-filtered-by-ticker index. Documented as a real retrieval-quality gap, not a bug.
+- **Tool over-triggering in the Reflect loop** — as measured above, the agent's strict tool-routing accuracy (58.8%) trails its lenient accuracy (100%): it reliably calls the *required* tool but often calls `web_search` as an extra, unneeded fallback, adding latency/cost without changing correctness. A real efficiency target, not a routing bug.
 - **File upload PDF parsing** — the DeepDoc PDF pipeline is wired for user-uploaded filings via `/upload_files`, but the bulk corpus indexer (`scripts/index_finance.py`) parses SEC EDGAR filings from their native HTML (iXBRL) form directly rather than through the PDF pipeline, since EDGAR doesn't serve modern filings as PDF (see the module docstring in `index_finance.py`).
 
 ## Roadmap

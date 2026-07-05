@@ -139,9 +139,9 @@ that validation and carries the same behavior into the finance domain.
 
 | Layer | Technology | Role |
 |---|---|---|
-| LLM | Qwen — qwen3.7-max (final answer), qwen-plus (plan/reflection) via DashScope | Reasoning + tool decisions |
+| LLM | Qwen — qwen3.7-max (final answer), qwen-plus (plan/reflection), via the `openai` SDK against DashScope's OpenAI-compatible endpoint | Reasoning + tool decisions |
 | Agent Framework | Custom Plan→Act→Reflect→Answer pipeline (no LangChain) | Tool orchestration + self-correction |
-| Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads) | Hybrid retrieval (BM25 + vector) |
+| Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads); text-embedding-v3 for vector embeddings, qwen3-vl-rerank (native `dashscope` SDK) for reranking | Hybrid retrieval (BM25 + vector) + rerank |
 | Real-time Data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
 | Document Parsing | DeepDoc (layout/table-transformer/OCR, onnxruntime) | PDF filing uploads → table-aware chunks |
 | Web Search | Serper API | Latest market moves / fallback |

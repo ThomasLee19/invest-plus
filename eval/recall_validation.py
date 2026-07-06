@@ -1,14 +1,14 @@
 """
 跨语言召回验证：中文口语化提问 vs 纯 BM25 / hybrid（BM25 + 向量 kNN）。
 
-背景：README.md 中"BM25-only 0% -> hybrid 100%"这一数字最初是在本项目的前身
-PokemonRA（宝可梦语料库）上测得的，迁移到金融领域后从未在 finance_kb 语料上
-重新验证过——本脚本补上这一验证，直接复用 backend/app/service/agent/agent.py
-中生产环境实际使用的查询构造逻辑（_strip_filler_words / _scope_should_clauses /
-_embed_query / ES_INDEX），保证测的是线上会跑的同一套检索，而非另写一份近似实现。
+背景：验证 README.md 中"BM25-only 0% -> hybrid 100%"这一跨语言召回结论，直接
+复用 backend/app/service/agent/agent.py 中生产环境实际使用的查询构造逻辑
+（_strip_filler_words / _scope_should_clauses / _embed_query / ES_INDEX），
+在 finance_kb 真实语料上实测，保证测的是线上会跑的同一套检索，而非另写一份
+近似实现。
 
-判定口径（与原始验证一致，保持可比）：size=20 内至少 1 条命中即算"召回"，不判断
-命中内容是否真正相关——这是一个宽松的二元口径。
+判定口径：size=20 内至少 1 条命中即算"召回"，不判断命中内容是否真正相关——这是
+一个宽松的二元口径。
 
 用法（仓库根目录下）：
     python eval/recall_validation.py

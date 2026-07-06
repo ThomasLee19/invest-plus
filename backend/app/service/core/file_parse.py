@@ -206,7 +206,7 @@ def execute_insert_process(file_path: str, file_name: str, user_id: str, session
 
     es = get_es_client()
 
-    # 整个文件的所有 chunk 用同一上传时间戳（字段名与 index_smogon.py 保持一致）
+    # 整个文件的所有 chunk 用同一上传时间戳
     upload_time = datetime.datetime.now(datetime.timezone.utc)
     create_time = str(upload_time)[:19]
     create_timestamp_flt = upload_time.timestamp()

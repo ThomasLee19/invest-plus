@@ -1,69 +1,74 @@
 # Invest+ Domain Context
 
-> **Migration status**: this glossary describes the **current** domain model
-> (Pokemon competitive battle Q&A), inherited from the project this was
-> rebranded from. Invest+ reuses the agent architecture for a finance research
-> agent; the domain model below has not been replaced yet — that's prompt
-> retargeting (Phase 3) per
-> [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md).
-> Treat every term below as accurate to the code as it stands today, not as
-> aspirational finance terminology.
-
 ## Glossary
 
-### Species（物种）
-一个宝可梦的种类定义，例如"皮卡丘"。物种层面的属性（基础种族值、属性、技能池、进化链）对所有同种个体相同，数据来源为 PokeAPI。
+### Ticker（股票代码）
+1-5 位大写字母的股票代码，如 `AAPL`、`MSFT`、`GOOGL`。系统从用户问题里用正则
+（`_TICKER_RE`）提取大写连续字母序列作为 ticker，并剔除常见的全大写虚词/缩写
+撞字（`I`/`US`/`CEO`/`PE`/`EPS` 等）。`agent_plan` 的 Plan 阶段要求每个子问题
+必须显式带上大写 ticker（复合问题会被拆成多个子问题，每个子问题只对应一个
+ticker，不做多 ticker 扇出）。
 
-系统只处理物种层面的数据，不追踪个体属性（IV/EV/性格/等级）。当用户问个体层面的问题时，系统用物种数据回答并引导用户补充信息。
+**不要用：** 小写股票代码或公司全名替代 ticker 传给 `finance_query`——提取逻辑
+只认大写字母序列，传公司全名（如 "Apple"）会导致 ticker 提取失败。
 
-**不要用：** Pokemon（作为物种的意思时歧义大）、精灵（口语化，不精确）
+### Filing（财报文件）
+上市公司向 SEC 提交的信息披露文件，本系统覆盖三种：**10-K**（年报）、**10-Q**
+（季报）、**8-K**（临时重大事项披露，如高管变动）。语料存放在
+`data/filings/{TICKER}/`，索引进 ES 时 `source_kwd="sec_filing"`。
 
-### Type（属性）
-宝可梦的元素类型，例如火、水、草。决定克制关系（type matchup）。一只 Species 可以有一个或两个 Type。
+### RAG 知识库（finance_kb）
+单一 Elasticsearch 索引，按 `source_kwd` 分四类：
+- `sec_filing` —— Filing 原文（10-K/10-Q/8-K）
+- `news` —— 财经新闻
+- `educational` —— 教育性参考文章（如"什么是市盈率"）
+- `user_upload` —— 用户上传的 `.txt`/`.md`/`.pdf` 文档，按 `session_id` 限定
+  可见范围（`session_id` 为空表示全局种子语料，否则只在对应会话内可见）
 
-**不要用：** 属性（单独使用时歧义，可能指 Stat 或 Ability）
+由 `rag_search` 工具检索，用 BM25（`content_ltks` 全文匹配）+ 向量 kNN
+（`q_1024_vec`，text-embedding-v3）hybrid 融合，qwen3-vl-rerank 精排，
+再按用户最近上传做 boost，最终截断为 top 5。
 
-### Stat（种族值）
-Species 的六项基础数值：HP、攻击（Atk）、防御（Def）、特攻（SpA）、特防（SpD）、速度（Spe）。这是物种固有的数值，不含个体 IV/EV 加成。
+### finance_query（实时结构化数据）
+基于 `yfinance` 的三种查询模式，互不重叠：
+- **quote** —— 实时行情（价格、涨跌幅、成交量）
+- **fundamentals** —— 基本面（市值、市盈率、股息率、52 周区间等）
+- **news** —— 该 ticker 的近期新闻（来自 yfinance，与 RAG 知识库的 `news`
+  分区是两个独立数据源）
 
-**不要用：** 属性、数值（歧义）
+`finance_tool()` 根据问题里的关键词（`_FUNDAMENTALS_KEYWORDS`/
+`_NEWS_KEYWORDS`）路由到对应模式，不含明确关键词时默认查 quote。
 
-### Ability（特性）
-Species 的被动能力，例如速足、厚脂肪。影响战斗中的特殊规则，不属于 Stat 也不属于 Type。
+### rag_search vs finance_query 的边界
+两者职责不重叠，不要混用：
+- `finance_query` —— 精确的、实时的、结构化数值（"AAPL 现在股价多少"）
+- `rag_search` —— 财报原文解读、新闻叙述、教育性概念解释这类文字性/经验性内容
+  （"AAPL 最新 10-K 的风险因素"、"什么是市盈率"）
 
-### Move（招式）
-战斗中使用的具体动作，例如十万伏特、冲浪。每个 Move 有 Type、威力、命中率、PP 等属性。
+### web_search（兜底检索）
+基于 Serper 的通用网页搜索，处理知识库未覆盖的内容或需要"最新"信息的问题（如
+"今天美股大盘走势"、"最新的美联储利率决议"）。`_detect_language` 判断的语言
+决定 Serper 的 `hl`（区域/语言）参数。
 
-### Learnset（技能池）
-一个 Species 能学会的所有 Move 的集合，包含学习方式（升级、技能机、遗传等）。
+### Query vs Advisory（问题类型）
+用户问题分两类：**Query**（有明确答案，如"AAPL 现在股价多少"）和 **Advisory**
+（需要综合推理，如"AAPL 现在这个估值水平算不算贵"）。两类问题统一走完整 Agent
+Pipeline，由 `agent_plan()` 自行判断调用几个工具，不在入口处手动分流。
 
-**歧义处理规则：** 当用户在提问中使用"技能"一词时，系统须先澄清："您所说的技能指的是 Move（招式）还是 Learnset（技能池）？"，再继续回答。"技能"不作为系统内部术语使用。
+### Agent Pipeline（推理链路）
+系统的推理链路，命名固定，**不因场景变化而改**：
+`agent_plan()` → `process_actions()` → `reflection()` → `final_answer()`。
+`reflection()` 现在是一个由 `should_continue()` 驱动的有界循环（不是单次硬编码
+调用），LLM 自行判断信息是否足够、是否需要继续调用工具。
 
-### Language（语言）
-系统支持中英文双语界面。RAG 文档和 PokeAPI 数据统一以英文存储。语言切换通过 `final_answer()` 的 system prompt 参数控制——用户选择中文时，prompt 指示 LLM 用中文回答；选择英文时用英文回答。不维护双语索引，不在数据层做翻译。
+### Language（双语）
+系统支持中英文双语界面，自动检测用户输入语言（`_detect_language`：含 CJK 汉字
+即判定为中文，日文假名/韩文谚文显式排除）。RAG 文档（filings/news/教育内容）
+统一以英文存储，语言切换只影响 `final_answer()` 的 system prompt（指示 LLM
+用对应语言作答），不维护双语索引，不在数据层做翻译。
 
-### Query vs Advisory
-用户问题分两类：Query（有明确答案，如"皮卡丘速度种族值"）和 Advisory（需要推理建议，如"皮卡丘还是雷丘更适合这场比赛"）。两类问题统一走完整 Agent Pipeline，由 `agent_plan()` 自行判断调用几个工具，不在入口处手动分流。
-
-### Agent Pipeline
-系统的推理链路，沿用 SalesPilot 原始命名：`agent_plan()` → `process_actions()` → `reflection()` → `final_answer()`。这是通用 Agent 模式的标准描述，不因场景变化而重命名。
-
-### Generation（世代）
-系统数据范围限定为第九世代（朱/紫），包含两个 DLC（碧之假面 `the-teal-mask`、蓝之圆盘 `the-indigo-disk`）。PokeAPI version-group 名称：`scarlet-violet`、`the-teal-mask`、`the-indigo-disk`。当用户询问其他世代数据时，系统明确告知"本系统基于第九世代数据"。
-
-### Evolution Chain（进化链）
-一个 Species 的进化路径及条件（友好度、道具、时间段、地点等）。数据来源为 PokeAPI，覆盖主系列游戏的标准进化条件。不处理版本限定或活动限定的特殊进化条件。
-
-### Battle Advisory（对战建议）
-系统对战类问题的回答深度：不止于 Type Matchup 结论，还包括具体 Move 组合推荐、队伍搭配建议、速度档位比较。浅层（"电系克制什么"）由 `pokeapi_query` 直接回答；深层对战建议综合 RAG 文档 + `pokeapi_query` 数值 + `web_search` meta 信息，由 `final_answer()` 整合输出。
-
-### Team（队伍）
-由最多 6 只 Species 组成的对战阵容。系统支持队伍分析（弱点覆盖、搭配建议）和队伍推荐（以某只 Species 为核心搭建队伍）。队伍信息只在当次对话上下文中维持，不持久化存储。
-
-### Type Matchup（克制关系）
-两个 Type 之间的伤害倍率关系（0x / 0.5x / 1x / 2x）。属于结构化精确数据，由 `pokeapi_query` 工具查询，不放入 RAG 文档。
-
-### RAG 文档（攻略知识库）
-存放攻略、对战策略、队伍搭配建议、赛季 meta 分析等**经验性、文字性内容**。这类内容 PokeAPI 没有，是 RAG 的专属领域。`pokeapi_query` 和 RAG 两个工具职责不重叠：前者负责精确数值和结构化事实，后者负责策略和经验知识。
-
-数据来源：手动整理热门 Species 的 Smogon 攻略文章作为初始知识库；`web_search`（Serper）作为兜底，处理知识库未覆盖的问题。
+### Session（会话）与 User Upload（用户上传）
+会话（`session_id`）持久化在 PostgreSQL，承载多轮对话历史和用户上传文档的可见
+范围。用户上传的文档经 `file_parse.py` 切块（≤1500 字符）+ embedding 后写入
+`finance_kb`（`source_kwd="user_upload"`），只在其 `session_id` 对应的会话内
+被 `rag_search` 检索到（全局种子语料的 `session_id` 为空，对所有会话可见）。

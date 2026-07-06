@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-07-01 | Updated: 2026-07-01 -->
+<!-- Generated: 2026-07-01 | Updated: 2026-07-07 -->
 
 # frontend
 
@@ -7,8 +7,7 @@
 React 18 + Vite + TypeScript SPA for Invest+ — chat UI with streaming answers,
 a thinking-chain view, session history, and a document repository (upload/manage
 the user knowledge base). Talks to the FastAPI backend over SSE. UI copy
-(banner title, example questions) still reflects the pre-migration Pokemon
-domain — that's Phase 4 of the migration, not yet done; see root AGENTS.md.
+(banner title, example questions) lives in `src/i18n.tsx`.
 
 ## Key Files
 | File | Description |

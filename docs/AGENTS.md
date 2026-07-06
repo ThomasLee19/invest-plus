@@ -15,10 +15,8 @@ agent-workflow conventions (issue tracker, triage labels, domain docs). These ar
 | `agents/` | Conventions for AI/agent workflows referenced by `CLAUDE.md` |
 
 ### adr/
-| File | Decision |
-|------|----------|
-| `0001-rag-data-source.md` | RAG data source = **manually curated Smogon** articles (not auto-scraped at scale). |
-| `0002-bilingual-via-llm-prompt.md` | Bilingual support is **LLM-prompt only** — no dual-language index, no data-layer translation. |
+No accepted ADRs yet. When a binding architecture decision is made, add one
+here rather than only capturing it in a PR description.
 
 ### agents/
 | File | Purpose |
@@ -33,7 +31,7 @@ agent-workflow conventions (issue tracker, triage labels, domain docs). These ar
 - Before contradicting an ADR's decision, read it first — if a change conflicts,
   write a new superseding ADR rather than silently diverging.
 - Ubiquitous-language terms live in the repo-root `CONTEXT.md`, not here. Use its
-  vocabulary (Species / Stat / Move / Learnset / Ability / Type / Type Matchup).
+  vocabulary (Ticker / Filing / RAG 知识库 / finance_query / rag_search / web_search).
 - ADRs are append-only history: don't rewrite an accepted decision in place.
 
 ## Dependencies

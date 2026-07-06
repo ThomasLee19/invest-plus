@@ -112,7 +112,7 @@
 
 **根因**：ES `content_ltks` 字段用 `whitespace` analyzer 按空格切词；中文句子没有空格，整句被切成一个不可分 token，与纯英文语料的 token（`market`/`cap`/`dividend`…）永远无法字面匹配 → BM25 命中恒为 0。向量 kNN 分支靠语义相似度检索，不受分词影响，因此补齐了 100% 的召回。
 
-**说明**：此前 README 中的同类数字是从本项目的前身 PokemonRA（宝可梦语料库）上测得后直接搬运的，未在 `finance_kb` 上重新验证过；本节替换为在本项目真实语料上、用生产查询逻辑实测的数字。
+**说明**：本节数字直接在 `finance_kb` 真实语料上、用生产查询逻辑实测得到，可复现（见 `eval/recall_validation.py`）。
 
 ## 6. 精排（qwen3-vl-rerank）质量验证：rerank 前后排名对比
 

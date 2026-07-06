@@ -1,28 +1,14 @@
 # AGENTS.md
 
 Hard-earned context for agents working on **Invest+**. Read this before touching code.
-For glossary and ubiquitous language, see [CONTEXT.md](CONTEXT.md). For accepted
-architecture decisions, see [docs/adr/](docs/adr/). For agent-skill setup (issue
-tracker, triage labels, domain docs), see [CLAUDE.md](CLAUDE.md) and
+For glossary and ubiquitous language, see [CONTEXT.md](CONTEXT.md). For agent-skill
+setup (issue tracker, triage labels, domain docs), see [CLAUDE.md](CLAUDE.md) and
 [docs/agents/](docs/agents/).
-
-> **Migration status**: Invest+ is a finance research agent being built by
-> reusing the architecture of an earlier Pokemon battle-advisor prototype
-> (rebrand date: see git history). The Plan → Act → Reflect → Answer agent
-> loop, RAG retrieval infrastructure, backend, and frontend shell are shared
-> code. Everything described below as "Pokémon"/"PokeAPI"/"Smogon" is the
-> **current, not-yet-replaced** state of the tool layer and content — Phase 1
-> (agent-loop rework) is done; Phases 2-4 (finance tools/corpus, prompt
-> retargeting, frontend re-skin) are tracked in
-> [`.omc/plans/finance-agent-migration-plan.md`](.omc/plans/finance-agent-migration-plan.md).
-> Do not "fix" Pokémon references in the sections below without checking that
-> plan first — most of them are accurate descriptions of code that hasn't
-> migrated yet, not stale docs.
 
 ## Stack at a glance
 
-Currently: a Gen 9 Pokémon competitive Q&A agent (migrating to finance — see
-note above). Hand-rolled Plan → Act → Reflect → Answer pipeline (no LangChain).
+A finance research agent: hand-rolled Plan → Act → Reflect → Answer pipeline
+(no LangChain), three tools (`rag_search`, `finance_query`, `web_search`).
 Backend [FastAPI](backend/app/app_main.py) + Postgres,
 frontend [React + Vite](frontend/vite.config.ts), Elasticsearch 8.11 for hybrid
 retrieval, DashScope (Alibaba) for LLM + embeddings.
@@ -36,8 +22,7 @@ Per-directory detail lives in nested `AGENTS.md` files:
     - [backend/app/service/AGENTS.md](backend/app/service/AGENTS.md) — agent pipeline + 3 tools
 - [frontend/AGENTS.md](frontend/AGENTS.md) — React/Vite SPA
   - [frontend/src/AGENTS.md](frontend/src/AGENTS.md) — routes, components, stores, SSE
-- [legacy/AGENTS.md](legacy/AGENTS.md) — quarantined Pokemon-domain data/scripts (Phase 2 reference only)
-- [docs/AGENTS.md](docs/AGENTS.md) — ADRs + agent conventions
+- [docs/AGENTS.md](docs/AGENTS.md) — agent conventions
 
 ## Running the system
 
@@ -54,9 +39,10 @@ cd frontend && npm install && npm run dev # Vite on :5181
 - **Backend cwd is `backend/app`, not `backend/`.** Imports are flat
   (`from router import chat_rt`, `from utils.database`, `from schemas.chat`).
   Running from `backend/` produces `ModuleNotFoundError`. Exception:
-  [`agent.py`](backend/app/service/agent/agent.py:19-24) inserts `backend/` into
-  `sys.path` so it can do `from app.service.pokeapi...`. New backend code should
-  follow the flat-import style, not the `app.*` style.
+  [`agent.py`](backend/app/service/agent/agent.py:24) inserts `backend/` into
+  `sys.path` so it can do `from app.service.finance...`/`from app.database...`/
+  `from app.utils...`. New backend code should follow the flat-import style,
+  not the `app.*` style.
 - **Python deps are undeclared.** Install from imports:
   `openai elasticsearch fastapi uvicorn sqlalchemy psycopg2-binary python-dotenv
   pydantic requests xxhash`. Scraping (Day-1 only) also needs `playwright` +
@@ -76,42 +62,33 @@ cd frontend && npm install && npm run dev # Vite on :5181
   `scripts/index_finance.py` is a standalone script with no `sys.path` hookup
   into `backend/app`, so it duplicates the same env-var-read pattern locally
   in its own `get_es()` instead of importing the shared helper.
-  `legacy/index_smogon.py` (the old Pokemon-project indexer, predating this
-  fix and still hardcoding the password) has been removed — it was unused
-  legacy code, not part of the active pipeline.
-- **One shared index `finance_kb`** (renamed from the old Pokemon-project
-  `pokemon_kb`), partitioned by `source_kwd`:
+- **One shared index `finance_kb`**, partitioned by `source_kwd`:
   - `source_kwd=sec_filing` / `news` / `educational` — finance corpus (loaded by `scripts/index_finance.py`).
   - `source_kwd=user_upload` — user-uploaded `.txt`/`.md` (loaded by [`file_parse.py`](backend/app/service/core/file_parse.py)).
-  - **PokeAPI data is NOT in ES.** `legacy/pokemon-data/*.md` is a local cache for
-    debugging only; live queries hit PokeAPI through
-    [`pokeapi_tool.py`](backend/app/service/pokeapi/pokeapi_tool.py).
-- `legacy/index_pokemon.py` is **deprecated**. Do not run it. Comment in
-  [overview.md](overview.md) confirms.
+  - **Real-time data is NOT in ES.** Quote/fundamentals/news-by-ticker come
+    live from yfinance via
+    [`finance_tool.py`](backend/app/service/finance/finance_tool.py); only the
+    seed corpus + user uploads above are indexed.
 - Hybrid retrieval (`rag_search`) sums BM25 + kNN. `_KNN_BOOST = 8.0`
-  ([agent.py:74](backend/app/service/agent/agent.py:74)) balances BM25's score
+  ([agent.py:131](backend/app/service/agent/agent.py:131)) balances BM25's score
   magnitude against cosine 0–1 — don't tune without understanding why. If query
   embedding fails it silently degrades to BM25-only.
 
 ## Agent pipeline — frozen contract
 
 Names `agent_plan() → process_actions() → reflection() → final_answer()` are
-inherited from the SalesPilot lineage and **must not be renamed**
-([CONTEXT.md "Agent Pipeline"](CONTEXT.md)).
+fixed and **must not be renamed** ([CONTEXT.md "Agent Pipeline"](CONTEXT.md)).
 
 - Two models: `qwen-plus` for plan/reflect (JSON output), `qwq-plus` for the
   streaming final answer (uses `delta.reasoning_content` for the visible thinking
   chain). Don't swap them.
-- **Gen 9 is hard-locked.** `GEN9_VERSION_GROUPS = {scarlet-violet, the-teal-mask,
-  the-indigo-disk}` in both
-  [pokeapi_tool.py](backend/app/service/pokeapi/pokeapi_tool.py:12) and
-  [fetch_pokemon_data.py](legacy/fetch_pokemon_data.py:27). Other gens are
-  rejected at prompt level.
-- Multi-word Pokémon (Iron Valiant, Great Tusk, Roaring Moon, …) require
-  [`resolve_pokemon_name()`](backend/app/service/pokeapi/pokeapi_tool.py:32),
-  which probes hyphenated slugs longest-to-shortest. Don't naively `.split()[0]`.
+- **Ticker extraction contract**: `finance_query` sub-questions must carry an
+  explicit uppercase ticker (e.g. "AAPL price") — `agent_plan`'s prompt enforces
+  this so `_TICKER_RE` (uppercase 1-5 letter words, minus stopwords like
+  `I`/`US`/`CEO`) can reliably pull it out. Don't fall back to guessing a
+  ticker from a lowercase company name.
 - Language detection contract
-  ([`_detect_language`](backend/app/service/agent/agent.py:323)): any CJK
+  ([`_detect_language`](backend/app/service/agent/agent.py:779)): any CJK
   character → `zh`, else `en`. Japanese kana and Korean hangul are explicitly
   excluded. Used both for Serper `hl` and the final-answer system prompt.
 - Conversation history is **last 5 turns** from the `messages` table, fetched in
@@ -167,18 +144,12 @@ inherited from the SalesPilot lineage and **must not be renamed**
 
 ## Files and dirs to treat carefully
 
-- `legacy/pokemon-data/`, `legacy/smogon-data/`, `salespilot-main/`, `overview.md`, `debug.md`,
-  `salespilot_analysis.md`, `readme_zh.md`, `.env` — all gitignored. Present
-  locally, not in version control. Useful for context, never the source of truth.
-- `overview.md` is helpful background but reflects the original plan, not always
-  the current code (e.g. it still references `salespilot-main/` which is no
-  longer in the tree).
+- `.env` — gitignored, present locally, never the source of truth for what's
+  deployed.
 - `CONTEXT.md` is the **ubiquitous-language source of truth**. When naming
-  things in code, issues, or PRs, use its terms (Species / Stat / Move /
-  Learnset / Ability / Type / Type Matchup). The glossary explicitly bans some
-  synonyms ("精灵", "属性" used ambiguously, generic "Pokemon" for Species).
-- ADRs in [`docs/adr/`](docs/adr/) must be checked before contradicting their
-  decisions (RAG data source = manual Smogon, bilingual = LLM-prompt only).
+  things in code, issues, or PRs, use its terms (Ticker / Filing / RAG 知识库 /
+  finance_query / rag_search / web_search / Query vs Advisory / Session /
+  User Upload).
 
 ## CORS
 

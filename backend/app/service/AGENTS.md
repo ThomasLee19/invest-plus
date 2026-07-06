@@ -1,26 +1,26 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-07-01 | Updated: 2026-07-01 -->
+<!-- Generated: 2026-07-01 | Updated: 2026-07-07 -->
 
 # service
 
 ## Purpose
-The brain of Invest+ (currently still running the pre-migration Pokemon tools
-below — see root AGENTS.md migration note). Holds the **frozen** Plan → Act → Reflect → Answer agent
-pipeline and the three tools it orchestrates: `rag_search` (Smogon KB via ES
-hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
-`web_search` (Serper fallback). Also hosts the upload→ES ingestion path.
+The brain of Invest+. Holds the **frozen** Plan → Act → Reflect → Answer agent
+pipeline and the three tools it orchestrates: `rag_search` (finance knowledge
+base — filings/news/educational docs — via ES hybrid retrieval), `finance_query`
+(live quote/fundamentals/news via yfinance), and `web_search` (Serper fallback
+for the latest market moves or gaps in the knowledge base).
 
 ## Subdirectories
 | Directory | Purpose |
 |-----------|---------|
 | `agent/` | `agent.py` — the whole pipeline + tool dispatch + SSE generator |
-| `pokeapi/` | `pokeapi_tool.py` — Gen 9 species & type-matchup queries against PokeAPI |
+| `finance/` | `finance_tool.py` — quote/fundamentals/news via yfinance |
 | `web_search/` | `web_search.py` — Serper search client + result post-processing |
 | `core/` | `file_parse.py` — chunk → embed → bulk-index user uploads into ES |
 
 ### agent/agent.py — the contract
 - Names `agent_plan() → process_actions() → reflection() → final_answer()` are
-  inherited from the SalesPilot lineage and **must not be renamed**.
+  fixed and **must not be renamed**.
 - Two models, do not swap: `qwen-plus` for plan/reflect (JSON mode), `qwq-plus`
   for the streaming final answer (uses `delta.reasoning_content` as the visible
   thinking chain).
@@ -33,17 +33,18 @@ hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
 - `_detect_language`: any CJK Han char → `zh`, else `en`; Japanese kana and
   Korean hangul are explicitly excluded first. Drives Serper `hl` and the
   final-answer system prompt.
-- `pokeapi_tool()` routes "vs/对/克制/弱点/matchup" queries to type-matchup,
-  otherwise resolves a species name via `resolve_pokemon_name()`.
+- `finance_tool()` extracts an uppercase 1-5 letter ticker from the query
+  (`_TICKER_RE`, minus common-word stopwords like `I`/`US`/`CEO`) and routes to
+  `query_quote` / `query_fundamentals` / `query_news` based on keyword matches
+  (`_NEWS_KEYWORDS`, `_FUNDAMENTALS_KEYWORDS`); defaults to quote.
 
-### pokeapi/pokeapi_tool.py
-- `GEN9_VERSION_GROUPS = {scarlet-violet, the-teal-mask, the-indigo-disk}` filters
-  the learnset to Gen 9 only. (Same set is hard-coded in `legacy/fetch_pokemon_data.py`.)
-- `resolve_pokemon_name()` probes hyphenated slugs **longest-to-shortest** so
-  multi-word names (Iron Valiant, Great Tusk, Mr. Mime) resolve correctly — never
-  naively `.split()[0]`.
-- `query_pokemon` returns a formatted bilingual card; `query_type_matchup`
-  computes a 0/0.25/0.5/1/2/4× multiplier from PokeAPI `damage_relations`.
+### finance/finance_tool.py
+- `query_quote` / `query_fundamentals` / `query_news` all funnel through
+  `_load_ticker()`, which caches one `yf.Ticker` + `.info` + `.history` fetch
+  per ticker per process to avoid duplicate requests across the three modes.
+- `_is_valid_ticker()` treats a ticker as valid if it has non-empty history OR
+  a substantive `.info` field (`symbol`/`regularMarketPrice`) — yfinance
+  doesn't raise on an invalid ticker, it just returns near-empty data.
 
 ### web_search/web_search.py
 - `serper_search()` → `make_request()` POSTs to `google.serper.dev/search` with
@@ -55,9 +56,7 @@ hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
 - `execute_insert_process`: split on blank lines into ≤ `MAX_CHUNK = 1500`-char
   chunks → embed with `text-embedding-v3` (1024-dim) → bulk-index into
   `finance_kb` with `source_kwd="user_upload"`, `refresh="wait_for"`.
-- Keep `MAX_CHUNK = 1500` in sync with `scripts/index_finance.py` (the old
-  sync target, `legacy/index_smogon.py`, was removed — unused Pokemon-project
-  leftover code).
+- Keep `MAX_CHUNK = 1500` in sync with `scripts/index_finance.py`.
 
 ## For AI Agents
 
@@ -68,17 +67,19 @@ hybrid retrieval), `pokeapi_query` (live PokeAPI structured facts), and
   construction with hardcoded credentials in new code.
 - `agent.py` is the one file that imports siblings via `app.service.*` (it inserts
   `backend/` into `sys.path`). New code elsewhere uses flat imports.
-- `pokeapi_query` and `rag_search` have **non-overlapping** jobs: exact
-  numbers/structured facts vs. strategy/experience text. Don't blur them.
+- `finance_query` and `rag_search` have **non-overlapping** jobs: exact
+  real-time numbers/structured facts vs. filing/news/educational narrative
+  text. Don't blur them.
 
 ### Testing Requirements
-No unit tests. Tools hit live external APIs (PokeAPI, Serper, DashScope, ES).
-Exercise via the repo-root `test_agent.py` smoke run.
+No unit tests here (see `backend/tests/test_agent_loop.py` for the pure-logic
+suite one level up). Tools hit live external APIs (yfinance, Serper,
+DashScope, ES). Exercise via the repo-root `test_agent.py` smoke run.
 
 ## Dependencies
 
 ### External
 - openai (DashScope-compatible LLM + embeddings), elasticsearch 8.11,
-  requests (PokeAPI), http.client (Serper).
+  yfinance (finance_query), http.client (Serper).
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

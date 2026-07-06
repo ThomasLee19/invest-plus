@@ -1,14 +1,12 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-07-01 | Updated: 2026-07-01 -->
+<!-- Generated: 2026-07-01 | Updated: 2026-07-07 -->
 
 # backend
 
 ## Purpose
-FastAPI backend for **Invest+**, a finance research agent (migrated from
-PokemonRA, a Gen 9 Pokémon Q&A prototype — the migration reused this backend's
-architecture wholesale). Hosts the hand-rolled Plan → Act → Reflect → Answer
-pipeline (no LangChain; Phase 1 of the migration replaced the single hardcoded
-reflection pass with a genuinely LLM-driven bounded loop — see
+FastAPI backend for **Invest+**, a finance research agent. Hosts the
+hand-rolled Plan → Act → Reflect → Answer pipeline (no LangChain; the
+reflection step is a genuinely LLM-driven bounded loop — see
 `should_continue()` in `agent.py`), the HTTP/SSE API, Postgres persistence, and
 Elasticsearch hybrid retrieval over the `finance_kb` index (filings/news/
 educational/user uploads). Read the root [AGENTS.md](../AGENTS.md) first — it
@@ -45,9 +43,10 @@ There is **no CI**, but there is now a real unit test suite:
 python -m unittest tests.test_agent_loop -v
 ```
 It runs with **zero installed third-party packages and zero network access**
-by stubbing `openai`, `dotenv`, and `app.service.pokeapi.pokeapi_tool` via
-`sys.modules` before importing `agent.py`; the actual LLM call boundary
-(`_llm_json`) is mocked per-test. `pytest` is not currently installed in the
+by stubbing `openai`, `dotenv`, `dashscope`, `elasticsearch`, `xxhash`, `bs4`,
+and `app.database.knowledgebase_operations` via `sys.modules` before importing
+`agent.py`; the actual LLM call boundary (`_llm_json`) is mocked per-test.
+`pytest` is not currently installed in the
 dev env, but the suite is plain-`unittest`-based so `pytest` would also work.
 Separately, [`test_agent.py`](../test_agent.py) at the repo root is still a
 live, full-stack smoke run (real DashScope key, populated ES, running
@@ -62,23 +61,15 @@ Postgres) — it complements but doesn't replace the unit suite.
 
 ### Internal
 - Postgres schema is created once from repo-root `init.sql` via docker-compose.
-- Elasticsearch index `finance_kb` (renamed from `pokemon_kb` in the finance
-  migration — see
-  [`.omc/plans/finance-agent-migration-plan.md`](../.omc/plans/finance-agent-migration-plan.md)),
-  shared, partitioned by `source_kwd` (`sec_filing` / `news` / `educational` /
-  `user_upload`).
+- Elasticsearch index `finance_kb`, shared, partitioned by `source_kwd`
+  (`sec_filing` / `news` / `educational` / `user_upload`).
 
 ### External
 - FastAPI + uvicorn (HTTP/SSE), SQLAlchemy + psycopg2 (Postgres),
   elasticsearch 8.11 client, openai client (DashScope-compatible), yfinance
-  (`service/finance/finance_tool.py` — replaced the PokeAPI dependency),
-  onnxruntime/torch/xgboost/opencv (DeepDoc PDF parsing pipeline ported from
-  FinReportRAG for filing uploads, `service/core/deepdoc` + `service/core/rag`).
-  Full pinned list: repo-root [`requirements.txt`](../requirements.txt).
-
-### Known dead code
-- `app/service/pokeapi/` (the old `pokeapi_tool.py`) is no longer imported by
-  anything — `agent.py` now dispatches to `app/service/finance/finance_tool.py`
-  instead. Left on disk, not wired in; safe to delete.
+  (`service/finance/finance_tool.py`), onnxruntime/torch/xgboost/opencv
+  (DeepDoc PDF parsing pipeline ported from FinReportRAG for filing uploads,
+  `service/core/deepdoc` + `service/core/rag`). Full pinned list: repo-root
+  [`requirements.txt`](../requirements.txt).
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

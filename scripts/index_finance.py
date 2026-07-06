@@ -2,9 +2,8 @@
 Finance corpus indexing script.
 
 Chunks data/filings, data/news, data/educational -> generates embeddings ->
-writes into Elasticsearch index "finance_kb" (the renamed pokemon_kb).
-Follows legacy/index_smogon.py's pattern: idempotent chunk IDs via xxhash,
-same dynamic-template ES mapping, source_kwd to distinguish content types.
+writes into Elasticsearch index "finance_kb". Idempotent chunk IDs via xxhash,
+dynamic-template ES mapping, source_kwd to distinguish content types.
 
 INTEGRATION NOTE (filings/PDF parsing):
 Track C's spec asked this script to call into Track B's ported DeepDoc PDF

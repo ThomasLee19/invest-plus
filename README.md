@@ -137,10 +137,13 @@ Scores from both branches are summed (vector branch boosted to balance
 magnitudes); if query embedding fails, it degrades gracefully to BM25-only.
 Combined candidates are then reranked with qwen3-vl-rerank before an
 upload-recency boost narrows the final set to the top 5.
-This mechanism was validated against a Chinese conversational query on an
-English-source corpus: BM25-only recall was **0%**, while hybrid (BM25 +
-vector) recall was **100%** — the retrieval layer itself is unchanged from
-that validation and carries the same behavior into the finance domain.
+This mechanism is validated directly against the `finance_kb` corpus by
+[`eval/recall_validation.py`](eval/recall_validation.py), which calls the
+same query-construction code `rag_search` uses in production: across 10
+Chinese conversational finance questions against this project's
+English-only corpus (SEC filings, news, educational docs), BM25-only
+recall was **0%** (0/10), while hybrid (BM25 + vector) recall was **100%**
+(10/10) — see the script for the exact queries and hit counts.
 
 ## Tech Stack
 

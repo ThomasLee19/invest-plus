@@ -91,9 +91,42 @@
 | off_topic | ⚪ | 评测脚本客户端超时（150-280s）未采集到完整记录；后端 access log 确认该请求最终以 HTTP 200 正常完成，未见 500/未捕获异常——判定为「服务端行为正确，但受限于评测脚本超时预算未能完整验证」，不计入通过率分子也不计入分母 |
 | nonexistent_session_chat | ✓ | 404 + 通用提示 {"detail":"session not found"}，未泄露异常；首次评测脚本的判定逻辑有 bug（误将 JSON 里必然出现的 'detail' 键名当成泄露标志），已修正 |
 
-## 5. 简历/README 摘录建议
+## 5. 跨语言召回验证（BM25-only vs Hybrid）
+
+**方法**：[`eval/recall_validation.py`](recall_validation.py) 直接复用 `rag_search()` 生产环境的查询构造代码（`_strip_filler_words` / `_scope_should_clauses` / `_embed_query`），对同一个 `finance_kb` 索引分别跑纯 BM25 与 hybrid（BM25 + 向量 kNN）两种检索。语料为纯英文的 SEC filings/新闻/教育文档；测试问题为对应的 10 道中文口语化提问。判定口径：`size=20` 结果集非空即算命中（二元口径，不判断相关性）。
+
+**结果**：BM25-only **0/10 = 0%**，hybrid **10/10 = 100%**。
+
+| query | 预期来源 | BM25 命中 | hybrid 命中 |
+| --- | --- | --- | --- |
+| 市值多大算超大市值公司 | educational/market_cap.md | 0 | 20 |
+| 股息率是怎么算出来的 | educational/dividend_yield.md | 0 | 20 |
+| 每股收益的计算公式 | educational/eps.md | 0 | 20 |
+| 现金流量表分几个部分 | educational/cash_flow_statement.md | 0 | 20 |
+| 市盈率有哪几种算法 | educational/pe_ratio.md | 0 | 20 |
+| 年报和季报有啥区别 | educational/10k_vs_10q.md | 0 | 20 |
+| 资产负债表的基本恒等式 | educational/balance_sheet.md | 0 | 20 |
+| 苹果和运通最近有什么合作 | news/AAPL (American Express) | 0 | 20 |
+| 微软最近有啥大新闻 | news/MSFT/* | 0 | 20 |
+| 谷歌最新一期财报风险因素 | filings/GOOGL/10-K or 10-Q | 0 | 20 |
+
+**根因**：ES `content_ltks` 字段用 `whitespace` analyzer 按空格切词；中文句子没有空格，整句被切成一个不可分 token，与纯英文语料的 token（`market`/`cap`/`dividend`…）永远无法字面匹配 → BM25 命中恒为 0。向量 kNN 分支靠语义相似度检索，不受分词影响，因此补齐了 100% 的召回。
+
+**说明**：此前 README 中的同类数字是从本项目的前身 PokemonRA（宝可梦语料库）上测得后直接搬运的，未在 `finance_kb` 上重新验证过；本节替换为在本项目真实语料上、用生产查询逻辑实测的数字。
+
+## 6. 精排（qwen3-vl-rerank）质量验证：rerank 前后排名对比
+
+**动机**：第 1 节「RAG 检索准确率 14/14」走完整 `/chat` 端到端流程，把 Plan 工具选择 / 检索 / LLM 归纳三层因素混在一起，看不出精排本身是否起作用；`eval/recall_validation.py` 又完全不调用 `_rerank_candidates()`。两者都回答不了"qwen3-vl-rerank 有没有把更相关的 chunk 排到前面"这个问题。[`eval/rerank_validation.py`](rerank_validation.py) 单独隔离这一步：对同一批 BM25+kNN 融合召回的候选（复用生产代码，`size=20`），分别记录"含标准答案关键词的 chunk"在 **rerank 前**（ES 融合分数排序）和 **rerank 后**（qwen3-vl-rerank 排序）中的名次，计算 MRR 与 Recall@5（生产环境实际截断窗口）。
+
+**结果**：14/14 道题（复用第 1 节 RAG_QA 数据集，剔除 rag-11 已知缺陷题），rerank 前后相关 chunk **均排名第 1**——MRR 1.000 → 1.000，Recall@5 100% → 100%，无变化。
+
+**如何解读——这不是"精排没用"的证据**：这批评测语料每个主题只对应一份清晰文档，候选池里没有强干扰项，ES 自身的 BM25+kNN 融合分数已经把正确答案排到第一位，天花板已经封顶（ceiling effect），精排没有任何提升空间可展示。换句话说，**当前数据集测不出精排到底有没有价值**——要真正验证，需要构造"多个候选文档主题相近、但只有一个真正对答案"的干扰性更强的测试集（如同一 ticker 下多篇相似新闻，只有一篇提到具体数字），这部分尚未覆盖，是明确的评测空白，留待后续补充。
+
+## 7. 简历/README 摘录建议
 
 - RAG 检索准确率：14/14（100%），基于 14 道人工核实的财报/新闻/教育知识问答题
 - Agent 多工具路由准确率：宽松匹配 100%（17/17），严格匹配 59%
 - 平均首字延迟 2.1s，完整响应 p50 29.9s / p90 85.6s
 - 边界输入优雅处理率 4/4（100%）
+- 跨语言召回率：中文口语化提问对纯英文语料，BM25-only 0/10（0%）→ hybrid 10/10（100%）
+- 精排质量：当前数据集下 MRR/Recall@5 均无变化（天花板效应，语料缺乏干扰项，不构成"精排无效"的结论）——不建议作为简历亮点，除非补充干扰性测试集后重测

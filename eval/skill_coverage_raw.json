@@ -1,0 +1,400 @@
+{
+  "single": [
+    {
+      "id": "sop-val-01",
+      "question": "AAPL 现在市盈率贵不贵？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AAPL PE ratio",
+        "AAPL PE ratio",
+        "AAPL PE ratio"
+      ],
+      "injected_texts": [
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals",
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals\nAAPL historical P/E 3-year and 5-year range\nAAPL peer group for valuation comparison",
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals\nAAPL historical P/E 3-year and 5-year range\nAAPL peer group for valuation comparison"
+      ]
+    },
+    {
+      "id": "sop-val-02",
+      "question": "MSFT 目前的估值水平合理吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "MSFT current P/E ratio\nMSFT current price-to-sales ratio\nMSFT current price-to-book ratio",
+        "MSFT current P/E ratio\nMSFT current price-to-sales ratio\nMSFT current price-to-book ratio",
+        "MSFT current P/E ratio\nMSFT current price to book ratio\nMSFT current EV/EBITDA"
+      ],
+      "injected_texts": [
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT valuation / dividend yield / fundamentals",
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT valuation / dividend yield / fundamentals",
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT dividend yield / fundamentals\nMSFT current price and market cap\nMSFT historical P/E ratio 3-year and 5-year range\nMSFT peer group for valuation comparison (e.g., AAPL, GOOGL, NVDA)"
+      ]
+    },
+    {
+      "id": "sop-val-03",
+      "question": "英伟达 NVDA 现在是不是被高估了？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "NVDA price\nNVDA P/E ratio\nNVDA market cap\nNVDA EPS\nNVDA revenue growth",
+        "NVDA current P/E ratio\nNVDA current price to fair value estimate\nNVDA forward P/E vs sector average",
+        "NVDA price\nNVDA P/E ratio\nNVDA market cap\nNVDA EPS\nNVDA revenue growth\nNVDA latest 10-K valuation discussion\nNVDA risk factors related to valuation"
+      ],
+      "injected_texts": [
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA dividend yield / fundamentals\nNVDA market cap / fundamentals",
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA dividend yield / fundamentals\nNVDA market cap / fundamentals\nNVDA historical P/E 3-year and 5-year range\nNVDA peer group for semiconductor GPU companies",
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA dividend yield / fundamentals\nNVDA market cap / fundamentals\nNVDA historical P/E 3-year and 5-year range\nNVDA peer group for semiconductor GPU companies"
+      ]
+    },
+    {
+      "id": "sop-val-04",
+      "question": "从估值角度看，TSLA 现在这个价位值不值？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "TSLA current P/E ratio\nTSLA current price\nTSLA forward P/E and P/B ratios",
+        "TSLA current P/E ratio\nTSLA current price\nTSLA forward P/E and P/B ratios",
+        "TSLA current P/E ratio\nTSLA current price\nTSLA forward P/E and P/B ratios"
+      ],
+      "injected_texts": [
+        "TSLA valuation / P/E / fundamentals\nTSLA valuation / P/B / fundamentals\nTSLA valuation / P/S / fundamentals\nTSLA valuation / EV/EBITDA / fundamentals\nTSLA dividend yield / fundamentals",
+        "TSLA valuation / P/E / fundamentals\nTSLA valuation / P/B / fundamentals\nTSLA valuation / P/S / fundamentals\nTSLA valuation / EV/EBITDA / fundamentals\nTSLA dividend yield / fundamentals\nTSLA historical P/E 3-year and 5-year percentile\nTSLA peer group for valuation comparison (e.g., RIVN, LI, NIO)\nTSLA PEG ratio calculation methodology and recent estimate",
+        "TSLA valuation / P/E / fundamentals\nTSLA valuation / P/B / fundamentals\nTSLA valuation / P/S / fundamentals\nTSLA valuation / EV/EBITDA / fundamentals\nTSLA dividend yield / fundamentals\nTSLA historical P/E 3-year and 5-year percentile\nTSLA peer group for valuation comparison (e.g., NIO, LI, RIVN, GM, F)"
+      ]
+    },
+    {
+      "id": "sop-val-05",
+      "question": "AMZN 现在便宜吗，估值处于什么水平？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AMZN current price\nAMZN P/E ratio\nAMZN forward P/E\nAMZN P/B ratio\nAMZN EV/EBITDA\nAMZN 5-year average P/E",
+        "AMZN price\nAMZN PE ratio\nAMZN PEG ratio\nAMZN price to book\nAMZN forward PE\nAMZN historical PE range (5-year)",
+        "AMZN current price\nAMZN P/E ratio\nAMZN historical P/E range\nAMZN price-to-sales and price-to-book ratios"
+      ],
+      "injected_texts": [
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN dividend yield / fundamentals\nAMZN market cap / fundamentals",
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN valuation / dividend yield / fundamentals",
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN dividend yield / fundamentals\nAMZN market cap / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-06",
+      "question": "GOOGL 的市盈率和 PEG 现在处于高位还是低位？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "GOOGL PE ratio\nGOOGL PEG ratio",
+        "GOOGL PE ratio\nGOOGL PEG ratio",
+        "GOOGL PE ratio\nGOOGL PEG ratio"
+      ],
+      "injected_texts": [
+        "GOOGL valuation / P/E / fundamentals\nGOOGL valuation / PEG / fundamentals\nGOOGL valuation / P/B / fundamentals\nGOOGL valuation / P/S / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nGOOGL dividend yield / fundamentals",
+        "GOOGL valuation / P/E / fundamentals\nGOOGL valuation / PEG / fundamentals\nGOOGL valuation / P/B / fundamentals\nGOOGL valuation / P/S / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nGOOGL dividend yield / fundamentals",
+        "GOOGL valuation / P/E / fundamentals\nGOOGL valuation / PEG / fundamentals\nGOOGL valuation / P/B / fundamentals\nGOOGL valuation / P/S / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nGOOGL dividend yield / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-07",
+      "question": "META 现在这个价位是高估还是低估？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "META price\nMETA P/E ratio\nMETA forward P/E\nMETA EPS\nMETA revenue growth\nMETA market cap",
+        "META price\nMETA P/E ratio\nMETA forward P/E\nMETA EPS\nMETA revenue growth\nMETA market cap",
+        "META price\nMETA PE ratio\nMETA P/B ratio\nMETA EPS TTM\nMETA revenue growth QoQ"
+      ],
+      "injected_texts": [
+        "META valuation / P/E / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA dividend yield / fundamentals\nMETA market cap / fundamentals\nMETA historical P/E range last 5 years\nMETA peer group for valuation comparison\nMETA latest earnings growth forecast",
+        "META valuation / P/E / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA valuation / dividend yield / fundamentals\nAAPL valuation / P/E / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nAAPL valuation / P/S / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals",
+        "META valuation / P/E / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA valuation / dividend yield / fundamentals\nAAPL valuation / P/E / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nAAPL valuation / P/S / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-08",
+      "question": "AAPL 的市净率和市销率现在算贵吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AAPL current P/B ratio\nAAPL current P/S ratio",
+        "AAPL current P/B ratio\nAAPL current P/S ratio",
+        "AAPL市净率\nAAPL市销率"
+      ],
+      "injected_texts": [
+        "AAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / P/E / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals\nAAPL market cap / fundamentals",
+        "AAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / P/E / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals\nAAPL historical P/E 3-year percentile\nAAPL historical P/B 3-year percentile\nAAPL historical P/S 3-year percentile\nMSFT valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/E / fundamentals\nGOOGL valuation / P/S / fundamentals\nMETA valuation / P/E / fundamentals\nMETA valuation / P/S / fundamentals",
+        "AAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / P/E / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL dividend yield / fundamentals\nAAPL PEG ratio / fundamentals\nAAPL historical P/E 3-year and 5-year percentile\nAAPL peer group for valuation comparison\nAAPL industry average P/B and P/S ratios"
+      ]
+    },
+    {
+      "id": "sop-val-09",
+      "question": "NFLX 现在的估值贵不贵，值不值得关注？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "NFLX current P/E ratio\nNFLX current price to free cash flow\nNFLX market cap and revenue growth YOY\nNFLX latest 10-K valuation risks\nhow to assess if a stock is overvalued",
+        "NFLX current P/E ratio\nNFLX current price to free cash flow\nNFLX market cap and revenue multiple",
+        "NFLX current P/E ratio\nNFLX current price and market cap\nNFLX forward P/E and PEG ratio\nNFLX latest 10-K valuation risks\nhow to interpret Netflix's subscriber growth impact on valuation"
+      ],
+      "injected_texts": [
+        "NFLX valuation / P/E / fundamentals\nNFLX valuation / P/B / fundamentals\nNFLX valuation / P/S / fundamentals\nNFLX valuation / EV/EBITDA / fundamentals\nNFLX valuation / dividend yield / fundamentals\nNFLX historical P/E range last 5 years\nNFLX peer group for valuation comparison",
+        "NFLX valuation / P/E / fundamentals\nNFLX valuation / P/B / fundamentals\nNFLX valuation / P/S / fundamentals\nNFLX valuation / EV/EBITDA / fundamentals\nNFLX dividend yield / fundamentals",
+        "NFLX valuation / P/E / fundamentals\nNFLX valuation / P/B / fundamentals\nNFLX valuation / P/S / fundamentals\nNFLX valuation / EV/EBITDA / fundamentals\nNFLX dividend yield / fundamentals\nNFLX market cap / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-10",
+      "question": "KO 可口可乐的股息率和市盈率现在有吸引力吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "KO dividend yield\nKO PE ratio",
+        "KO dividend yield\nKO P/E ratio",
+        "KO dividend yield\nKO PE ratio"
+      ],
+      "injected_texts": [
+        "KO valuation / P/E / fundamentals\nKO valuation / dividend yield / fundamentals\nKO valuation / P/B / P/S / EV/EBITDA / fundamentals",
+        "KO valuation / P/E / fundamentals\nKO valuation / dividend yield / fundamentals\nKO valuation / P/B / P/S / EV/EBITDA / fundamentals",
+        "KO valuation / P/E / fundamentals\nKO valuation / P/B / fundamentals\nKO valuation / P/S / fundamentals\nKO valuation / dividend yield / fundamentals\nKO valuation / EV/EBITDA / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-11",
+      "question": "AMD 当前的估值分位处于历史什么位置？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AMD current P/E ratio\nAMD historical P/E ratio distribution",
+        "AMD current P/E ratio\nAMD historical P/E ratio distribution",
+        "AMD PE ratio\nAMD historical PE percentiles"
+      ],
+      "injected_texts": [
+        "AMD valuation / P/E / fundamentals\nAMD valuation / P/B / fundamentals\nAMD valuation / P/S / fundamentals\nAMD valuation / EV/EBITDA / fundamentals\nAMD valuation / dividend yield / fundamentals",
+        "AMD valuation / P/E / fundamentals\nAMD valuation / P/B / fundamentals\nAMD valuation / P/S / fundamentals\nAMD valuation / EV/EBITDA / fundamentals\nAMD valuation / dividend yield / fundamentals",
+        "AMD valuation / P/E / fundamentals\nAMD valuation / P/B / fundamentals\nAMD valuation / P/S / fundamentals\nAMD valuation / EV/EBITDA / fundamentals\nAMD valuation / dividend yield / fundamentals"
+      ]
+    },
+    {
+      "id": "sop-val-12",
+      "question": "分析一下MSFT现在估值高不高",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "MSFT current P/E ratio\nMSFT current price to earnings growth (PEG) ratio\nMSFT current price to sales (P/S) ratio",
+        "MSFT current P/E ratio\nMSFT current price to earnings growth (PEG) ratio\nMSFT current price to sales (P/S) ratio",
+        "MSFT current P/E ratio\nMSFT current price to earnings growth (PEG) ratio\nMSFT market capitalization and forward EPS estimate"
+      ],
+      "injected_texts": [
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT dividend yield / fundamentals\nMSFT current price and market cap",
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT dividend yield / fundamentals\nAAPL valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nNVDA valuation / P/E / fundamentals\nAAPL valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nNVDA valuation / P/S / fundamentals",
+        "MSFT valuation / P/E / fundamentals\nMSFT valuation / P/B / fundamentals\nMSFT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nMSFT dividend yield / fundamentals\nMSFT current price and market cap"
+      ]
+    }
+  ],
+  "dual": [
+    {
+      "id": "sop-dual-01",
+      "question": "AAPL 现在估值贵不贵，和同行业比怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "AAPL current P/E ratio\nAAPL current price to book ratio\nAAPL current EV/EBITDA\nMSFT P/E ratio\nGOOGL P/E ratio\nTSLA P/E ratio",
+        "AAPL PE ratio\nAAPL PEG ratio\nAAPL price to sales\nAAPL EV to EBITDA\nMSFT PE ratio\nGOOGL PE ratio\nTSLA PE ratio\nNVDA PE ratio",
+        "AAPL PE ratio\nAAPL PEG ratio\nAAPL price to sales ratio\nAAPL price to book ratio\nMSFT PE ratio\nGOOGL PE ratio\nTSLA PE ratio\nNVDA PE ratio"
+      ],
+      "injected_texts": [
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL valuation / dividend yield / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nTSLA valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nTSLA valuation / P/S / fundamentals\nMSFT fundamentals / net profit margin\nGOOGL fundamentals / net profit margin\nTSLA fundamentals / net profit margin\nAAPL fundamentals / net profit margin\nMSFT fundamentals / ROE\nGOOGL fundamentals / ROE\nTSLA fundamentals / ROE\nAAPL fundamentals / ROE",
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL valuation / dividend yield / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nTSLA valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nTSLA valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nTSLA valuation / EV/EBITDA / fundamentals\nAAPL fundamentals / EPS growth rate\nMSFT fundamentals / EPS growth rate\nGOOGL fundamentals / EPS growth rate\nTSLA fundamentals / EPS growth rate\nAAPL fundamentals / gross margin\nMSFT fundamentals / gross margin\nGOOGL fundamentals / gross margin\nTSLA fundamentals / gross margin\nAAPL fundamentals / net margin\nMSFT fundamentals / net margin\nGOOGL fundamentals / net margin\nTSLA fundamentals / net margin\nAAPL fundamentals / ROE\nMSFT fundamentals / ROE\nGOOGL fundamentals / ROE\nTSLA fundamentals / ROE\nAAPL historical P/E ratio 3-year and 5-year percentile\nApple Inc. market share in global smartphone industry 2026\nApple vs Microsoft vs Google vs Tesla competitive positioning and moat analysis",
+        "AAPL valuation / P/E / fundamentals\nAAPL valuation / P/B / fundamentals\nAAPL valuation / P/S / fundamentals\nAAPL valuation / EV/EBITDA / fundamentals\nAAPL valuation / dividend yield / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nNVDA valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nNVDA valuation / P/S / fundamentals\nAAPL fundamentals / gross margin\nMSFT fundamentals / gross margin\nGOOGL fundamentals / gross margin\nNVDA fundamentals / gross margin\nAAPL fundamentals / net margin\nMSFT fundamentals / net margin\nGOOGL fundamentals / net margin\nNVDA fundamentals / net margin\nAAPL fundamentals / ROE\nMSFT fundamentals / ROE\nGOOGL fundamentals / ROE\nNVDA fundamentals / ROE\nAAPL historical P/E range last 5 years\nApple Inc. industry peers and market share in consumer electronics and semiconductors\nApple vs Microsoft vs Google vs NVIDIA competitive positioning and moat analysis"
+      ]
+    },
+    {
+      "id": "sop-dual-02",
+      "question": "MSFT 最新财报解读一下，顺便看看它在行业里的地位？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "MSFT fundamentals\nMSFT stock price\nMSFT latest 10-Q or 10-K summary\nMSFT industry position and competitive analysis",
+        "MSFT fundamentals\nMSFT market cap\nMSFT PE ratio\nMSFT latest 10-Q summary\nMSFT latest earnings call key points",
+        "MSFT fundamentals\nMSFT stock price\nMSFT latest 10-Q or 10-K summary and key metrics\nMSFT industry position and competitive analysis"
+      ],
+      "injected_texts": [
+        "MSFT fundamentals / financials\nMSFT fundamentals / P/E\nMSFT fundamentals / P/S\nMSFT fundamentals / EV/EBITDA\nAAPL fundamentals / financials\nAAPL fundamentals / P/E\nGOOGL fundamentals / financials\nGOOGL fundamentals / P/E\nMSFT latest 10-Q or 10-K filing summary and management discussion\nMSFT market share in cloud computing and enterprise software industry 2026\nMicrosoft competitive position vs Apple and Google in AI and cloud services",
+        "MSFT fundamentals / financials\nMSFT fundamentals / P/E\nMSFT fundamentals / P/S\nMSFT fundamentals / EV/EBITDA\nAAPL fundamentals / financials\nAAPL fundamentals / P/E\nGOOGL fundamentals / financials\nGOOGL fundamentals / P/E\nMSFT latest 10-Q or 10-K filing summary and management discussion\nMicrosoft market share in cloud computing and enterprise software 2026\nMicrosoft competitive position vs Apple and Google in AI and cloud services",
+        "MSFT fundamentals / financials\nMSFT fundamentals / P/E\nMSFT fundamentals / P/S\nMSFT fundamentals / EV/EBITDA\nAAPL fundamentals / financials\nAAPL fundamentals / P/E\nGOOGL fundamentals / financials\nGOOGL fundamentals / P/E\nNVDA fundamentals / financials\nNVDA fundamentals / P/E\nMSFT latest 10-Q or 10-K filing summary and management discussion\nMicrosoft market share in cloud computing and enterprise software 2026\nMicrosoft competitive position vs AWS, Google Cloud, Oracle in 2026"
+      ]
+    },
+    {
+      "id": "sop-dual-03",
+      "question": "NVDA 现在估值是不是太高了，有什么下行风险？",
+      "expect_skill_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "classified_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "baseline_texts": [
+        "NVDA current P/E ratio\nNVDA market cap\nNVDA forward P/E and PEG ratio\nNVDA latest 10-K risk factors\nNVDA valuation concerns in recent analyst reports",
+        "NVDA current P/E ratio\nNVDA market cap\nNVDA price-to-sales ratio\nNVDA forward EPS estimate\nNVDA latest 10-K risk factors\nNVDA recent earnings call key risks",
+        "NVDA current P/E ratio\nNVDA market cap\nNVDA forward P/E and 5-year average P/E\nNVDA latest 10-K risk factors\nNVDA recent earnings call key risks"
+      ],
+      "injected_texts": [
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA valuation / dividend yield / fundamentals\nNVDA fundamentals / debt / cash flow\nNVDA fundamentals / goodwill / assets\nNVDA fundamentals / current ratio / liquidity\nNVDA latest 10-K risk factors\nNVDA recent litigation or regulatory actions\nNVDA customer concentration disclosure",
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA valuation / dividend yield / fundamentals\nNVDA fundamentals / debt / cash flow\nNVDA fundamentals / goodwill / assets\nNVDA fundamentals / current ratio / liquidity\nNVDA latest 10-K risk factors\nNVDA recent litigation or regulatory actions\nNVDA customer concentration disclosure",
+        "NVDA valuation / P/E / fundamentals\nNVDA valuation / P/B / fundamentals\nNVDA valuation / P/S / fundamentals\nNVDA valuation / EV/EBITDA / fundamentals\nNVDA valuation / dividend yield / fundamentals\nNVDA fundamentals / debt / cash flow\nNVDA fundamentals / goodwill / assets\nNVDA fundamentals / current ratio / liquidity\nNVDA latest 10-K risk factors\nNVDA recent litigation or regulatory actions\nNVDA customer concentration disclosure"
+      ]
+    },
+    {
+      "id": "sop-dual-04",
+      "question": "TSLA 的财务基本面怎么样，有没有什么值得担心的风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "baseline_texts": [
+        "TSLA fundamentals\nTSLA risk metrics\nTSLA latest 10-K risk factors\nTSLA financial health analysis",
+        "TSLA fundamentals\nTSLA latest financial metrics\nTSLA latest 10-K risk factors\nTSLA financial risks analysis",
+        "TSLA fundamentals\nTSLA latest financial metrics\nTSLA latest 10-K risk factors\nTSLA financial risks analysis"
+      ],
+      "injected_texts": [
+        "TSLA fundamentals / financials\nTSLA fundamentals / debt\nTSLA fundamentals / cash flow\nTSLA latest 10-K risk factors\nTSLA recent litigation or regulatory actions\nTSLA customer concentration or supplier dependency",
+        "TSLA fundamentals / financials\nTSLA fundamentals / debt\nTSLA fundamentals / cash flow\nTSLA latest 10-K risk factors\nTSLA recent litigation or regulatory actions\nTSLA customer concentration or supplier dependency",
+        "TSLA fundamentals / financials\nTSLA fundamentals / debt\nTSLA fundamentals / cash flow\nTSLA latest 10-K risk factors\nTSLA recent litigation or regulatory actions"
+      ]
+    },
+    {
+      "id": "sop-dual-05",
+      "question": "GOOGL 和同行相比，盈利能力和财务健康状况如何？",
+      "expect_skill_hits": [
+        "industry_comparison",
+        "financial_statement"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "GOOGL fundamentals\nMSFT fundamentals\nAAPL fundamentals\nMETA fundamentals\nAMZN fundamentals",
+        "GOOGL fundamentals\nMSFT fundamentals\nAAPL fundamentals\nMETA fundamentals\nAMZN fundamentals",
+        "GOOGL fundamentals\nMSFT fundamentals\nAAPL fundamentals\nMETA fundamentals\nAMZN fundamentals"
+      ],
+      "injected_texts": [
+        "GOOGL fundamentals / financials\nMSFT fundamentals / financials\nMETA fundamentals / financials\nAAPL fundamentals / financials\nGOOGL fundamentals / P/E\nMSFT fundamentals / P/E\nMETA fundamentals / P/E\nAAPL fundamentals / P/E\nGOOGL fundamentals / P/S\nMSFT fundamentals / P/S\nMETA fundamentals / P/S\nAAPL fundamentals / P/S\nGOOGL 最新 10-K 中关于毛利率、净利率、资产负债率、流动比率、商誉占比的披露\nGOOGL 最新 10-K 中经营性现金流与净利润对比分析\nGOOGL 最新 10-K 中自由现金流计算及资本开支说明\nGOOGL 所属互联网广告与云服务行业可比公司名单及市场份额排名\nGOOGL 与 MSFT、META、AAPL 在核心业务护城河（网络效应、规模效应、用户粘性）上的对比分析",
+        "GOOGL fundamentals / financials\nMSFT fundamentals / financials\nMETA fundamentals / financials\nAAPL fundamentals / financials\nGOOGL fundamentals / P/E\nMSFT fundamentals / P/E\nMETA fundamentals / P/E\nAAPL fundamentals / P/E\nGOOGL fundamentals / P/S\nMSFT fundamentals / P/S\nMETA fundamentals / P/S\nAAPL fundamentals / P/S\nGOOGL fundamentals / EV/EBITDA\nMSFT fundamentals / EV/EBITDA\nMETA fundamentals / EV/EBITDA\nAAPL fundamentals / EV/EBITDA\nGOOGL latest 10-K management discussion on profitability and risks\nGoogle's market share in digital advertising and cloud services vs Microsoft and Meta\nComparison of competitive moats: Google vs Microsoft vs Meta — network effects, scale, switching costs",
+        "GOOGL fundamentals / financials\nMSFT fundamentals / financials\nMETA fundamentals / financials\nAAPL fundamentals / financials\nGOOGL fundamentals / P/E\nMSFT fundamentals / P/E\nMETA fundamentals / P/E\nAAPL fundamentals / P/E\nGOOGL fundamentals / P/S\nMSFT fundamentals / P/S\nMETA fundamentals / P/S\nAAPL fundamentals / P/S\nGOOGL fundamentals / EV/EBITDA\nMSFT fundamentals / EV/EBITDA\nMETA fundamentals / EV/EBITDA\nAAPL fundamentals / EV/EBITDA\nGOOGL fundamentals / ROE\nMSFT fundamentals / ROE\nMETA fundamentals / ROE\nAAPL fundamentals / ROE\nGOOGL 最新 10-K 中关于市场份额和竞争格局的披露\n谷歌在数字广告和云服务市场的最新市占率数据\nGOOGL 与 MSFT、META、AAPL 的护城河对比分析"
+      ]
+    },
+    {
+      "id": "sop-dual-06",
+      "question": "AMZN 现在估值合理吗？和它的主要竞争对手比又怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "AMZN current P/E ratio\nAMZN market cap\nAMZN forward P/E\nWMT P/E ratio\nWMT market cap\nTGT P/E ratio\nTGT market cap\nEBAY P/E ratio\nEBAY market cap",
+        "AMZN current P/E ratio\nAMZN market cap\nAMZN forward P/E\nWMT P/E ratio\nWMT market cap\nTGT P/E ratio\nTGT market cap\nEBAY P/E ratio\nEBAY market cap",
+        "AMZN price\nAMZN PE ratio\nAMZN PEG ratio\nAMZN EV/EBITDA\nAMZN forward PE\nMSFT PE ratio\nGOOGL PE ratio\nWMT PE ratio\nTGT PE ratio"
+      ],
+      "injected_texts": [
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / PEG / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN valuation / dividend yield / fundamentals\nAMZN valuation / historical PE percentile / fundamentals\nGOOGL valuation / P/E / fundamentals\nMSFT valuation / P/E / fundamentals\nWMT valuation / P/E / fundamentals\nGOOGL valuation / P/S / fundamentals\nMSFT valuation / P/S / fundamentals\nWMT valuation / P/S / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nWMT valuation / EV/EBITDA / fundamentals\nAMZN fundamentals / gross margin\nAMZN fundamentals / net margin\nAMZN fundamentals / ROE\nGOOGL fundamentals / gross margin\nMSFT fundamentals / gross margin\nWMT fundamentals / gross margin\nAMZN fundamentals / revenue growth\nAMZN fundamentals / net income growth\nGOOGL fundamentals / revenue growth\nMSFT fundamentals / revenue growth\nWMT fundamentals / revenue growth\nAMZN vs GOOGL vs MSFT vs WMT market share in e-commerce and cloud computing 2026\nAMZN competitive moat analysis vs major peers\nAmazon recent 10-K risk factors and industry positioning",
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / PEG / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN valuation / dividend yield / fundamentals\nAMZN market cap / fundamentals\nMSFT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nWMT valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nWMT valuation / P/S / fundamentals\nMSFT valuation / EV/EBITDA / fundamentals\nGOOGL valuation / EV/EBITDA / fundamentals\nWMT valuation / EV/EBITDA / fundamentals\nAMZN profitability / gross margin / fundamentals\nAMZN profitability / net margin / fundamentals\nAMZN profitability / ROE / fundamentals\nMSFT profitability / gross margin / fundamentals\nGOOGL profitability / gross margin / fundamentals\nWMT profitability / gross margin / fundamentals\nAMZN growth / revenue growth / fundamentals\nAMZN growth / net income growth / fundamentals\nMSFT growth / revenue growth / fundamentals\nGOOGL growth / revenue growth / fundamentals\nWMT growth / revenue growth / fundamentals\nAMZN historical P/E 3-year and 5-year percentile\nAmazon vs Microsoft vs Google vs Walmart industry comparison report\nAmazon market share in e-commerce and cloud computing 2026\nAWS vs Azure vs GCP market share and competitive moat analysis",
+        "AMZN valuation / P/E / fundamentals\nAMZN valuation / P/B / fundamentals\nAMZN valuation / P/S / fundamentals\nAMZN valuation / EV/EBITDA / fundamentals\nAMZN valuation / dividend yield / fundamentals\nAMZN fundamentals / EPS growth rate\nMSFT valuation / P/E / fundamentals\nWMT valuation / P/E / fundamentals\nGOOGL valuation / P/E / fundamentals\nMSFT valuation / P/S / fundamentals\nWMT valuation / P/S / fundamentals\nGOOGL valuation / P/S / fundamentals\nMSFT fundamentals / net margin\nWMT fundamentals / net margin\nGOOGL fundamentals / net margin\nMSFT fundamentals / revenue growth\nWMT fundamentals / revenue growth\nGOOGL fundamentals / revenue growth\nAMZN 3-year historical P/E range\nAMZN vs MSFT vs GOOGL vs WMT industry comparison report\nAmazon market share in e-commerce and cloud computing 2026"
+      ]
+    },
+    {
+      "id": "sop-dual-07",
+      "question": "META 的财报和估值分别怎么看，现在这个价位有没有下行风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "baseline_texts": [
+        "META price\nMETA fundamentals\nMETA latest earnings report date\nMETA latest 10-Q risk factors\nMETA valuation metrics interpretation",
+        "META price\nMETA fundamentals\nMETA latest earnings report date\nMETA latest 10-Q risk factors\nMETA valuation methodology\nwhat are common downside risks for tech stocks with high P/E",
+        "META stock price\nMETA P/E ratio\nMETA latest earnings report date and EPS\nMETA latest 10-Q or 10-K risk factors\nMETA valuation analysis methodology"
+      ],
+      "injected_texts": [
+        "META valuation / P/E / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA valuation / dividend yield / fundamentals\nMETA fundamentals / debt / cash flow\nMETA fundamentals / goodwill / assets\nMETA fundamentals / operating cash flow\nMETA latest 10-K risk factors\nMETA recent regulatory actions or antitrust developments\nMETA major customer or supplier concentration disclosures",
+        "META valuation / P/E / fundamentals\nMETA valuation / PEG / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA valuation / dividend yield / fundamentals\nMETA fundamentals / debt / cash flow\nMETA fundamentals / goodwill / assets\nMETA fundamentals / current ratio / liquidity\nMETA latest 10-K risk factors\nMETA recent regulatory developments or antitrust cases\nMETA major litigation or governance issues in 2025–2026",
+        "META valuation / P/E / fundamentals\nMETA valuation / P/B / fundamentals\nMETA valuation / P/S / fundamentals\nMETA valuation / EV/EBITDA / fundamentals\nMETA valuation / dividend yield / fundamentals\nMETA fundamentals / debt / cash flow\nMETA fundamentals / goodwill / balance sheet\nMETA fundamentals / operating cash flow\nMETA latest 10-K risk factors\nMETA recent regulatory actions or antitrust developments\nMETA major litigation or governance issues as of 2026"
+      ]
+    }
+  ]
+}

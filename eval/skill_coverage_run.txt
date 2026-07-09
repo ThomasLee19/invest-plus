@@ -1,0 +1,1490 @@
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/E / fundamentals", "AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/E / fundamentals", "AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["AAPL historical P/E 3-year and 5-year range", "AAPL peer group for valuation comparison"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/E / fundamentals", "AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["AAPL historical P/E 3-year and 5-year range", "AAPL peer group for valuation comparison"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price-to-sales ratio", "MSFT current price-to-book ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price-to-sales ratio", "MSFT current price-to-book ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price to book ratio", "MSFT current EV/EBITDA"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/B / fundamentals", "MSFT valuation / P/S / fundamentals", "MSFT valuation / EV/EBITDA / fundamentals", "MSFT valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/B / fundamentals", "MSFT valuation / P/S / fundamentals", "MSFT valuation / EV/EBITDA / fundamentals", "MSFT valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "MSFT valuation / P/E / fundamentals",
+        "MSFT valuation / P/B / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "MSFT valuation / EV/EBITDA / fundamentals",
+        "MSFT dividend yield / fundamentals",
+        "MSFT current price and market cap"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "MSFT historical P/E ratio 3-year and 5-year range",
+        "MSFT peer group for valuation comparison (e.g., AAPL, GOOGL, NVDA)"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA price", "NVDA P/E ratio", "NVDA market cap", "NVDA EPS", "NVDA revenue growth"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA current P/E ratio", "NVDA current price to fair value estimate", "NVDA forward P/E vs sector average"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA price", "NVDA P/E ratio", "NVDA market cap", "NVDA EPS", "NVDA revenue growth"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA latest 10-K valuation discussion", "NVDA risk factors related to valuation"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA valuation / P/E / fundamentals", "NVDA valuation / P/B / fundamentals", "NVDA valuation / P/S / fundamentals", "NVDA valuation / EV/EBITDA / fundamentals", "NVDA dividend yield / fundamentals", "NVDA market cap / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA valuation / P/E / fundamentals", "NVDA valuation / P/B / fundamentals", "NVDA valuation / P/S / fundamentals", "NVDA valuation / EV/EBITDA / fundamentals", "NVDA dividend yield / fundamentals", "NVDA market cap / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA historical P/E 3-year and 5-year range", "NVDA peer group for semiconductor GPU companies"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA valuation / P/E / fundamentals", "NVDA valuation / P/B / fundamentals", "NVDA valuation / P/S / fundamentals", "NVDA valuation / EV/EBITDA / fundamentals", "NVDA dividend yield / fundamentals", "NVDA market cap / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA historical P/E 3-year and 5-year range", "NVDA peer group for semiconductor GPU companies"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA current P/E ratio", "TSLA current price", "TSLA forward P/E and P/B ratios"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA current P/E ratio", "TSLA current price", "TSLA forward P/E and P/B ratios"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA current P/E ratio", "TSLA current price", "TSLA forward P/E and P/B ratios"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA valuation / P/E / fundamentals", "TSLA valuation / P/B / fundamentals", "TSLA valuation / P/S / fundamentals", "TSLA valuation / EV/EBITDA / fundamentals", "TSLA dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA valuation / P/E / fundamentals", "TSLA valuation / P/B / fundamentals", "TSLA valuation / P/S / fundamentals", "TSLA valuation / EV/EBITDA / fundamentals", "TSLA dividend yield / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA historical P/E 3-year and 5-year percentile", "TSLA peer group for valuation comparison (e.g., RIVN, LI, NIO)", "TSLA PEG ratio calculation methodology and recent estimate"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA valuation / P/E / fundamentals", "TSLA valuation / P/B / fundamentals", "TSLA valuation / P/S / fundamentals", "TSLA valuation / EV/EBITDA / fundamentals", "TSLA dividend yield / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA historical P/E 3-year and 5-year percentile", "TSLA peer group for valuation comparison (e.g., NIO, LI, RIVN, GM, F)"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN current price", "AMZN P/E ratio", "AMZN forward P/E", "AMZN P/B ratio", "AMZN EV/EBITDA", "AMZN 5-year average P/E"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN price", "AMZN PE ratio", "AMZN PEG ratio", "AMZN price to book", "AMZN forward PE", "AMZN historical PE range (5-year)"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN current price", "AMZN P/E ratio", "AMZN historical P/E range", "AMZN price-to-sales and price-to-book ratios"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN valuation / P/E / fundamentals", "AMZN valuation / P/B / fundamentals", "AMZN valuation / P/S / fundamentals", "AMZN valuation / EV/EBITDA / fundamentals", "AMZN dividend yield / fundamentals", "AMZN market cap / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN valuation / P/E / fundamentals", "AMZN valuation / P/B / fundamentals", "AMZN valuation / P/S / fundamentals", "AMZN valuation / EV/EBITDA / fundamentals", "AMZN valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN valuation / P/E / fundamentals", "AMZN valuation / P/B / fundamentals", "AMZN valuation / P/S / fundamentals", "AMZN valuation / EV/EBITDA / fundamentals", "AMZN dividend yield / fundamentals", "AMZN market cap / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL PE ratio", "GOOGL PEG ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL PE ratio", "GOOGL PEG ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL PE ratio", "GOOGL PEG ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL valuation / P/E / fundamentals", "GOOGL valuation / PEG / fundamentals", "GOOGL valuation / P/B / fundamentals", "GOOGL valuation / P/S / fundamentals", "GOOGL valuation / EV/EBITDA / fundamentals", "GOOGL dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL valuation / P/E / fundamentals", "GOOGL valuation / PEG / fundamentals", "GOOGL valuation / P/B / fundamentals", "GOOGL valuation / P/S / fundamentals", "GOOGL valuation / EV/EBITDA / fundamentals", "GOOGL dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL valuation / P/E / fundamentals", "GOOGL valuation / PEG / fundamentals", "GOOGL valuation / P/B / fundamentals", "GOOGL valuation / P/S / fundamentals", "GOOGL valuation / EV/EBITDA / fundamentals", "GOOGL dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META price", "META P/E ratio", "META forward P/E", "META EPS", "META revenue growth", "META market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META price", "META P/E ratio", "META forward P/E", "META EPS", "META revenue growth", "META market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META price", "META PE ratio", "META P/B ratio", "META EPS TTM", "META revenue growth QoQ"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META valuation / P/E / fundamentals", "META valuation / P/B / fundamentals", "META valuation / P/S / fundamentals", "META valuation / EV/EBITDA / fundamentals", "META dividend yield / fundamentals", "META market cap / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["META historical P/E range last 5 years", "META peer group for valuation comparison", "META latest earnings growth forecast"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META valuation / P/E / fundamentals", "META valuation / P/B / fundamentals", "META valuation / P/S / fundamentals", "META valuation / EV/EBITDA / fundamentals", "META valuation / dividend yield / fundamentals", "AAPL valuation / P/E / fundamentals", "MSFT valuation / P/E / fundamentals", "GOOGL valuation / P/E / fundamentals", "AAPL valuation / P/S / fundamentals", "MSFT valuation / P/S / fundamentals", "GOOGL valuation / P/S / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META valuation / P/E / fundamentals", "META valuation / P/B / fundamentals", "META valuation / P/S / fundamentals", "META valuation / EV/EBITDA / fundamentals", "META valuation / dividend yield / fundamentals", "AAPL valuation / P/E / fundamentals", "MSFT valuation / P/E / fundamentals", "GOOGL valuation / P/E / fundamentals", "AAPL valuation / P/S / fundamentals", "MSFT valuation / P/S / fundamentals", "GOOGL valuation / P/S / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL current P/B ratio", "AAPL current P/S ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL current P/B ratio", "AAPL current P/S ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL市净率", "AAPL市销率"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / P/E / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals", "AAPL market cap / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / P/E / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals", "AAPL historical P/E 3-year percentile", "AAPL historical P/B 3-year percentile", "AAPL historical P/S 3-year percentile"]
+    },
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/S / fundamentals", "GOOGL valuation / P/E / fundamentals", "GOOGL valuation / P/S / fundamentals", "META valuation / P/E / fundamentals", "META valuation / P/S / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL valuation / P/B / fundamentals", "AAPL valuation / P/S / fundamentals", "AAPL valuation / P/E / fundamentals", "AAPL valuation / EV/EBITDA / fundamentals", "AAPL dividend yield / fundamentals", "AAPL PEG ratio / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["AAPL historical P/E 3-year and 5-year percentile", "AAPL peer group for valuation comparison", "AAPL industry average P/B and P/S ratios"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX current P/E ratio", "NFLX current price to free cash flow", "NFLX market cap and revenue growth YOY"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NFLX latest 10-K valuation risks", "how to assess if a stock is overvalued"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX current P/E ratio", "NFLX current price to free cash flow", "NFLX market cap and revenue multiple"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX current P/E ratio", "NFLX current price and market cap", "NFLX forward P/E and PEG ratio"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NFLX latest 10-K valuation risks", "how to interpret Netflix's subscriber growth impact on valuation"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX valuation / P/E / fundamentals", "NFLX valuation / P/B / fundamentals", "NFLX valuation / P/S / fundamentals", "NFLX valuation / EV/EBITDA / fundamentals", "NFLX valuation / dividend yield / fundamentals"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NFLX historical P/E range last 5 years", "NFLX peer group for valuation comparison"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX valuation / P/E / fundamentals", "NFLX valuation / P/B / fundamentals", "NFLX valuation / P/S / fundamentals", "NFLX valuation / EV/EBITDA / fundamentals", "NFLX dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NFLX valuation / P/E / fundamentals", "NFLX valuation / P/B / fundamentals", "NFLX valuation / P/S / fundamentals", "NFLX valuation / EV/EBITDA / fundamentals", "NFLX dividend yield / fundamentals", "NFLX market cap / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO dividend yield", "KO PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO dividend yield", "KO P/E ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO dividend yield", "KO PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO valuation / P/E / fundamentals", "KO valuation / dividend yield / fundamentals", "KO valuation / P/B / P/S / EV/EBITDA / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO valuation / P/E / fundamentals", "KO valuation / dividend yield / fundamentals", "KO valuation / P/B / P/S / EV/EBITDA / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["KO valuation / P/E / fundamentals", "KO valuation / P/B / fundamentals", "KO valuation / P/S / fundamentals", "KO valuation / dividend yield / fundamentals", "KO valuation / EV/EBITDA / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD current P/E ratio", "AMD historical P/E ratio distribution"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD current P/E ratio", "AMD historical P/E ratio distribution"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD PE ratio", "AMD historical PE percentiles"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD valuation / P/E / fundamentals", "AMD valuation / P/B / fundamentals", "AMD valuation / P/S / fundamentals", "AMD valuation / EV/EBITDA / fundamentals", "AMD valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD valuation / P/E / fundamentals", "AMD valuation / P/B / fundamentals", "AMD valuation / P/S / fundamentals", "AMD valuation / EV/EBITDA / fundamentals", "AMD valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMD valuation / P/E / fundamentals", "AMD valuation / P/B / fundamentals", "AMD valuation / P/S / fundamentals", "AMD valuation / EV/EBITDA / fundamentals", "AMD valuation / dividend yield / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price to earnings growth (PEG) ratio", "MSFT current price to sales (P/S) ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price to earnings growth (PEG) ratio", "MSFT current price to sales (P/S) ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT current P/E ratio", "MSFT current price to earnings growth (PEG) ratio", "MSFT market capitalization and forward EPS estimate"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/B / fundamentals", "MSFT valuation / P/S / fundamentals", "MSFT valuation / EV/EBITDA / fundamentals", "MSFT dividend yield / fundamentals", "MSFT current price and market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/B / fundamentals", "MSFT valuation / P/S / fundamentals", "MSFT valuation / EV/EBITDA / fundamentals", "MSFT dividend yield / fundamentals", "AAPL valuation / P/E / fundamentals", "GOOGL valuation / P/E / fundamentals", "NVDA valuation / P/E / fundamentals", "AAPL valuation / P/S / fundamentals", "GOOGL valuation / P/S / fundamentals", "NVDA valuation / P/S / fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT valuation / P/E / fundamentals", "MSFT valuation / P/B / fundamentals", "MSFT valuation / P/S / fundamentals", "MSFT valuation / EV/EBITDA / fundamentals", "MSFT dividend yield / fundamentals", "MSFT current price and market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL current P/E ratio", "AAPL current price to book ratio", "AAPL current EV/EBITDA", "MSFT P/E ratio", "GOOGL P/E ratio", "TSLA P/E ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL PE ratio", "AAPL PEG ratio", "AAPL price to sales", "AAPL EV to EBITDA", "MSFT PE ratio", "GOOGL PE ratio", "TSLA PE ratio", "NVDA PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AAPL PE ratio", "AAPL PEG ratio", "AAPL price to sales ratio", "AAPL price to book ratio", "MSFT PE ratio", "GOOGL PE ratio", "TSLA PE ratio", "NVDA PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AAPL valuation / P/E / fundamentals",
+        "AAPL valuation / P/B / fundamentals",
+        "AAPL valuation / P/S / fundamentals",
+        "AAPL valuation / EV/EBITDA / fundamentals",
+        "AAPL valuation / dividend yield / fundamentals",
+        "MSFT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "TSLA valuation / P/E / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "TSLA valuation / P/S / fundamentals",
+        "MSFT fundamentals / net profit margin",
+        "GOOGL fundamentals / net profit margin",
+        "TSLA fundamentals / net profit margin",
+        "AAPL fundamentals / net profit margin",
+        "MSFT fundamentals / ROE",
+        "GOOGL fundamentals / ROE",
+        "TSLA fundamentals / ROE",
+        "AAPL fundamentals / ROE"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AAPL valuation / P/E / fundamentals",
+        "AAPL valuation / P/B / fundamentals",
+        "AAPL valuation / P/S / fundamentals",
+        "AAPL valuation / EV/EBITDA / fundamentals",
+        "AAPL valuation / dividend yield / fundamentals",
+        "MSFT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "TSLA valuation / P/E / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "TSLA valuation / P/S / fundamentals",
+        "MSFT valuation / EV/EBITDA / fundamentals",
+        "GOOGL valuation / EV/EBITDA / fundamentals",
+        "TSLA valuation / EV/EBITDA / fundamentals",
+        "AAPL fundamentals / EPS growth rate",
+        "MSFT fundamentals / EPS growth rate",
+        "GOOGL fundamentals / EPS growth rate",
+        "TSLA fundamentals / EPS growth rate",
+        "AAPL fundamentals / gross margin",
+        "MSFT fundamentals / gross margin",
+        "GOOGL fundamentals / gross margin",
+        "TSLA fundamentals / gross margin",
+        "AAPL fundamentals / net margin",
+        "MSFT fundamentals / net margin",
+        "GOOGL fundamentals / net margin",
+        "TSLA fundamentals / net margin",
+        "AAPL fundamentals / ROE",
+        "MSFT fundamentals / ROE",
+        "GOOGL fundamentals / ROE",
+        "TSLA fundamentals / ROE"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "AAPL historical P/E ratio 3-year and 5-year percentile",
+        "Apple Inc. market share in global smartphone industry 2026",
+        "Apple vs Microsoft vs Google vs Tesla competitive positioning and moat analysis"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AAPL valuation / P/E / fundamentals",
+        "AAPL valuation / P/B / fundamentals",
+        "AAPL valuation / P/S / fundamentals",
+        "AAPL valuation / EV/EBITDA / fundamentals",
+        "AAPL valuation / dividend yield / fundamentals",
+        "MSFT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "NVDA valuation / P/E / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "NVDA valuation / P/S / fundamentals",
+        "AAPL fundamentals / gross margin",
+        "MSFT fundamentals / gross margin",
+        "GOOGL fundamentals / gross margin",
+        "NVDA fundamentals / gross margin",
+        "AAPL fundamentals / net margin",
+        "MSFT fundamentals / net margin",
+        "GOOGL fundamentals / net margin",
+        "NVDA fundamentals / net margin",
+        "AAPL fundamentals / ROE",
+        "MSFT fundamentals / ROE",
+        "GOOGL fundamentals / ROE",
+        "NVDA fundamentals / ROE"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "AAPL historical P/E range last 5 years",
+        "Apple Inc. industry peers and market share in consumer electronics and semiconductors",
+        "Apple vs Microsoft vs Google vs NVIDIA competitive positioning and moat analysis"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT fundamentals", "MSFT stock price"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["MSFT latest 10-Q or 10-K summary", "MSFT industry position and competitive analysis"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT fundamentals", "MSFT market cap", "MSFT PE ratio"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["MSFT latest 10-Q summary", "MSFT latest earnings call key points"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["MSFT fundamentals", "MSFT stock price"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["MSFT latest 10-Q or 10-K summary and key metrics", "MSFT industry position and competitive analysis"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "MSFT fundamentals / financials",
+        "MSFT fundamentals / P/E",
+        "MSFT fundamentals / P/S",
+        "MSFT fundamentals / EV/EBITDA",
+        "AAPL fundamentals / financials",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / financials",
+        "GOOGL fundamentals / P/E"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "MSFT latest 10-Q or 10-K filing summary and management discussion",
+        "MSFT market share in cloud computing and enterprise software industry 2026",
+        "Microsoft competitive position vs Apple and Google in AI and cloud services"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "MSFT fundamentals / financials",
+        "MSFT fundamentals / P/E",
+        "MSFT fundamentals / P/S",
+        "MSFT fundamentals / EV/EBITDA",
+        "AAPL fundamentals / financials",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / financials",
+        "GOOGL fundamentals / P/E"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "MSFT latest 10-Q or 10-K filing summary and management discussion",
+        "Microsoft market share in cloud computing and enterprise software 2026",
+        "Microsoft competitive position vs Apple and Google in AI and cloud services"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "MSFT fundamentals / financials",
+        "MSFT fundamentals / P/E",
+        "MSFT fundamentals / P/S",
+        "MSFT fundamentals / EV/EBITDA",
+        "AAPL fundamentals / financials",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / financials",
+        "GOOGL fundamentals / P/E",
+        "NVDA fundamentals / financials",
+        "NVDA fundamentals / P/E"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "MSFT latest 10-Q or 10-K filing summary and management discussion",
+        "Microsoft market share in cloud computing and enterprise software 2026",
+        "Microsoft competitive position vs AWS, Google Cloud, Oracle in 2026"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA current P/E ratio", "NVDA market cap", "NVDA forward P/E and PEG ratio"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA latest 10-K risk factors", "NVDA valuation concerns in recent analyst reports"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA current P/E ratio", "NVDA market cap", "NVDA price-to-sales ratio", "NVDA forward EPS estimate"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA latest 10-K risk factors", "NVDA recent earnings call key risks"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["NVDA current P/E ratio", "NVDA market cap", "NVDA forward P/E and 5-year average P/E"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["NVDA latest 10-K risk factors", "NVDA recent earnings call key risks"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "NVDA valuation / P/E / fundamentals",
+        "NVDA valuation / P/B / fundamentals",
+        "NVDA valuation / P/S / fundamentals",
+        "NVDA valuation / EV/EBITDA / fundamentals",
+        "NVDA valuation / dividend yield / fundamentals",
+        "NVDA fundamentals / debt / cash flow",
+        "NVDA fundamentals / goodwill / assets",
+        "NVDA fundamentals / current ratio / liquidity"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "NVDA latest 10-K risk factors",
+        "NVDA recent litigation or regulatory actions",
+        "NVDA customer concentration disclosure"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "NVDA valuation / P/E / fundamentals",
+        "NVDA valuation / P/B / fundamentals",
+        "NVDA valuation / P/S / fundamentals",
+        "NVDA valuation / EV/EBITDA / fundamentals",
+        "NVDA valuation / dividend yield / fundamentals",
+        "NVDA fundamentals / debt / cash flow",
+        "NVDA fundamentals / goodwill / assets",
+        "NVDA fundamentals / current ratio / liquidity"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "NVDA latest 10-K risk factors",
+        "NVDA recent litigation or regulatory actions",
+        "NVDA customer concentration disclosure"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "NVDA valuation / P/E / fundamentals",
+        "NVDA valuation / P/B / fundamentals",
+        "NVDA valuation / P/S / fundamentals",
+        "NVDA valuation / EV/EBITDA / fundamentals",
+        "NVDA valuation / dividend yield / fundamentals",
+        "NVDA fundamentals / debt / cash flow",
+        "NVDA fundamentals / goodwill / assets",
+        "NVDA fundamentals / current ratio / liquidity"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "NVDA latest 10-K risk factors",
+        "NVDA recent litigation or regulatory actions",
+        "NVDA customer concentration disclosure"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals", "TSLA risk metrics"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA financial health analysis"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals", "TSLA latest financial metrics"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA financial risks analysis"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals", "TSLA latest financial metrics"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA financial risks analysis"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals / financials", "TSLA fundamentals / debt", "TSLA fundamentals / cash flow"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA recent litigation or regulatory actions", "TSLA customer concentration or supplier dependency"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals / financials", "TSLA fundamentals / debt", "TSLA fundamentals / cash flow"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA recent litigation or regulatory actions", "TSLA customer concentration or supplier dependency"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["TSLA fundamentals / financials", "TSLA fundamentals / debt", "TSLA fundamentals / cash flow"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["TSLA latest 10-K risk factors", "TSLA recent litigation or regulatory actions"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL fundamentals", "MSFT fundamentals", "AAPL fundamentals", "META fundamentals", "AMZN fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL fundamentals", "MSFT fundamentals", "AAPL fundamentals", "META fundamentals", "AMZN fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["GOOGL fundamentals", "MSFT fundamentals", "AAPL fundamentals", "META fundamentals", "AMZN fundamentals"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "GOOGL fundamentals / financials",
+        "MSFT fundamentals / financials",
+        "META fundamentals / financials",
+        "AAPL fundamentals / financials",
+        "GOOGL fundamentals / P/E",
+        "MSFT fundamentals / P/E",
+        "META fundamentals / P/E",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / P/S",
+        "MSFT fundamentals / P/S",
+        "META fundamentals / P/S",
+        "AAPL fundamentals / P/S"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "GOOGL 最新 10-K 中关于毛利率、净利率、资产负债率、流动比率、商誉占比的披露",
+        "GOOGL 最新 10-K 中经营性现金流与净利润对比分析",
+        "GOOGL 最新 10-K 中自由现金流计算及资本开支说明",
+        "GOOGL 所属互联网广告与云服务行业可比公司名单及市场份额排名",
+        "GOOGL 与 MSFT、META、AAPL 在核心业务护城河（网络效应、规模效应、用户粘性）上的对比分析"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "GOOGL fundamentals / financials",
+        "MSFT fundamentals / financials",
+        "META fundamentals / financials",
+        "AAPL fundamentals / financials",
+        "GOOGL fundamentals / P/E",
+        "MSFT fundamentals / P/E",
+        "META fundamentals / P/E",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / P/S",
+        "MSFT fundamentals / P/S",
+        "META fundamentals / P/S",
+        "AAPL fundamentals / P/S",
+        "GOOGL fundamentals / EV/EBITDA",
+        "MSFT fundamentals / EV/EBITDA",
+        "META fundamentals / EV/EBITDA",
+        "AAPL fundamentals / EV/EBITDA"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "GOOGL latest 10-K management discussion on profitability and risks",
+        "Google's market share in digital advertising and cloud services vs Microsoft and Meta",
+        "Comparison of competitive moats: Google vs Microsoft vs Meta — network effects, scale, switching costs"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "GOOGL fundamentals / financials",
+        "MSFT fundamentals / financials",
+        "META fundamentals / financials",
+        "AAPL fundamentals / financials",
+        "GOOGL fundamentals / P/E",
+        "MSFT fundamentals / P/E",
+        "META fundamentals / P/E",
+        "AAPL fundamentals / P/E",
+        "GOOGL fundamentals / P/S",
+        "MSFT fundamentals / P/S",
+        "META fundamentals / P/S",
+        "AAPL fundamentals / P/S",
+        "GOOGL fundamentals / EV/EBITDA",
+        "MSFT fundamentals / EV/EBITDA",
+        "META fundamentals / EV/EBITDA",
+        "AAPL fundamentals / EV/EBITDA",
+        "GOOGL fundamentals / ROE",
+        "MSFT fundamentals / ROE",
+        "META fundamentals / ROE",
+        "AAPL fundamentals / ROE"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "GOOGL 最新 10-K 中关于市场份额和竞争格局的披露",
+        "谷歌在数字广告和云服务市场的最新市占率数据",
+        "GOOGL 与 MSFT、META、AAPL 的护城河对比分析"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN current P/E ratio", "AMZN market cap", "AMZN forward P/E", "WMT P/E ratio", "WMT market cap", "TGT P/E ratio", "TGT market cap", "EBAY P/E ratio", "EBAY market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN current P/E ratio", "AMZN market cap", "AMZN forward P/E", "WMT P/E ratio", "WMT market cap", "TGT P/E ratio", "TGT market cap", "EBAY P/E ratio", "EBAY market cap"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["AMZN price", "AMZN PE ratio", "AMZN PEG ratio", "AMZN EV/EBITDA", "AMZN forward PE", "MSFT PE ratio", "GOOGL PE ratio", "WMT PE ratio", "TGT PE ratio"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AMZN valuation / P/E / fundamentals",
+        "AMZN valuation / PEG / fundamentals",
+        "AMZN valuation / P/B / fundamentals",
+        "AMZN valuation / P/S / fundamentals",
+        "AMZN valuation / EV/EBITDA / fundamentals",
+        "AMZN valuation / dividend yield / fundamentals",
+        "AMZN valuation / historical PE percentile / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "MSFT valuation / P/E / fundamentals",
+        "WMT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "WMT valuation / P/S / fundamentals",
+        "GOOGL valuation / EV/EBITDA / fundamentals",
+        "MSFT valuation / EV/EBITDA / fundamentals",
+        "WMT valuation / EV/EBITDA / fundamentals",
+        "AMZN fundamentals / gross margin",
+        "AMZN fundamentals / net margin",
+        "AMZN fundamentals / ROE",
+        "GOOGL fundamentals / gross margin",
+        "MSFT fundamentals / gross margin",
+        "WMT fundamentals / gross margin",
+        "AMZN fundamentals / revenue growth",
+        "AMZN fundamentals / net income growth",
+        "GOOGL fundamentals / revenue growth",
+        "MSFT fundamentals / revenue growth",
+        "WMT fundamentals / revenue growth"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "AMZN vs GOOGL vs MSFT vs WMT market share in e-commerce and cloud computing 2026",
+        "AMZN competitive moat analysis vs major peers",
+        "Amazon recent 10-K risk factors and industry positioning"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AMZN valuation / P/E / fundamentals",
+        "AMZN valuation / PEG / fundamentals",
+        "AMZN valuation / P/B / fundamentals",
+        "AMZN valuation / P/S / fundamentals",
+        "AMZN valuation / EV/EBITDA / fundamentals",
+        "AMZN valuation / dividend yield / fundamentals",
+        "AMZN market cap / fundamentals",
+        "MSFT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "WMT valuation / P/E / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "WMT valuation / P/S / fundamentals",
+        "MSFT valuation / EV/EBITDA / fundamentals",
+        "GOOGL valuation / EV/EBITDA / fundamentals",
+        "WMT valuation / EV/EBITDA / fundamentals",
+        "AMZN profitability / gross margin / fundamentals",
+        "AMZN profitability / net margin / fundamentals",
+        "AMZN profitability / ROE / fundamentals",
+        "MSFT profitability / gross margin / fundamentals",
+        "GOOGL profitability / gross margin / fundamentals",
+        "WMT profitability / gross margin / fundamentals",
+        "AMZN growth / revenue growth / fundamentals",
+        "AMZN growth / net income growth / fundamentals",
+        "MSFT growth / revenue growth / fundamentals",
+        "GOOGL growth / revenue growth / fundamentals",
+        "WMT growth / revenue growth / fundamentals"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "AMZN historical P/E 3-year and 5-year percentile",
+        "Amazon vs Microsoft vs Google vs Walmart industry comparison report",
+        "Amazon market share in e-commerce and cloud computing 2026",
+        "AWS vs Azure vs GCP market share and competitive moat analysis"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "AMZN valuation / P/E / fundamentals",
+        "AMZN valuation / P/B / fundamentals",
+        "AMZN valuation / P/S / fundamentals",
+        "AMZN valuation / EV/EBITDA / fundamentals",
+        "AMZN valuation / dividend yield / fundamentals",
+        "AMZN fundamentals / EPS growth rate",
+        "MSFT valuation / P/E / fundamentals",
+        "WMT valuation / P/E / fundamentals",
+        "GOOGL valuation / P/E / fundamentals",
+        "MSFT valuation / P/S / fundamentals",
+        "WMT valuation / P/S / fundamentals",
+        "GOOGL valuation / P/S / fundamentals",
+        "MSFT fundamentals / net margin",
+        "WMT fundamentals / net margin",
+        "GOOGL fundamentals / net margin",
+        "MSFT fundamentals / revenue growth",
+        "WMT fundamentals / revenue growth",
+        "GOOGL fundamentals / revenue growth"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "AMZN 3-year historical P/E range",
+        "AMZN vs MSFT vs GOOGL vs WMT industry comparison report",
+        "Amazon market share in e-commerce and cloud computing 2026"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META price", "META fundamentals", "META latest earnings report date"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["META latest 10-Q risk factors", "META valuation metrics interpretation"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META price", "META fundamentals", "META latest earnings report date"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["META latest 10-Q risk factors", "META valuation methodology", "what are common downside risks for tech stocks with high P/E"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": ["META stock price", "META P/E ratio", "META latest earnings report date and EPS"]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": ["META latest 10-Q or 10-K risk factors", "META valuation analysis methodology"]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "META valuation / P/E / fundamentals",
+        "META valuation / P/B / fundamentals",
+        "META valuation / P/S / fundamentals",
+        "META valuation / EV/EBITDA / fundamentals",
+        "META valuation / dividend yield / fundamentals",
+        "META fundamentals / debt / cash flow",
+        "META fundamentals / goodwill / assets",
+        "META fundamentals / operating cash flow"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "META latest 10-K risk factors",
+        "META recent regulatory actions or antitrust developments",
+        "META major customer or supplier concentration disclosures"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "META valuation / P/E / fundamentals",
+        "META valuation / PEG / fundamentals",
+        "META valuation / P/B / fundamentals",
+        "META valuation / P/S / fundamentals",
+        "META valuation / EV/EBITDA / fundamentals",
+        "META valuation / dividend yield / fundamentals",
+        "META fundamentals / debt / cash flow",
+        "META fundamentals / goodwill / assets",
+        "META fundamentals / current ratio / liquidity"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "META latest 10-K risk factors",
+        "META recent regulatory developments or antitrust cases",
+        "META major litigation or governance issues in 2025–2026"
+      ]
+    }
+  ]
+}
+[agent_plan] {
+  "actions": [
+    {
+      "action_name": "finance_query",
+      "prompts": [
+        "META valuation / P/E / fundamentals",
+        "META valuation / P/B / fundamentals",
+        "META valuation / P/S / fundamentals",
+        "META valuation / EV/EBITDA / fundamentals",
+        "META valuation / dividend yield / fundamentals",
+        "META fundamentals / debt / cash flow",
+        "META fundamentals / goodwill / balance sheet",
+        "META fundamentals / operating cash flow"
+      ]
+    },
+    {
+      "action_name": "rag_search",
+      "prompts": [
+        "META latest 10-K risk factors",
+        "META recent regulatory actions or antitrust developments",
+        "META major litigation or governance issues as of 2026"
+      ]
+    }
+  ]
+}
+[dump] raw sub-questions saved to /tmp/claude-1000/-home-thomas-projects/9a07c638-ff95-434f-aa7e-b5220ddca80a/scratchpad/sop_raw_v2.json
+
+== 单命中 valuation（覆盖率=估值倍数广度 & 同行/历史对比 两维均值）==
+  sop-val-01: baseline 17% -> injected 83% ↑   (classify=['valuation'])
+  sop-val-02: baseline 28% -> injected 67% ↑   (classify=['valuation'])
+  sop-val-03: baseline 33% -> injected 83% ↑   (classify=['valuation'])
+  sop-val-04: baseline 33% -> injected 83% ↑   (classify=['valuation'])
+  sop-val-05: baseline 83% -> injected 50%   (classify=['valuation'])
+  sop-val-06: baseline 17% -> injected 50% ↑   (classify=['valuation'])
+  sop-val-07: baseline 22% -> injected 100% ↑   (classify=['valuation'])
+  sop-val-08: baseline 33% -> injected 83% ↑   (classify=['valuation'])
+  sop-val-09: baseline 17% -> injected 67% ↑   (classify=['valuation'])
+  sop-val-10: baseline 33% -> injected 50% ↑   (classify=['valuation'])
+  sop-val-11: baseline 67% -> injected 50%   (classify=['valuation'])
+  sop-val-12: baseline 28% -> injected 67% ↑   (classify=['valuation'])
+  baseline avg: 34.3%   injected avg: 69.4%
+  提升: +35.2 个百分点  (门槛 ≥30) -> PASS
+== 双命中（每个 SOP 各自覆盖率都要相对 baseline 提升）==
+  sop-dual-01 (classify=['valuation', 'industry_comparison']): valuation: 94%->100%↑; industry_comparison: 58%->100%↑  -> PASS
+  sop-dual-02 (classify=['financial_statement', 'industry_comparison']): financial_statement: 6%->0%·; industry_comparison: 17%->100%↑  -> FAIL
+  sop-dual-03 (classify=['valuation', 'risk_scan']): valuation: 33%->50%↑; risk_scan: 25%->100%↑  -> PASS
+  sop-dual-04 (classify=['financial_statement', 'risk_scan']): financial_statement: 0%->50%↑; risk_scan: 25%->100%↑  -> PASS
+  sop-dual-05 (classify=['financial_statement', 'industry_comparison']): industry_comparison: 50%->100%↑; financial_statement: 0%->39%↑  -> PASS
+  sop-dual-06 (classify=['valuation', 'industry_comparison']): valuation: 72%->100%↑; industry_comparison: 75%->100%↑  -> PASS
+  sop-dual-07 (classify=['valuation', 'risk_scan']): financial_statement: 22%->50%↑; valuation: 11%->50%↑  -> PASS
+双命中整体: FAIL
+
+验收总判定: FAIL

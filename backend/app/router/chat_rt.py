@@ -4,7 +4,7 @@ import os
 import re
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Body, File, HTTPException, Query, Depends, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, File, HTTPException, Query, Depends, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -15,6 +15,8 @@ from utils.database import get_db, SessionLocal
 from utils.es_client import get_es_client
 from service.agent.agent import final_answer
 from service.core.file_parse import execute_insert_process
+from service.memory.extraction import extract_memory, _EXTRACTION_TRIGGER_TURNS
+from service.memory.profile import recall_user_profile
 from database.knowledgebase_operations import insert_knowledgebase, delete_knowledgebase_entry
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../../storage/file")
@@ -69,6 +71,7 @@ async def create_session(db: Session = Depends(get_db)):
 
 @router.post("/chat")
 def chat(
+    background_tasks: BackgroundTasks,
     session_id: str = Query(...),
     request: ChatRequest = Body(...),
 ):
@@ -106,6 +109,22 @@ def chat(
             {"sid": session_id},
         ).fetchall()
         history = [{"user": r.user_question, "assistant": r.model_answer} for r in reversed(rows)]
+        # 记忆抽取触发计数：在同一读连接内、且在本轮消息落库（_persist）之前统计既有
+        # 轮数。prior_count 必须"落库前"取，本轮 will_be_turn = prior_count + 1；每命中
+        # 5 的倍数触发一次抽取（窗口不重叠：第 5/10/15… 轮）。
+        prior_count = read_db.execute(
+            text("SELECT COUNT(*) FROM messages WHERE session_id = :sid"),
+            {"sid": session_id},
+        ).fetchone()[0]
+    will_be_turn = prior_count + 1
+
+    # 召回跨会话用户画像（chat_rt 持有 USER_ID 与 SessionLocal），传入 final_answer →
+    # agent_plan 作为规划上下文。画像召回失败不应阻断对话，降级为 None（无画像上下文）。
+    try:
+        user_profile = recall_user_profile(USER_ID)
+    except Exception as e:
+        logger.warning("[chat_rt] recall_user_profile 失败，本轮不注入画像：%s", e)
+        user_profile = None
 
     # 流式生成，同时收集完整回答用于存库
     collected_answer: list[str] = []
@@ -155,7 +174,7 @@ def chat(
     def stream():
         stream_failed = False
         try:
-            for event in final_answer(question, history=history, session_id=session_id):
+            for event in final_answer(question, history=history, session_id=session_id, user_profile=user_profile):
                 yield event
                 # 收集 answer / think 内容
                 m = re.search(r"data: (.+)", event, re.DOTALL)
@@ -187,7 +206,19 @@ def chat(
         finally:
             _persist(stream_failed)
 
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    # 命中抽取周期（每 _EXTRACTION_TRIGGER_TURNS 轮）时，挂一个后台抽取任务。用抽取管道
+    # 导出的同一个常量，避免"触发周期"这个魔法数字在调度侧与抽取侧各写一份而漂移。
+    # add_task 必须调用在最终附着到响应上的同一个 BackgroundTasks 实例上——Starlette 会在
+    # 整个响应体（含 stream() 的 finally 里的 _persist）消费完之后才运行 background，因此
+    # extract_memory 执行时本轮消息已确认落库，读取最近数轮不会漏掉当轮。显式传
+    # background=background_tasks 是冗余但无害的防御性写法（.background 为 None 时 FastAPI
+    # 也会自动附着注入的实例）。
+    if will_be_turn % _EXTRACTION_TRIGGER_TURNS == 0:
+        background_tasks.add_task(extract_memory, session_id)
+
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", background=background_tasks
+    )
 
 
 @router.post("/upload_files/")

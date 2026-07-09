@@ -466,6 +466,11 @@ class _HistoryAwareSessionLocal:
             def fetchone(self_inner):
                 if "SELECT 1 FROM sessions" in stmt_text:
                     return (1,)
+                # chat() now also counts prior turns to decide whether to
+                # schedule the every-5th-turn memory extraction. COUNT(*) always
+                # returns exactly one row in a real DB, so answer it here.
+                if "SELECT COUNT(*) FROM messages" in stmt_text:
+                    return (len(_HistoryAwareSessionLocal.history_rows),)
                 return None
 
             def fetchall(self_inner):
@@ -541,7 +546,7 @@ class ChatSuccessPathTests(unittest.TestCase):
         ]
         captured = {}
 
-        def _capturing_final_answer(question, history=None, session_id=None):
+        def _capturing_final_answer(question, history=None, session_id=None, **kwargs):
             captured["history"] = history
             yield 'data: {"content": "ok", "thinking": false}\n\n'
 

@@ -19,8 +19,8 @@ export const servicePlugin: IRequestPlugin = {
 
         const code = data[CODE_KEY]
         if (code !== 'success') {
-          const message =
-            data[MESSAGE_KEY] || data.detail || getMessages().apiDataError
+          const message = (data[MESSAGE_KEY] || data.detail ||
+            getMessages().apiDataError) as string
           const error = new ResponseError(message, response)
           return Promise.reject(error)
         }
@@ -28,15 +28,15 @@ export const servicePlugin: IRequestPlugin = {
         return response
       },
       (error) => {
-        const response = error.response as AxiosResponse<any> | undefined
+        const response = error.response as AxiosResponse<unknown> | undefined
 
         const data = response?.data
         if (!response || !isObject(data)) return Promise.reject(error)
 
         const code = data[CODE_KEY]
         if (code === 'error') {
-          const message =
-            data[MESSAGE_KEY] || data.detail || getMessages().apiDataError
+          const message = (data[MESSAGE_KEY] || data.detail ||
+            getMessages().apiDataError) as string
           const error = new ResponseError(message, response)
           return Promise.reject(error)
         }
@@ -47,7 +47,7 @@ export const servicePlugin: IRequestPlugin = {
   },
 }
 
-function isObject(value: unknown) {
+function isObject(value: unknown): value is Record<string, unknown> {
   const type = typeof value
   return value != null && (type === 'object' || type === 'function')
 }

@@ -14,7 +14,7 @@ export type IRouteObject = {
   children?: IRouteObject[]
   name?: string
   pure?: boolean
-  meta?: any
+  meta?: unknown
 } & Omit<RouteObject, 'children'>
 
 export const routes: IRouteObject[] = [
@@ -69,7 +69,7 @@ function helper(route: IRouteObject) {
   }
 
   if (_route.children) {
-    _route.children = _route.children.map((child: any) => helper(child))
+    _route.children = _route.children.map((child) => helper(child))
   }
 
   return _route as RouteObject

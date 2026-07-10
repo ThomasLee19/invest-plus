@@ -51,7 +51,7 @@ export default function ComSender(
         throw new Error(t.fileTooLarge)
       }
       const session_id = ensureSessionId ? await ensureSessionId() : sessionId
-      await api.session.upload({ files: file as any, session_id })
+      await api.session.upload({ files: file as unknown as File, session_id })
       window.$app.message.success(`${file.name} ${t.uploadSuccess}`)
     } catch (error) {
       const msg =

@@ -58,14 +58,14 @@ export default forwardRef(function RepositoryUpload(
                 return item
               }),
             )
-          } catch (error: any) {
+          } catch (error: unknown) {
             // 后端错误（ResponseError）的 message 是未经 i18n 的原始文案，统一
             // 显示 t.uploadFailed；仅本地抛出的已翻译错误（如文件过大）才用其
             // message 展示。
             const msg =
               error instanceof ResponseError
                 ? t.uploadFailed
-                : error?.message || t.uploadFailed
+                : (error as Error)?.message || t.uploadFailed
             window.$app.message.error(msg)
             hasError = true
             setFileList((prev) =>

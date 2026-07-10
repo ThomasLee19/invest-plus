@@ -20,7 +20,7 @@ export function detail(
   })
 }
 
-export function create(params?: {}, options?: AxiosRequestConfig) {
+export function create(params?: Record<string, unknown>, options?: AxiosRequestConfig) {
   return request.post<
     API.Result<{
       session_id: string

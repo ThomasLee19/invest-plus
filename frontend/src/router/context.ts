@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
-export const RouterContext = createContext<
-  ReturnType<typeof createBrowserRouter>
->(null as any)
+type Router = ReturnType<typeof createBrowserRouter>
+
+export const RouterContext = createContext<Router>(null as unknown as Router)

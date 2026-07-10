@@ -1,14 +1,14 @@
 import { AxiosRequestConfig } from 'axios'
 import { request } from './request'
 
-export function list(params?: {}, options?: AxiosRequestConfig) {
+export function list(params?: Record<string, unknown>, options?: AxiosRequestConfig) {
   return request.get<API.Repository[]>('/get_files/', {
     ...options,
     params,
   })
 }
 
-export function listOfficialExamples(params?: {}, options?: AxiosRequestConfig) {
+export function listOfficialExamples(params?: Record<string, unknown>, options?: AxiosRequestConfig) {
   return request.get<API.OfficialExample[]>('/get_official_examples/', {
     ...options,
     params,

@@ -2,8 +2,10 @@ name: Build and Deploy
 
 # Two-stage split (plan step 0/9): `build` runs on every push/PR, including the
 # infra/docker-deploy branch, so a bad commit only ever fails a build. `deploy`
-# only fires on a push to main, so nothing here can touch the server until the
-# branch has been merged after local verification.
+# only fires on a push to master (this repo's actual default branch — NOT
+# "main", double-check with `git branch -vv` before ever copying this pattern
+# into another repo), so nothing here can touch the server until the branch
+# has been merged after local verification.
 on:
   push:
   pull_request:
@@ -49,7 +51,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read

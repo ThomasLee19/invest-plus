@@ -8,7 +8,11 @@ name: Build and Deploy
 # has been merged after local verification.
 on:
   push:
+    paths-ignore:
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
 
 jobs:
   build:

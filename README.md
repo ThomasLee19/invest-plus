@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh-cn.md)
+
 # Invest+ — AI Finance Research Assistant
 
 Invest+ is an autonomous research agent for US equities. Ask it about a stock
@@ -5,6 +7,18 @@ in plain English or Chinese, and it plans its own research, pulls live
 market data, searches SEC filings and news, and streams back a sourced
 answer — deciding for itself which tools to use and when it has enough
 information to stop.
+
+## Live Demo
+
+**[https://investplus-agent.com](https://investplus-agent.com)** — currently
+behind a password gate. DM or PM me for access.
+
+Hosted on a single Docker Compose stack (Elasticsearch + PostgreSQL + backend
++ frontend, behind an nginx gateway with Let's Encrypt TLS) on a non-mainland
+-China cloud node, deployed via GitHub Actions CI/CD on every push to
+`master`. Rate-limited (20 req/min) and password-gated as light friction
+against casual/automated traffic, not as a real access-control layer — see
+[Production Deployment](#production-deployment).
 
 ## Features
 
@@ -82,7 +96,7 @@ DATABASE_URL=postgresql://postgres:your_postgres_password@localhost:5432/investp
 
 ### 2. Start infrastructure
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 3. Install Python dependencies
@@ -114,6 +128,32 @@ npm run dev
 ```
 
 Open [http://localhost:5181](http://localhost:5181).
+
+## Production Deployment
+
+The [live demo](#live-demo) runs from the same repo via a second Compose
+file layered on top of the dev one:
+
+- `docker-compose.prod.yml` — adds `backend`/`frontend`/`gateway` services
+  (built from `backend/Dockerfile`, `frontend/Dockerfile`, `gateway/Dockerfile`),
+  pins a `mem_limit` per service (calibrated against measured container
+  memory under real load, not guessed), and drops the dev-only host port
+  publishing for `es01`/`pg`.
+- `gateway/` — a single nginx container is the only public entry point:
+  TLS (Let's Encrypt via `certbot`, two-stage bootstrap to break the
+  chicken-and-egg cert/nginx startup order), `/ai-search/*` reverse-proxied
+  to the backend with SSE passthrough (buffering off), request rate
+  limiting, and HTTP Basic Auth in front of everything else.
+- `.github/workflows/deploy.yml` — on push to `master`: builds and pushes
+  `backend`/`frontend`/`gateway` images to GHCR, then SSHes into the server
+  to `pull` + `up -d`. The deploy SSH key only ever runs those two commands;
+  business secrets (`.env`, `gateway/htpasswd`) are placed on the server by
+  hand once, never transmitted through CI.
+
+Not a generic "deploy anywhere" template — the compose files and gateway
+config are written against this project's specific service layout, and the
+mem_limit values are calibrated for one particular VM size. Treat them as a
+worked example, not a drop-in.
 
 ## How It Works
 
@@ -216,13 +256,15 @@ tool planning, not just decorate the prompt — see
 | Backend | FastAPI + PostgreSQL | API, SSE, sessions & messages; `user_profiles`/`conclusion_memory` for cross-session memory |
 | Memory & Skills | `service/memory/{profile,conclusion,extraction}.py`, `service/agent/skills/*.md` | Cross-session recall, LLM extraction pipeline, SOP-driven planning |
 | Frontend | React + TypeScript + Vite + Ant Design + Valtio | Chat UI, streaming render, doc mgmt |
-| Infrastructure | Docker Compose (ES + PG) | Local dependencies |
+| Infrastructure | Docker Compose (ES + PG for local dev; full stack + nginx gateway + Let's Encrypt for prod) | Local dependencies / production hosting |
+| CI/CD | GitHub Actions + GHCR | Build/push images on every push; SSH deploy (`pull` + `up -d`) on `master` |
 
 ## Project Structure
 
 ```
 InvestPlus/
 ├── backend/
+│   ├── Dockerfile                   # Prod image: deps → tiktoken/nltk pre-bake → app code (in that layer order, for cache hits on code-only changes)
 │   └── app/
 │       ├── app_main.py              # FastAPI entry point
 │       ├── router/
@@ -262,6 +304,7 @@ InvestPlus/
 │       └── test_skill_sop_and_disclaimer.py
 ├── eval/                             # Quantitative agent/RAG evaluation harness (see below)
 ├── frontend/
+│   ├── Dockerfile                   # Multi-stage: npm build -> static assets served by nginx
 │   └── src/
 │       ├── i18n.tsx                 # Bilingual text (zh/en)
 │       ├── components/
@@ -270,10 +313,17 @@ InvestPlus/
 │       └── pages/
 │           ├── chat/                # Chat page with SSE streaming
 │           └── repository/          # Document management
+├── gateway/                          # Prod entry point: nginx TLS/reverse-proxy/rate-limit/Basic Auth
+│   ├── Dockerfile
+│   ├── nginx.conf                   # Production config (TLS, real domain)
+│   └── nginx.local.conf             # Local-stack equivalent (plain HTTP, no certbot)
+├── .github/workflows/deploy.yml     # CI: build all 3 images on every push; on master, also push to GHCR + SSH deploy
 ├── scripts/                          # Finance corpus fetch/index scripts (fetch_filings/news/educational, index_finance)
 ├── data/                             # Fetched finance corpus (filings/news/educational), indexed into `finance_kb`
-├── docker-compose.yml               # ES + PostgreSQL
-└── .env                             # API keys and config
+├── docker-compose.yml                # ES + PostgreSQL (shared base)
+├── docker-compose.local.yml          # + backend/frontend/gateway for local full-stack dev (plain HTTP)
+├── docker-compose.prod.yml           # + backend/frontend/gateway/certbot for production (TLS, mem_limit pins)
+└── .env                              # API keys and config
 ```
 
 ## Quantitative Evaluation
@@ -315,6 +365,8 @@ the indexed corpus, not validation against real-world financial data.
 - **`BackgroundTasks` extraction isn't persisted or retried** — if the process restarts between scheduling and running an extraction, that batch of facts is lost; the next 5-turn boundary in the same session is unaffected (windows don't overlap), so this bounds to "some memory not captured," not corruption.
 - **Ticker-vs-acronym ambiguity in the recall path** — the CJK-tolerant ticker extractor used for conclusion recall (not the stricter one `finance_tool()` uses on already-decomposed sub-questions) can't distinguish a common finance acronym from a same-spelled real ticker (`AI` is both "artificial intelligence" and C3.ai); worst case is an irrelevant old conclusion surfacing as background context, which the recall prompt already treats as possibly-stale.
 - **Single-user assumption baked into memory recall** — `chat_rt.py`'s hardcoded `USER_ID` is used for profile recall, while extraction derives the writing user from the session's own row; these coincide today but would need reconciling before any real multi-user support.
+- **Chat UI is not mobile-adapted** — the core chat layout (`components/page-layout`) has a hard `min-width: 600px` on the main content area plus a fixed `408px` side panel; on a real phone viewport this overflows/squeezes rather than reflowing. The landing page is reasonably responsive on its own, but the global layout shell (`layout/base`) wraps every route in a fixed `100px` sidebar regardless of viewport width. No `@media` breakpoints cover the chat page today — desktop is the only fully supported target.
+- **No conversation-history UI** — `session_id` lives only in the URL (`/chat/:id`), not in `localStorage`; there's no way to browse or delete past sessions from the app itself (a `DELETE /sessions` endpoint exists server-side but nothing in the frontend calls it). Every visit starts a fresh session; old ones persist in Postgres indefinitely with no TTL/cleanup.
 
 ## Roadmap
 

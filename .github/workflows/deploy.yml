@@ -126,3 +126,7 @@ jobs:
             cd ${{ vars.DEPLOY_PATH || '/opt/invest-plus' }}
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            # 每次 pull 把 :latest 挪到新digest后，旧版本镜像层就变成dangling，不会
+            # 自动清理——backend镜像本身4GB+一个，实测几次部署下来在ECS上堆了十几GB。
+            # -f 只清未被任何容器引用的dangling镜像，不影响刚up -d起来的这一版。
+            docker image prune -f

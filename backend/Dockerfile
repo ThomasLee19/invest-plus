@@ -13,7 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /srv/investplus
 
-COPY backend/ ./backend/
+# requirements.txt 单独先 COPY 再 pip install，跟下面的 tiktoken/nltk 预烘一起，
+# 是让这几层的 Docker 缓存只取决于 requirements.txt 有没有变——原来的顺序是先
+# COPY 整个 backend/ 再装依赖，导致改一行业务代码（backend/ 下任何文件）都会
+# 让这层缓存失效，逼着每次 pip install + tiktoken 下载 + nltk 下载全部重跑一遍
+# （生产环境实测：改一行 finance_tool.py 触发的部署，构建耗时和首次冷构建几乎
+# 一样长）。真正的 backend/ 源码 COPY 挪到最后，这样日常改代码只让最后这层和
+# LFS 校验重新跑，前面这些重量级步骤都能命中缓存。
 COPY requirements.txt ./backend/requirements.txt
 RUN pip install -r backend/requirements.txt
 
@@ -26,6 +32,8 @@ RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 # 避免生产环境依赖运行时联网下载（该 ECS 到 nltk 官方服务器的出网可达性未验证过）。
 ENV NLTK_DATA=/srv/investplus/.nltk_data
 RUN python -c "import nltk; nltk.download('punkt_tab', download_dir='${NLTK_DATA}'); nltk.download('wordnet', download_dir='${NLTK_DATA}')"
+
+COPY backend/ ./backend/
 
 RUN test $(stat -c%s backend/app/service/core/rag/res/deepdoc/det.onnx) -gt 1000000 || (echo "DeepDoc模型是LFS指针,不是真实文件,构建失败" && exit 1)
 

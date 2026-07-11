@@ -31,11 +31,14 @@ def _is_valid_ticker(info: dict, history) -> bool:
     return has_meaningful_field and len(info) > 2
 
 
-# yfinance 底层走 requests，Ticker()/.info/.history() 本身不接受 timeout 参数；
-# 显式传一个共享 requests session（带 timeout）是让单个 HTTP 请求不至于无限挂起
-# 的做法，对 .info/.history/.news 三处调用都生效。传入一个纯 requests.Session 时
-# yfinance(1.5.x) 会绕过 curl_cffi 走 requests 后端，此 timeout 对无显式 timeout
-# 的数据请求生效。
+# yfinance 默认用 curl_cffi 伪装 Chrome 的 TLS/JA3 指纹（见 yfinance._http.new_session），
+# 这是它能绕开 Yahoo Finance 反爬检测的关键。Ticker()/.info/.history() 本身不接受
+# timeout 参数，之前这里为了拿到 timeout 传了一个纯 requests.Session——结果 yfinance
+# 检测到是普通 requests session 就退回 requests 后端，丢了 curl_cffi 的浏览器指纹。
+# 生产环境实测：这样传出去的请求 100% 被 Yahoo 判成爬虫拒绝（报"Too Many Requests"，
+# 但其实不是真按请求量限流——同一台机器不传 session、走 yfinance 默认 curl_cffi
+# 后端反而次次成功）。改成显式构造 curl_cffi 的 Session 并保留 impersonate="chrome"，
+# 同样能用 functools.partial 包一层 timeout，两边都要。
 _YF_TIMEOUT_SECONDS = 10
 # 兜底的整体墙钟上限：即便 per-socket timeout 在某些代码路径（curl_cffi 分支、
 # DNS 解析、连接建立等）未能生效，也保证 _load_ticker 不会无限阻塞调用线程
@@ -53,8 +56,8 @@ _ticker_cache_lock = threading.Lock()
 
 
 def _yf_session():
-    import requests
-    session = requests.Session()
+    from curl_cffi import requests as curl_requests
+    session = curl_requests.Session(impersonate="chrome")
     session.request = functools.partial(session.request, timeout=_YF_TIMEOUT_SECONDS)
     return session
 

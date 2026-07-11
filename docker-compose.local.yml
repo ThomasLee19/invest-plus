@@ -54,8 +54,9 @@ services:
     # with anything already bound to 80/443 locally. No TLS, no certbot service.
     ports:
       - "8080:80"
+    # 同prod：localhost在容器里优先解析成::1，nginx只监听0.0.0.0，用127.0.0.1避免误判unhealthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 5

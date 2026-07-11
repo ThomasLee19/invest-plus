@@ -80,8 +80,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # 用 127.0.0.1 而不是 localhost：容器里 /etc/hosts 把 localhost 解析成 ::1 优先，
+    # 但 nginx 只监听了 0.0.0.0（IPv4），wget 连 ::1 会直接 Connection refused——
+    # 服务本身没问题，纯粹是健康检查探测方式的坑（部署到ECS后实测复现过）。
     healthcheck:
-      test: ["CMD", "wget", "--no-check-certificate", "-q", "--spider", "https://localhost/health"]
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "--spider", "https://127.0.0.1/health"]
       interval: 10s
       timeout: 5s
       retries: 5

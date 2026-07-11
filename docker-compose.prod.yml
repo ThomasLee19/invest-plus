@@ -1,0 +1,100 @@
+services:
+  es01:
+    environment:
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    mem_limit: 2g
+    # !reset clears the base file's list instead of appending to it (plain `ports: []`
+    # would just concatenate with the base list under Compose merge rules and leave
+    # 127.0.0.1:1200:9200 published) — backend reaches es01 by service name on the
+    # compose network, so the host port isn't needed once this stack is defined.
+    ports: !reset []
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pg:
+    ports: !reset []
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    # image: lets the SSH deploy step's `docker compose pull` actually fetch the
+    # tag .github/workflows/deploy.yml just pushed to GHCR, instead of `pull`
+    # silently skipping a build-only service; `build:` is kept for local/CI builds.
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/thomaslee19/invest-plus}-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: investplus-backend
+    # ES_URL / DATABASE_URL / FRONTEND_ORIGIN point at the compose service names
+    # (es01/pg) and live inside the server's manually-placed .env (see plan step 8),
+    # not here — keeps business config out of the file that goes into the repo.
+    env_file: .env
+    mem_limit: 3g
+    volumes:
+      - uploads_data:/srv/investplus/storage
+    depends_on:
+      es01:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/thomaslee19/invest-plus}-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: investplus-frontend
+    mem_limit: 256m
+    restart: unless-stopped
+
+  gateway:
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/thomaslee19/invest-plus}-gateway:latest
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: investplus-gateway
+    mem_limit: 256m
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./gateway/htpasswd:/etc/nginx/htpasswd:ro
+      - certs:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "--spider", "https://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # One-shot ACME client, never started by a plain `up -d` (see `profiles`).
+  # First issuance: docker compose run --rm --service-ports certbot certonly --standalone -d investplus-agent.com
+  # Renewal:        docker compose run --rm certbot renew --webroot -w /var/www/certbot
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    ports:
+      - "80:80"
+    profiles: ["certbot"]
+
+volumes:
+  certs:
+  certbot_webroot:
+  uploads_data:
+  # investplus_esdata / investplus_pgdata already declared in docker-compose.yml

@@ -1,8 +1,12 @@
 services:
   es01:
     environment:
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
-    mem_limit: 2g
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    # 实测校准（见 plan 步骤7 Changelog）：512m heap 下，1026篇文档的 finance_kb
+    # 索引常驻堆使用仅约21%（117MB/512MB），docker stats 显示的高占用主要是
+    # Lucene 段文件的 mmap page cache（可回收，非真实 OOM 风险）。1536m 留出
+    # 约1/3余量给 JVM 元空间/直接内存/页缓存，实测稳定在 67%~68%，不会顶格。
+    mem_limit: 1536m
     # !reset clears the base file's list instead of appending to it (plain `ports: []`
     # would just concatenate with the base list under Compose merge rules and leave
     # 127.0.0.1:1200:9200 published) — backend reaches es01 by service name on the
@@ -15,6 +19,9 @@ services:
       retries: 10
 
   pg:
+    # 实测校准：本项目demo数据库规模下 pg 实际常驻内存仅约25-30MB，1g原值远超
+    # 实际需求，降到512m仍有约15倍余量。
+    mem_limit: 512m
     ports: !reset []
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -35,7 +42,11 @@ services:
     # (es01/pg) and live inside the server's manually-placed .env (see plan step 8),
     # not here — keeps business config out of the file that goes into the repo.
     env_file: .env
-    mem_limit: 3g
+    # 实测校准：单文件PDF上传实测冷启动峰值达1.48GB（onnxruntime/opencv模型
+    # 首次加载+DeepDoc解析），处理完常驻约830MB-1.24GB（模型常驻不释放）。
+    # 2560m 在此基础上留约1GB余量。注意：仅用仓库内合成的单页小PDF验证过，
+    # 未覆盖真实多页/扫描件财报的解析峰值——上线前应换真实demo文档实测一次。
+    mem_limit: 2560m
     volumes:
       - uploads_data:/srv/investplus/storage
     depends_on:

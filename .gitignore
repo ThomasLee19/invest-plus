@@ -21,6 +21,10 @@ docs/examples/example_api.py
 .env
 .omc/
 
+# Basic-auth credentials for the deploy gateway — placed manually on the server
+# (see .omc/plans/invest-plus-docker-deploy-plan.md step 8/11), never committed.
+gateway/htpasswd
+
 settings.local.json
 storage/.claude/settings.local.json
 

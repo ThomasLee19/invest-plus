@@ -10,14 +10,13 @@ information to stop.
 
 ## Live Demo
 
-**[https://investplus-agent.com](https://investplus-agent.com)** — currently
-behind a password gate. DM or PM me for access.
+**[https://investplus-agent.com](https://investplus-agent.com)**
 
 Hosted on a single Docker Compose stack (Elasticsearch + PostgreSQL + backend
 + frontend, behind an nginx gateway with Let's Encrypt TLS) on a non-mainland
 -China cloud node, deployed via GitHub Actions CI/CD on every push to
-`master`. Rate-limited (20 req/min) and password-gated as light friction
-against casual/automated traffic, not as a real access-control layer — see
+`master`. Rate-limited (20 req/min) as light friction against casual/
+automated traffic, not as a real access-control layer — see
 [Production Deployment](#production-deployment).
 
 ## Features
@@ -142,13 +141,13 @@ file layered on top of the dev one:
 - `gateway/` — a single nginx container is the only public entry point:
   TLS (Let's Encrypt via `certbot`, two-stage bootstrap to break the
   chicken-and-egg cert/nginx startup order), `/ai-search/*` reverse-proxied
-  to the backend with SSE passthrough (buffering off), request rate
-  limiting, and HTTP Basic Auth in front of everything else.
+  to the backend with SSE passthrough (buffering off), and request rate
+  limiting.
 - `.github/workflows/deploy.yml` — on push to `master`: builds and pushes
   `backend`/`frontend`/`gateway` images to GHCR, then SSHes into the server
   to `pull` + `up -d`. The deploy SSH key only ever runs those two commands;
-  business secrets (`.env`, `gateway/htpasswd`) are placed on the server by
-  hand once, never transmitted through CI.
+  business secrets (`.env`) are placed on the server by hand once, never
+  transmitted through CI.
 
 Not a generic "deploy anywhere" template — the compose files and gateway
 config are written against this project's specific service layout, and the

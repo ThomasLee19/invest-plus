@@ -6,9 +6,9 @@ Invest+ 是一个面向美股的自主研究 Agent。用中文或英文问它一
 
 ## 在线体验
 
-**[https://investplus-agent.com](https://investplus-agent.com)** — 目前受密码门保护，有需要请DM或PM我。
+**[https://investplus-agent.com](https://investplus-agent.com)**
 
-部署在单一 Docker Compose 技术栈上（Elasticsearch + PostgreSQL + backend + frontend，前面挂一个带 Let's Encrypt TLS 的 nginx 网关），托管在非中国大陆节点，每次 push 到 `master` 都会经 GitHub Actions CI/CD 自动部署。限流（20次/分钟）和密码门只是挡随手访问/自动化爬虫的轻量摩擦，不是真正的访问控制层——详见[生产部署](#生产部署)。
+部署在单一 Docker Compose 技术栈上（Elasticsearch + PostgreSQL + backend + frontend，前面挂一个带 Let's Encrypt TLS 的 nginx 网关），托管在非中国大陆节点，每次 push 到 `master` 都会经 GitHub Actions CI/CD 自动部署。限流（20次/分钟）只是挡随手访问/自动化爬虫的轻量摩擦，不是真正的访问控制层——详见[生产部署](#生产部署)。
 
 ## 功能特性
 
@@ -90,8 +90,8 @@ npm run dev
 [在线demo](#在线体验)跑在同一个仓库里，在开发用的compose文件之上叠加了一层：
 
 - `docker-compose.prod.yml` — 新增`backend`/`frontend`/`gateway`三个服务（分别由`backend/Dockerfile`、`frontend/Dockerfile`、`gateway/Dockerfile`构建），给每个服务钉死了`mem_limit`（基于真实负载下实测的容器内存校准出来的，不是拍脑袋估的），并且去掉了开发环境里`es01`/`pg`对宿主机端口的暴露。
-- `gateway/` — 单一nginx容器是唯一的公网入口：TLS（Let's Encrypt，通过`certbot`两阶段引导解决证书和nginx启动顺序的鸡生蛋问题）、`/ai-search/*`反代到backend并支持SSE直通（关闭缓冲）、请求限流，以及挡在其他一切之前的HTTP Basic Auth。
-- `.github/workflows/deploy.yml` — 每次push：构建`backend`/`frontend`/`gateway`三个镜像；只有push到`master`时才会额外推送到GHCR并SSH登进服务器执行`pull`+`up -d`。部署用的SSH密钥只会跑这两条命令；业务密钥（`.env`、`gateway/htpasswd`）是一次性手动放到服务器上的，从不经过CI传输。
+- `gateway/` — 单一nginx容器是唯一的公网入口：TLS（Let's Encrypt，通过`certbot`两阶段引导解决证书和nginx启动顺序的鸡生蛋问题）、`/ai-search/*`反代到backend并支持SSE直通（关闭缓冲）、请求限流。
+- `.github/workflows/deploy.yml` — 每次push：构建`backend`/`frontend`/`gateway`三个镜像；只有push到`master`时才会额外推送到GHCR并SSH登进服务器执行`pull`+`up -d`。部署用的SSH密钥只会跑这两条命令；业务密钥（`.env`）是一次性手动放到服务器上的，从不经过CI传输。
 
 这不是一份"到处都能直接用"的通用部署模板——compose文件和网关配置是针对这个项目具体的服务结构写的，`mem_limit`的数值也是针对某一档特定虚拟机规格校准出来的。可以当作一个完整的实操范例参考，不建议直接照搬套用到别的项目上。
 

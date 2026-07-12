@@ -118,7 +118,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=gateway
 
       # Deploy key only ever runs `pull` + `up -d` on the server (plan step 8) —
-      # business secrets (.env, htpasswd) are placed on the server once, by hand,
+      # business secrets (.env) are placed on the server once, by hand,
       # and never pass through CI or Actions logs.
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3

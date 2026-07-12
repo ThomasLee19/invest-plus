@@ -128,6 +128,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ vars.DEPLOY_PATH || '/opt/invest-plus' }}
+            # nginx.conf / docker-compose.prod.yml are bind-mounted from this on-disk
+            # checkout, not baked into images — without updating it here, a plain
+            # `pull` + `up -d` redeploys new image content but keeps stale mounted
+            # config forever. `.env` and `gateway/htpasswd` are gitignored/untracked,
+            # so `reset --hard` leaves them alone; it only snaps tracked files to origin.
+            git fetch origin master
+            git reset --hard origin/master
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
             # 每次 pull 把 :latest 挪到新digest后，旧版本镜像层就变成dangling，不会

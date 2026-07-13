@@ -24,3 +24,20 @@
   display: flex;
   gap: 4px;
 }
+
+@media (max-width: 768px) {
+  .header-bar {
+    padding: 8px 12px;
+  }
+
+  .logo {
+    height: 28px;
+    margin-right: 6px;
+  }
+
+  // 这段说明性长文本在窄屏下没有空间容纳，且中文没有天然断词点，硬挤会
+  // 导致逐字换行竖排；作为纯说明性内容（非品牌名/非功能控件），窄屏隐藏。
+  .tagline {
+    display: none;
+  }
+}

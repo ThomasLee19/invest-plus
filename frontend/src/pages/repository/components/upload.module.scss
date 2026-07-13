@@ -14,4 +14,17 @@
     font-size: 12px;
     color: #999;
   }
+
+  @media (max-width: 768px) {
+    :global {
+      // 已选文件列表的删除/下载操作图标默认过小，移动端补齐可点击区域
+      .ant-upload-list-item-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+      }
+    }
+  }
 }

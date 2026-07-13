@@ -156,7 +156,13 @@ export default function Index() {
                 okButtonProps={{ danger: true }}
                 onConfirm={() => deleteFile(row)}
               >
-                <Button color="default" variant="text" shape="circle" size="small">
+                <Button
+                  className={styles['repository-page__action-btn']}
+                  color="default"
+                  variant="text"
+                  shape="circle"
+                  size="small"
+                >
                   <img src={IconDelete} />
                 </Button>
               </Popconfirm>

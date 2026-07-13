@@ -52,6 +52,13 @@
     }
   }
 
+  @media (max-width: 768px) {
+    .com-sender__actions .ant-btn {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
   .com-sender__files {
     display: flex;
     align-items: flex-start;

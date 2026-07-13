@@ -2,6 +2,10 @@
   padding: 92px 40px;
   margin: 0 auto;
 
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
   .chat-page__header {
     text-align: center;
 

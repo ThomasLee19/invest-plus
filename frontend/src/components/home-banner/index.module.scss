@@ -58,20 +58,20 @@
   .banner {
     padding: 15px;
   }
-  
+
   .title {
     font-size: 24px;
   }
-  
+
   .subtitle {
     font-size: 14px;
   }
-  
-  .portrait {
-    height: 120px;
-  }
-  
-  .decImage {
-    height: 150px;
+
+  // .decoration 同时包住 portrait 和 decImage 两张装饰图；两图按高度定宽，
+  // 窄屏下会与标题/副标题区域产生固定 135px 的视觉重叠（与容器宽度无关），
+  // 故整体隐藏，文字拿到整宽。（原本给 portrait/decImage 单独设置的窄屏
+  // height 已随父级隐藏一并移除，避免死规则。）
+  .decoration {
+    display: none;
   }
 }

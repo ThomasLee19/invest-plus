@@ -35,3 +35,9 @@
   font-size: 14px;
   color: #333;
 }
+
+@media (max-width: 768px) {
+  .hotQuestion {
+    min-height: 44px;
+  }
+}

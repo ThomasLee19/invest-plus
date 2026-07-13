@@ -13,6 +13,10 @@
       flex-grow: 1;
       flex-shrink: 0;
     }
+
+    @media (max-width: 768px) {
+      min-width: 0;
+    }
   }
 
   .com-page__sender {
@@ -21,6 +25,12 @@
     padding: 5px 40px 18px;
     background-color: #fff;
     z-index: 100;
+
+    // 手机端底部导航栏（56px）会占据视口底部，输入框需上移等高的距离，
+    // 避免被导航栏遮挡（导航栏方案见 layout/base/index.scss）
+    @media (max-width: 768px) {
+      bottom: 56px;
+    }
   }
 
   .com-page__right {

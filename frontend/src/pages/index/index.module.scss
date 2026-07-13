@@ -16,4 +16,14 @@
   .sender {
     max-width: 780px;
   }
+
+  // 手机端视口高度经常小于 banner+输入框+热门问题三者叠加的实际内容高度；
+  // 固定 height:100% + justify-content:center 会把这块内容在容器中居中，
+  // 溢出的部分向上下两侧对称跑出容器可视区之外——上方溢出的标题/装饰图因此
+  // 不可见。改成顶部对齐 + 允许容器随内容长高，避免内容被推到可视区上方。
+  @media (max-width: 768px) {
+    height: auto;
+    min-height: 100%;
+    justify-content: flex-start;
+  }
 }

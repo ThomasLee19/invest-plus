@@ -9,7 +9,7 @@ export default function HeaderBar(props: { className?: string }) {
   return (
     <header className={`${styles['header-bar']} ${props.className || ''}`}>
       <img src={logo} alt="Logo" className={styles.logo} />
-      <span>{import.meta.env.VITE_TITLE}</span>
+      <span className={styles.title}>{import.meta.env.VITE_TITLE}</span>
       <span className={styles.tagline}>{t.tagline}</span>
       <div className={styles.langToggle}>
         <Button

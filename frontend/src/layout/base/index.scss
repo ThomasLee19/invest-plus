@@ -38,3 +38,26 @@
 .base-layout__content {
   height: 100%;
 }
+
+// 手机端导航壳改回底部常驻横排栏——左侧竖排在窄屏下占用宽度过多，
+// 挤压了内容区可用空间。
+@media (max-width: 768px) {
+  .base-layout > main {
+    padding-left: 0;
+  }
+
+  .base-layout__sidebar {
+    top: auto;
+    right: 0;
+    width: 100%;
+    height: 56px;
+
+    .base-layout__sidebar-main {
+      flex-direction: row;
+    }
+  }
+
+  .base-layout__content {
+    padding-bottom: 56px;
+  }
+}

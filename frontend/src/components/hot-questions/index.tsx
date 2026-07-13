@@ -5,7 +5,6 @@ import { debounce } from 'throttle-debounce'
 import styles from './index.module.scss'
 
 interface HotQuestion {
-  emoji: string
   title: string
 }
 
@@ -31,7 +30,6 @@ export default function HotQuestions() {
           className={styles.hotQuestion}
           onClick={() => handleClick(question)}
         >
-          <span className={styles.emoji}>{question.emoji}</span>
           <span className={styles.title}>{question.title}</span>
         </div>
       ))}

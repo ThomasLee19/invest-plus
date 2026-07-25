@@ -1,5 +1,4 @@
 import * as api from '@/api'
-import HomeBanner from '@/components/home-banner'
 import HotQuestions from '@/components/hot-questions'
 import ComSender from '@/components/sender'
 import { useLang } from '@/i18n'
@@ -61,7 +60,10 @@ export default function Index() {
 
   return (
     <div className={styles.container}>
-      <HomeBanner />
+      <div className={styles.greeting}>
+        <h1 className={styles.greetingTitle}>{t.greeting}</h1>
+        <p className={styles.greetingSub}>{t.greetingSub}</p>
+      </div>
       <ComSender
         className={styles.sender}
         onSend={send}

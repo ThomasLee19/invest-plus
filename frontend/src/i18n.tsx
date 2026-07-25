@@ -4,9 +4,10 @@ export type Lang = 'zh' | 'en'
 
 export const messages = {
   zh: {
-    tagline: 'Agent 自动调用 金融知识库（财报/新闻/科普）/ 实时行情 / 网络搜索，无需手动选择',
-    bannerTitle: 'Invest+ 投研助手',
-    bannerSubtitle: '你的 AI 金融投研助手，欢迎问我任何投资相关问题~',
+    tagline:
+      'Agent 自动调用 金融知识库（财报/新闻/科普）/ 实时行情 / 网络搜索，无需手动选择',
+    greeting: '今天想研究什么？',
+    greetingSub: '问我财报、行情、新闻，或上传你自己的文档',
     placeholder: '按 Enter 发送，Shift + Enter 换行',
     attachment: '附件（.txt / .md / .pdf）',
     hotQuestions: [
@@ -27,14 +28,16 @@ export const messages = {
     repoColStatus: '状态',
     repoColAction: '操作',
     repoOfficialTitle: '官方示例语料',
-    repoOfficialDesc: '内置的财报 / 新闻 / 科普语料库，只读，全部聊天会话均可检索。',
+    repoOfficialDesc:
+      '内置的财报 / 新闻 / 科普语料库，只读，全部聊天会话均可检索。',
     repoUploadedTitle: '已上传文档',
     repoSessionTag: '会话',
     repoUploadModalTitle: '上传文件',
     repoUploadConfirm: '确认',
     repoUploadDragText: '拖拽文件到此处或',
     repoUploadDragTextHighlight: '点击上传',
-    repoUploadDesc: '支持单个或批量上传文件，每个文件大小不超过5M，最多10个文件。',
+    repoUploadDesc:
+      '支持单个或批量上传文件，每个文件大小不超过5M，最多10个文件。',
     repoDeleteSuccess: '已删除',
     repoDeleteConfirmTitle: '确认删除该文件？',
     repoDeleteConfirmOk: '删除',
@@ -66,9 +69,11 @@ export const messages = {
     statusFailed: '异常',
   },
   en: {
-    tagline: 'Agent auto-calls Finance RAG (filings / news / education) / Live Market Data / Web Search — no manual selection needed',
-    bannerTitle: 'Invest+ Research Assistant',
-    bannerSubtitle: 'Your AI-powered equity research assistant. Ask me anything about the market!',
+    tagline:
+      'Agent auto-calls Finance RAG (filings / news / education) / Live Market Data / Web Search — no manual selection needed',
+    greeting: 'What are we researching today?',
+    greetingSub:
+      'Ask about filings, quotes, or news — or upload your own documents.',
     placeholder: 'Press Enter to send, Shift + Enter for new line',
     attachment: 'Attachment (.txt / .md / .pdf)',
     hotQuestions: [
@@ -81,7 +86,8 @@ export const messages = {
     navNewChat: 'New Chat',
     navDocs: 'Docs',
     repoTitle: 'Dataset',
-    repoDesc: 'Please wait for file parsing to complete before starting AI-driven chat.',
+    repoDesc:
+      'Please wait for file parsing to complete before starting AI-driven chat.',
     repoAddFile: 'Add File',
     repoColName: 'Name',
     repoColUpdated: 'Updated Time (UTC+8)',
@@ -89,14 +95,16 @@ export const messages = {
     repoColStatus: 'Status',
     repoColAction: 'Action',
     repoOfficialTitle: 'Official Examples',
-    repoOfficialDesc: 'Built-in filings / news / educational corpus, read-only and retrievable from every chat session.',
+    repoOfficialDesc:
+      'Built-in filings / news / educational corpus, read-only and retrievable from every chat session.',
     repoUploadedTitle: 'Uploaded Documents',
     repoSessionTag: 'Session',
     repoUploadModalTitle: 'Upload File',
     repoUploadConfirm: 'Confirm',
     repoUploadDragText: 'Drag file here or',
     repoUploadDragTextHighlight: 'click to upload',
-    repoUploadDesc: 'Supports single or bulk file upload. Files must not exceed 5M each, with a maximum of 10 files.',
+    repoUploadDesc:
+      'Supports single or bulk file upload. Files must not exceed 5M each, with a maximum of 10 files.',
     repoDeleteSuccess: 'Deleted',
     repoDeleteConfirmTitle: 'Delete this file?',
     repoDeleteConfirmOk: 'Delete',
@@ -168,7 +176,11 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     }
     setLangState(l)
   }
-  return <LangContext.Provider value={{ lang, setLang }}>{children}</LangContext.Provider>
+  return (
+    <LangContext.Provider value={{ lang, setLang }}>
+      {children}
+    </LangContext.Provider>
+  )
 }
 
 export function useLang() {

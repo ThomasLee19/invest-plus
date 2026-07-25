@@ -2,6 +2,7 @@ import * as api from '@/api'
 import { ResponseError } from '@/api/request/error'
 import IconUpload from '@/assets/repository/upload.svg'
 import { useLang } from '@/i18n'
+import { tokens } from '@/styles/tokens'
 import { Upload, UploadFile, UploadProps } from 'antd'
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import styles from './upload.module.scss'
@@ -106,11 +107,13 @@ export default forwardRef(function RepositoryUpload(
         <p
           className="ant-upload-text"
           style={{
-            color: '#666',
+            color: tokens.textSecondary,
           }}
         >
           {t.repoUploadDragText}{' '}
-          <span style={{ color: '#3266f3' }}>{t.repoUploadDragTextHighlight}</span>
+          <span style={{ color: tokens.accent }}>
+            {t.repoUploadDragTextHighlight}
+          </span>
         </p>
       </Upload.Dragger>
 

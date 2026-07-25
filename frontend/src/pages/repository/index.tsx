@@ -7,13 +7,13 @@ import { Button, Modal, Popconfirm, Space, Table, Tag } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-
-dayjs.extend(utc)
 import { useMemo, useRef, useState } from 'react'
 import { FileIcon } from './components/file-icon'
 import { Status } from './components/status'
 import RepositoryUpload, { RepositoryUploadRef } from './components/upload'
 import styles from './index.module.scss'
+
+dayjs.extend(utc)
 
 type IRepository = API.Repository & {
   id: number
@@ -98,7 +98,9 @@ export default function Index() {
         render(value) {
           const parsed = dayjs.utc(value)
           // updated_at 缺失/格式异常时 format 会渲染成 "Invalid Date"，用占位符代替。
-          return parsed.isValid() ? parsed.utcOffset(8).format('MM/DD/YYYY HH:mm:ss') : '-'
+          return parsed.isValid()
+            ? parsed.utcOffset(8).format('MM/DD/YYYY HH:mm:ss')
+            : '-'
         },
       },
       {
@@ -202,8 +204,12 @@ export default function Index() {
 
       <div className={styles['repository-page__body']}>
         <div className={styles['repository-page__section']}>
-          <div className={styles['repository-page__section-title']}>{t.repoOfficialTitle}</div>
-          <div className={styles['repository-page__section-desc']}>{t.repoOfficialDesc}</div>
+          <div className={styles['repository-page__section-title']}>
+            {t.repoOfficialTitle}
+          </div>
+          <div className={styles['repository-page__section-desc']}>
+            {t.repoOfficialDesc}
+          </div>
           <Table<IOfficialExample>
             rowKey="id"
             columns={officialColumns}
@@ -213,7 +219,9 @@ export default function Index() {
           />
         </div>
 
-        <div className={styles['repository-page__section-title']}>{t.repoUploadedTitle}</div>
+        <div className={styles['repository-page__section-title']}>
+          {t.repoUploadedTitle}
+        </div>
 
         <div className={styles['header']}>
           <Button type="primary" onClick={() => setOpenUpload(true)}>

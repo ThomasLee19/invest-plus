@@ -13,21 +13,24 @@
     padding-bottom: 25px;
 
     .title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #333;
+      font-size: var(--font-lg);
+      font-weight: 600;
+      color: var(--text-primary);
     }
 
     .desc {
-      font-size: 16px;
-      color: #333;
+      font-size: var(--font-md);
+      color: var(--text-secondary);
     }
   }
 
   .repository-page__body {
-    background-color: white;
-    padding: 16px;
-    border-radius: 15px;
+    // 注：原先这里是 `background-color: white` 关键字而非 hex —— 朴素的 hex
+    // 正则看不见它，是 AC-4 门禁必须锚定属性值位置的三个理由之一。
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
 
     .header {
       display: flex;
@@ -42,21 +45,21 @@
   }
 
   .repository-page__section-title {
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 6px;
   }
 
   .repository-page__section-desc {
     text-align: center;
-    font-size: 13px;
-    color: #999;
+    font-size: var(--font-sm);
+    color: var(--text-tertiary);
     margin-bottom: 12px;
   }
 
   .repository-page__file-name {
-    color: #3266f3;
+    color: var(--accent);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

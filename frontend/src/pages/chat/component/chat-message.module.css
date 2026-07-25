@@ -1,11 +1,11 @@
 .chat-message {
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
+  padding: var(--space-5) 0;
 }
 
 .user-message--wrapper {
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .chat-message-item {
@@ -13,26 +13,31 @@
   word-wrap: break-word;
 }
 .chat-message-item + .chat-message-item {
-  margin-top: 30px;
+  margin-top: var(--space-6);
 }
 
+/* 用户消息与 AI 回答的主要区分手段：用户消息坐在强调色淡底的气泡里，
+   AI 回答直接铺在画布上（Claude 式），而不是两边都套气泡。
+   原先气泡是 #c8e6e7 薄荷绿，与遗留的宝可梦红主色不协调。 */
 .chat-message-item--user {
-  background-color: #c8e6e7;
-  padding: 15px 20px;
-  border-radius: 12px;
-  font-weight: bold;
+  background-color: var(--bg-accent-subtle);
+  border: 1px solid var(--border-default);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
 }
 
 .chat-message-item__attachments {
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: var(--space-2);
+  font-size: var(--font-xs);
   font-weight: normal;
   opacity: 0.75;
 }
 
 .chat-status {
-  margin: 20px 0;
-  padding: 15px 20px;
-  border-radius: 12px;
-  background-color: #e8f0f8;
+  margin: var(--space-5) 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
 }

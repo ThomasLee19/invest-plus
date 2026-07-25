@@ -1,0 +1,125 @@
+/**
+ * Invest+ 设计 token —— 唯一真源
+ *
+ * 北极星：Claude.ai 暖白亮色。暖白底、极窄色域、几乎无阴影，靠 1px 边框和留白分层。
+ *
+ * 同步修改：见 ./tokens.ts（JS 侧镜像，供 antd ConfigProvider 与内联样式取值）。
+ * 两份文件由 scripts/check-tokens.mjs 强制校验一致，改一处必须改另一处。
+ *
+ * 两个物理限制（不是偏好，改不了）：
+ *  1. <img> 加载的 SVG 处于独立文档上下文，读不到这里的自定义属性。
+ *     assets/*.svg 与 public/*.svg 必须硬编码 hex，并在文件顶部注释指回本文件。
+ *  2. 自定义属性不能用在 @media 条件里，断点一律保持字面量 768px。
+ */
+
+:root {
+  /* ---------- 画布与表面 ---------- */
+  --bg-canvas: #fafaf9; /* 页面底，暖白（非纯白） */
+  --bg-surface: #ffffff; /* 卡片、输入框、弹层 */
+  --bg-subtle: #f5f4f1; /* 次级区块、hover 底 */
+  --bg-accent-subtle: #f0eeea; /* 强调色淡底：选中态、用户气泡、tag */
+
+  /* ---------- 边框：分层主力，替代阴影 ---------- */
+  --border-default: #e8e6e1;
+  --border-strong: #d6d3cc;
+
+  /* ---------- 文字 ---------- */
+  /* 对比度实测（WCAG 相对亮度公式）：
+   *   primary   on canvas 15.8:1  on surface 16.5:1
+   *   secondary on canvas  4.66:1 on surface  4.87:1
+   *   tertiary  on canvas  4.59:1 on surface  4.79:1
+   * tertiary 原 spec 值 #93908A 在 canvas 上仅 3.05:1，不达 AA，已改。 */
+  --text-primary: #1c1b1a;
+  --text-secondary: #6b6862;
+  --text-tertiary: #75726c;
+  --text-on-accent: #ffffff;
+
+  /* ---------- 强调色：中性深灰，不是彩色 ----------
+   * 界面本身不使用任何彩色强调 —— 主按钮、链接、焦点环、引用角标一律走这组
+   * 中性色。品牌的颜色只出现在 logo 与 favicon 里（那两个文件保持原样，
+   * 是蓝绿渐变），界面与品牌标识分开，是 Claude / Linear 这类产品的常见做法。
+   *
+   * 对比度：accent on surface 13.9:1；white on accent 13.9:1；
+   *         accent-hover on surface 16.5:1。 */
+  --accent: #35322e;
+  --accent-hover: #1c1b1a;
+  --accent-active: #111010;
+
+  /* 缩略图上方的压暗遮罩，让叠在图片上的白色播放按钮/文字保持可读。
+   * 用的是 --text-primary #1c1b1a 的 rgb 分量而非纯黑 —— 纯黑遮罩在暖白体系里
+   * 会显得发灰发脏。 */
+  --overlay-scrim: linear-gradient(
+    180deg,
+    rgba(28, 27, 26, 0.6) 0%,
+    rgba(28, 27, 26, 0) 80%
+  );
+
+  /* ---------- 语义状态色 ---------- */
+  /* status.tsx 把它们渲染成 <Tag color=X backgroundColor=alpha(X,0.1)>，
+   * 即文字坐在自身 10% 淡底上 —— 下面的对比度按「白底合成 / canvas 底合成」双底色复算，
+   * 不是按纯白底。全部 ≥4.9:1。 */
+  --status-success: #2a7047; /* 5.22 / 4.99 */
+  --status-warning: #8f5100; /* 5.45 / 5.20 */
+  --status-danger: #b3261e; /* 5.53 / 5.33 */
+  --status-info: #4a4741; /* 中性信息态，不用彩色 */
+  --status-neutral: #6b6862; /* 4.87 / 4.66 */
+
+  /* ---------- 字体 ---------- */
+  /* 不引入 webfont：原 index.css 声明的 Inter 是幽灵字族（全仓无 @font-face、
+   * 无字体文件、无 CDN link），线上一直在跑系统栈兜底。自托管 Inter 也解决不了
+   * 中文 —— Inter 无 CJK 覆盖，中英混排反而割裂。故修正系统栈，零加载零 FOUT。 */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+
+  /* ---------- 字阶 ---------- */
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 28px;
+  --font-xxl: 40px;
+
+  --lh-xs: 1.5;
+  --lh-sm: 1.55;
+  --lh-base: 1.65;
+  --lh-md: 1.6;
+  --lh-lg: 1.4;
+  --lh-xl: 1.3;
+  --lh-xxl: 1.2;
+
+  /* ---------- 间距：8pt 栅格，4px 半步 ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---------- 圆角 ---------- */
+  --radius-sm: 6px;
+  --radius-md: 10px; /* antd borderRadius 基准 */
+  --radius-lg: 14px; /* 输入框、大卡片 */
+  --radius-pill: 999px; /* 建议问题胶囊 */
+
+  /* ---------- 阴影：极淡，仅用于浮层；平面区块一律用边框分层 ---------- */
+  --shadow-xs: 0 1px 2px rgba(28, 27, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(28, 27, 26, 0.06);
+  --shadow-md: 0 8px 24px rgba(28, 27, 26, 0.08);
+
+  /* 输入框聚焦时的浮起感：偏移全为正 y（光源在上方），两层叠加 ——
+   * 近处一层收边、远处一层散开。比彩色描边安静，也不引入色带。 */
+  --shadow-focus:
+    0 2px 4px rgba(28, 27, 26, 0.04), 0 6px 16px rgba(28, 27, 26, 0.07);
+
+  /* ---------- 动效 ---------- */
+  --transition-base: 150ms ease-out;
+}
+
+::selection {
+  background-color: var(--bg-accent-subtle);
+  color: var(--text-primary);
+}

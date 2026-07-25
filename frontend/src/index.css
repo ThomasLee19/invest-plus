@@ -1,13 +1,16 @@
+/* 全局基线。所有取值走 src/styles/tokens.css，本文件不得出现硬编码色值。 */
+
 :root {
-  background-color: #fff;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   height: 100%;
-  font-size: 14px;
-  line-height: 1.5;
-  font-family:
-    Inter,
-    Pingfang SC,
-    Microsoft Yahei,
-    sans-serif;
+  font-size: var(--font-base);
+  line-height: var(--lh-base);
+
+  /* 原先声明的 Inter 是幽灵字族：全仓无 @font-face、无字体文件、无 CDN link，
+   * 浏览器直接跳过它，线上一直在跑系统栈兜底。现改为显式的系统栈，
+   * 零加载、零 FOUT，且中英混排字面连贯（自托管 Inter 无 CJK 覆盖，反而割裂）。 */
+  font-family: var(--font-sans);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -27,7 +30,43 @@ body {
 
 .scrollbar-style {
   scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
 .scrollbar-style::-webkit-scrollbar {
   width: 8px;
+}
+.scrollbar-style::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+.scrollbar-style::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 键盘焦点 ----------
+   用 :focus-visible 而不是 :focus —— 后者会在鼠标点击时也画出描边，
+   那正是很多人把焦点样式整个关掉（outline: none）的原因，而关掉它等于
+   让键盘用户完全失去位置感。:focus-visible 只在键盘导航时触发。
+
+   描边用 2px + 2px 偏移，保证在 --bg-canvas 暖白底上清晰可见。 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- 动效降级 ----------
+   尊重系统的「减少动态效果」设置。这不只是无障碍合规：前庭功能障碍者
+   会因界面动效产生真实的眩晕与不适。
+   注：本次换肤未新增任何流式输出相关动效（打字光标、逐 token 淡入、
+   滚动重写），流式呈现方式按约定保持原样。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }

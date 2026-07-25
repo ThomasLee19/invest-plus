@@ -1,4 +1,17 @@
+// AI 回答的正文排版。
+//
+// 改造前这个文件只覆盖了 pre>code 与 table 两个标签，h1-h6、段落、列表、引用
+// 全部走浏览器默认样式 —— 那意味着回答里的标题是 Times 系的粗黑大字、段落行高
+// 1.2、列表缩进 40px。面试官盯着看 3-4 分钟的就是这块区域，它比首页更需要排版。
+//
+// 注意：原先 pre>code 与 table 用的是 `background-color: white` 关键字而非 hex，
+// 朴素的 hex 正则完全看不见它 —— 这也是 AC-4 门禁必须锚定属性值位置的直接原因。
+
 .com-markdown {
+  color: var(--text-primary);
+  font-size: var(--font-md);
+  line-height: var(--lh-base);
+
   > :first-child {
     margin-top: 0;
   }
@@ -7,30 +20,148 @@
     margin-bottom: 0;
   }
 
-  pre > code {
-    background-color: white;
-    display: block;
-    padding: 0.5em;
-    -webkit-text-size-adjust: none;
-    overflow-x: auto;
-    white-space: pre;
+  // ---------- 标题层级：靠字号与字重拉开节奏，不靠颜色 ----------
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: var(--lh-lg);
+    margin: var(--space-6) 0 var(--space-3);
   }
 
+  h1 {
+    font-size: var(--font-xl);
+    line-height: var(--lh-xl);
+  }
+  h2 {
+    font-size: var(--font-lg);
+  }
+  h3 {
+    font-size: var(--font-md);
+  }
+  h4,
+  h5,
+  h6 {
+    font-size: var(--font-base);
+  }
+
+  p {
+    margin: 0 0 var(--space-4);
+  }
+
+  // ---------- 列表 ----------
+  ul,
+  ol {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-5);
+  }
+
+  li {
+    margin-bottom: var(--space-2);
+
+    > ul,
+    > ol {
+      margin-top: var(--space-2);
+      margin-bottom: 0;
+    }
+  }
+
+  // ---------- 引用 ----------
+  blockquote {
+    margin: var(--space-4) 0;
+    padding: 0 0 0 var(--space-4);
+    border-left: 3px solid var(--border-strong);
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color var(--transition-base);
+
+    &:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    &:active {
+      color: var(--accent-active);
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border-default);
+    margin: var(--space-6) 0;
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  // ---------- 行内代码与代码块 ----------
+  code {
+    font-size: 0.92em;
+    background-color: var(--bg-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.35em;
+  }
+
+  pre {
+    margin: 0 0 var(--space-4);
+    // 长代码行不得撑破对话列宽（page-layout 有 min-width: 600px，
+    // 撑破会让整页出现横向滚动）。
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+
+    > code {
+      background-color: var(--bg-subtle);
+      display: block;
+      padding: var(--space-3);
+      -webkit-text-size-adjust: none;
+      overflow-x: auto;
+      white-space: pre;
+      border-radius: 0;
+    }
+  }
+
+  // ---------- 表格：财报数字要能对齐 ----------
   table {
-    background-color: white;
+    background-color: var(--bg-surface);
     border-collapse: collapse;
     border-spacing: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-base);
 
     &,
     td,
     th {
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-default);
+    }
+
+    th {
+      background-color: var(--bg-subtle);
+      font-weight: 600;
+      text-align: left;
     }
 
     td,
     th {
-      padding: 8px 12px;
+      padding: var(--space-2) var(--space-3);
+      // 等宽数字：市值/市盈率/涨跌幅按位对齐，是「像研报而非聊天」的关键细节。
+      font-variant-numeric: tabular-nums;
     }
+  }
+
+  // 表格本身可能比对话列更宽，给它一个独立的横向滚动容器。
+  .table-wrapper {
+    overflow-x: auto;
   }
 }

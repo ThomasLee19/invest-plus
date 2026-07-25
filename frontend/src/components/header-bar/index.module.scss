@@ -1,28 +1,41 @@
 .header-bar {
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  // 与页面画布同底色，不用白色 —— 顶栏是外壳的一部分而不是浮在内容之上的卡片，
+  // 白色会让它从暖白画布上"跳"出来一条。分层交给下面那条 inset 细线。
+  background-color: var(--bg-canvas);
+  // 必须用 inset 阴影而不是 border-bottom。
+  // 本项目没有全局 box-sizing: border-box，.header-bar 自身也没有；header 实高
+  // = padding 10px×2 + logo 40px = 60px，恰好等于 layout/base/index.scss 的
+  // calc(100% - 60px) 魔数。加 1px 实体边框会让 header 变 61px，全站多出 1px
+  // 竖向溢出。inset 阴影视觉上与 1px 下边框不可区分，但盒高零变化。
+  box-shadow: inset 0 -1px 0 var(--border-default);
   padding: 10px 20px;
   display: flex;
-  align-items: center; // 添加 alignItems 样式
+  align-items: center;
 }
 
 .logo {
   height: 40px;
-  margin-right: 10px;
+  margin-right: var(--space-3);
+}
+
+.title {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .tagline {
-  margin-left: 16px;
-  font-size: 12px;
-  color: #888;
-  border-left: 1px solid #e0e0e0;
-  padding-left: 16px;
+  margin-left: var(--space-4);
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  border-left: 1px solid var(--border-default);
+  padding-left: var(--space-4);
 }
 
 .langToggle {
   margin-left: auto;
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 @media (max-width: 768px) {

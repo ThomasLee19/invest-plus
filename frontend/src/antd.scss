@@ -4,10 +4,14 @@
   ); //  antd 错误地将 text/primary 颜色设为了 ant-color-link
 }
 
+// 这块下拉浮层覆盖原本是黑底白字，与整个亮色应用冲突 —— 它是前身项目 PokemonRA
+// 暗色浮层的遗留（`antd.scss` 在本仓库只有一个提交 0f645c8，即从 PokemonRA squash
+// 迁移来的初始提交，git 历史里没有任何理由记录），和 colorPrimary: '#E3350D'
+// 宝可梦红是同一批。现改为 token 驱动的暖白浮层。
 .ant-dropdown-menu {
-  color: white;
-  background-color: black;
-  --ant-color-bg-elevated: black;
-  --ant-color-text: white;
-  --ant-control-item-bg-hover: rgba(255, 255, 255, 0.3);
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  --ant-color-bg-elevated: var(--bg-surface);
+  --ant-color-text: var(--text-primary);
+  --ant-control-item-bg-hover: var(--bg-subtle);
 }

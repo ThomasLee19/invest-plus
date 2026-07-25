@@ -1,8 +1,21 @@
 .com-sender {
   .com-sender__main {
-    background-color: #D2ECED;
-    border-radius: 16px;
-    border: 1px solid #e5e5e5;
+    // 原先是 #D2ECED 薄荷绿底 —— 与遗留的宝可梦红主色构成红配绿。
+    // 改为白底 + 1px 边框，靠边框分层（Claude 式：几乎不用阴影）。
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    transition:
+      border-color var(--transition-base),
+      box-shadow var(--transition-base);
+
+    // 聚焦反馈用「底部浮起一层淡阴影」，不用彩色描边。
+    // 阴影偏移全部为正 y，光源在上方，视觉上是输入框从画布上抬起来一点点 ——
+    // 比描边安静，也不会在暖白底上引入一道突兀的色带。
+    &:focus-within {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-focus);
+    }
 
     .ant-input {
       background: transparent;
@@ -11,7 +24,7 @@
       box-shadow: none;
 
       &::placeholder {
-        color: #6f798b;
+        color: var(--text-tertiary);
       }
     }
   }
@@ -42,9 +55,10 @@
   }
 
   .com-sender__footer {
-    margin-top: 20px;
-    color: #6f798b;
+    margin-top: var(--space-5);
+    color: var(--text-secondary);
 
+    // antd Switch 的尺寸覆盖，勿删。
     .ant-switch {
       --ant-switch-track-height: 30px;
       --ant-switch-handle-size: 26px;
@@ -63,23 +77,23 @@
     display: flex;
     align-items: flex-start;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
 
     .com-sender__file {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px;
-      background-color: #fff;
-      border: 1px solid #e0e0e0;
-      border-radius: 10px;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
       max-width: 50%;
 
       .com-sender__file-image {
         width: 100px;
         height: 100px;
-        border-radius: 5px;
+        border-radius: var(--radius-sm);
         object-fit: cover;
       }
 
@@ -88,7 +102,7 @@
       }
 
       .com-sender__file-name {
-        color: #6f798b;
+        color: var(--text-secondary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;

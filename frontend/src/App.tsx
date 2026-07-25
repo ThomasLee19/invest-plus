@@ -1,5 +1,6 @@
-import { Router } from '@/router'
 import { LangProvider, useLang } from '@/i18n'
+import { Router } from '@/router'
+import { tokens } from '@/styles/tokens'
 import { App as AntdApp, ConfigProvider, Spin } from 'antd'
 import enUS from 'antd/es/locale/en_US'
 import zhCN from 'antd/es/locale/zh_CN'
@@ -19,8 +20,29 @@ function AppContent() {
       locale={lang === 'zh' ? zhCN : enUS}
       theme={{
         cssVar: true,
+        // 取值全部来自 src/styles/tokens.ts（tokens.css 的 JS 侧镜像）。
+        // 两份文件由 scripts/check-tokens.mjs 强制校验一致。
+        // fontSize / borderRadius 用裸数字：antd 的这两个 token 是 number 形状，
+        // 放进 tokens.ts 会让 check-tokens 的键值配对失效。
         token: {
-          colorPrimary: '#E3350D',
+          colorPrimary: tokens.accent,
+          colorBgBase: tokens.bgCanvas,
+          colorBgContainer: tokens.bgSurface,
+          colorBgLayout: tokens.bgCanvas,
+          colorBgElevated: tokens.bgSurface,
+          colorText: tokens.textPrimary,
+          colorTextSecondary: tokens.textSecondary,
+          colorTextTertiary: tokens.textTertiary,
+          colorBorder: tokens.borderDefault,
+          colorBorderSecondary: tokens.borderDefault,
+          colorSuccess: tokens.statusSuccess,
+          colorWarning: tokens.statusWarning,
+          colorError: tokens.statusDanger,
+          colorLink: tokens.accent,
+          fontFamily: tokens.fontSans,
+          boxShadow: tokens.shadowSm,
+          boxShadowSecondary: tokens.shadowMd,
+          borderRadius: 10,
           fontSize: 14,
         },
       }}

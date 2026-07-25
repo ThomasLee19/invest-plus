@@ -44,6 +44,15 @@
    * 末端 #2E9E8F 在白底仅 3.28:1 —— 只能承载图形，不得承载正文文字。 */
   --gradient-brand: linear-gradient(135deg, #0f6b6b 0%, #2e9e8f 100%);
 
+  /* 缩略图上方的压暗遮罩，让叠在图片上的白色播放按钮/文字保持可读。
+   * 用的是 --text-primary #1c1b1a 的 rgb 分量而非纯黑 —— 纯黑遮罩在暖白体系里
+   * 会显得发灰发脏。 */
+  --overlay-scrim: linear-gradient(
+    180deg,
+    rgba(28, 27, 26, 0.6) 0%,
+    rgba(28, 27, 26, 0) 80%
+  );
+
   /* ---------- 语义状态色 ---------- */
   /* status.tsx 把它们渲染成 <Tag color=X backgroundColor=alpha(X,0.1)>，
    * 即文字坐在自身 10% 淡底上 —— 下面的对比度按「白底合成 / canvas 底合成」双底色复算，

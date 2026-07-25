@@ -35,6 +35,8 @@ export const tokens = {
   accentHover: '#0c5757',
   accentActive: '#094646',
   gradientBrand: 'linear-gradient(135deg, #0f6b6b 0%, #2e9e8f 100%)',
+  overlayScrim:
+    'linear-gradient( 180deg, rgba(28, 27, 26, 0.6) 0%, rgba(28, 27, 26, 0) 80% )',
 
   // 语义状态色（被 status.tsx 的 new Color() 消费，必须是合法色串）
   statusSuccess: '#2a7047',

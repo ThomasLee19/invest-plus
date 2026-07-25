@@ -1,5 +1,7 @@
 .header-bar {
-  background-color: var(--bg-surface);
+  // 与页面画布同底色，不用白色 —— 顶栏是外壳的一部分而不是浮在内容之上的卡片，
+  // 白色会让它从暖白画布上"跳"出来一条。分层交给下面那条 inset 细线。
+  background-color: var(--bg-canvas);
   // 必须用 inset 阴影而不是 border-bottom。
   // 本项目没有全局 box-sizing: border-box，.header-bar 自身也没有；header 实高
   // = padding 10px×2 + logo 40px = 60px，恰好等于 layout/base/index.scss 的

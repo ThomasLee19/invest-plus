@@ -9,9 +9,12 @@
       border-color var(--transition-base),
       box-shadow var(--transition-base);
 
+    // 聚焦反馈用「底部浮起一层淡阴影」，不用彩色描边。
+    // 阴影偏移全部为正 y，光源在上方，视觉上是输入框从画布上抬起来一点点 ——
+    // 比描边安静，也不会在暖白底上引入一道突兀的色带。
     &:focus-within {
-      border-color: var(--accent);
-      box-shadow: var(--shadow-xs);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-focus);
     }
 
     .ant-input {
@@ -40,10 +43,6 @@
       &.btn-send {
         &.ant-btn-variant-filled {
           border: solid 1px transparent;
-        }
-        // spec 允许的三处渐变之一（另两处：logo mark、::selection）。
-        &:not(:disabled):hover {
-          background-image: var(--gradient-brand);
         }
         svg {
           width: 22px;

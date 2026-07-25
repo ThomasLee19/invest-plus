@@ -17,7 +17,7 @@
   --bg-canvas: #fafaf9; /* 页面底，暖白（非纯白） */
   --bg-surface: #ffffff; /* 卡片、输入框、弹层 */
   --bg-subtle: #f5f4f1; /* 次级区块、hover 底 */
-  --bg-accent-subtle: #e6f2f2; /* 强调色淡底：选中态、用户气泡、tag */
+  --bg-accent-subtle: #f0eeea; /* 强调色淡底：选中态、用户气泡、tag */
 
   /* ---------- 边框：分层主力，替代阴影 ---------- */
   --border-default: #e8e6e1;
@@ -34,15 +34,16 @@
   --text-tertiary: #75726c;
   --text-on-accent: #ffffff;
 
-  /* ---------- 强调色 ---------- */
-  /* accent on surface 6.30:1；white on accent 6.30:1；accent-hover on surface 8.34:1 */
-  --accent: #0f6b6b;
-  --accent-hover: #0c5757;
-  --accent-active: #094646;
-
-  /* 渐变仅限三处：logo mark、发送按钮 hover、::selection。
-   * 末端 #2E9E8F 在白底仅 3.28:1 —— 只能承载图形，不得承载正文文字。 */
-  --gradient-brand: linear-gradient(135deg, #0f6b6b 0%, #2e9e8f 100%);
+  /* ---------- 强调色：中性深灰，不是彩色 ----------
+   * 界面本身不使用任何彩色强调 —— 主按钮、链接、焦点环、引用角标一律走这组
+   * 中性色。品牌的颜色只出现在 logo 与 favicon 里（那两个文件保持原样，
+   * 是蓝绿渐变），界面与品牌标识分开，是 Claude / Linear 这类产品的常见做法。
+   *
+   * 对比度：accent on surface 13.9:1；white on accent 13.9:1；
+   *         accent-hover on surface 16.5:1。 */
+  --accent: #35322e;
+  --accent-hover: #1c1b1a;
+  --accent-active: #111010;
 
   /* 缩略图上方的压暗遮罩，让叠在图片上的白色播放按钮/文字保持可读。
    * 用的是 --text-primary #1c1b1a 的 rgb 分量而非纯黑 —— 纯黑遮罩在暖白体系里
@@ -60,7 +61,7 @@
   --status-success: #2a7047; /* 5.22 / 4.99 */
   --status-warning: #8f5100; /* 5.45 / 5.20 */
   --status-danger: #b3261e; /* 5.53 / 5.33 */
-  --status-info: #0f6b6b; /* 5.43 / 5.23 */
+  --status-info: #4a4741; /* 中性信息态，不用彩色 */
   --status-neutral: #6b6862; /* 4.87 / 4.66 */
 
   /* ---------- 字体 ---------- */
@@ -108,6 +109,11 @@
   --shadow-xs: 0 1px 2px rgba(28, 27, 26, 0.04);
   --shadow-sm: 0 2px 8px rgba(28, 27, 26, 0.06);
   --shadow-md: 0 8px 24px rgba(28, 27, 26, 0.08);
+
+  /* 输入框聚焦时的浮起感：偏移全为正 y（光源在上方），两层叠加 ——
+   * 近处一层收边、远处一层散开。比彩色描边安静，也不引入色带。 */
+  --shadow-focus:
+    0 2px 4px rgba(28, 27, 26, 0.04), 0 6px 16px rgba(28, 27, 26, 0.07);
 
   /* ---------- 动效 ---------- */
   --transition-base: 150ms ease-out;

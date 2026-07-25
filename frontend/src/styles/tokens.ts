@@ -18,7 +18,7 @@ export const tokens = {
   bgCanvas: '#fafaf9',
   bgSurface: '#ffffff',
   bgSubtle: '#f5f4f1',
-  bgAccentSubtle: '#e6f2f2',
+  bgAccentSubtle: '#f0eeea',
 
   // 边框
   borderDefault: '#e8e6e1',
@@ -30,11 +30,10 @@ export const tokens = {
   textTertiary: '#75726c',
   textOnAccent: '#ffffff',
 
-  // 强调色
-  accent: '#0f6b6b',
-  accentHover: '#0c5757',
-  accentActive: '#094646',
-  gradientBrand: 'linear-gradient(135deg, #0f6b6b 0%, #2e9e8f 100%)',
+  // 强调色（中性深灰，界面不用彩色；品牌色只留在 logo/favicon 里）
+  accent: '#35322e',
+  accentHover: '#1c1b1a',
+  accentActive: '#111010',
   overlayScrim:
     'linear-gradient( 180deg, rgba(28, 27, 26, 0.6) 0%, rgba(28, 27, 26, 0) 80% )',
 
@@ -42,7 +41,7 @@ export const tokens = {
   statusSuccess: '#2a7047',
   statusWarning: '#8f5100',
   statusDanger: '#b3261e',
-  statusInfo: '#0f6b6b',
+  statusInfo: '#4a4741',
   statusNeutral: '#6b6862',
 
   // 字体
@@ -86,6 +85,8 @@ export const tokens = {
   shadowXs: '0 1px 2px rgba(28, 27, 26, 0.04)',
   shadowSm: '0 2px 8px rgba(28, 27, 26, 0.06)',
   shadowMd: '0 8px 24px rgba(28, 27, 26, 0.08)',
+  shadowFocus:
+    '0 2px 4px rgba(28, 27, 26, 0.04), 0 6px 16px rgba(28, 27, 26, 0.07)',
 
   // 动效
   transitionBase: '150ms ease-out',

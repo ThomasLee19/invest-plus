@@ -50,8 +50,9 @@ the answer and the model's thinking chain.
   document entries.
 - **Genuinely dead branches:** `recommended_questions`, `image_results`,
   `video_results`. `grep -rn 'image_results\|video_results\|recommended_questions'
-  backend/` returns zero hits, so `result.tsx:215/238/272` never render at
-  runtime. Their styles are kept (and token-ised) only because deleting them
+  backend/` returns zero hits, so the guarded renders at `result.tsx:371`, `:373`
+  and `:375` never fire and their components (`Images` at `:216`, `Videos` at
+  `:239`, `Related` at `:265`) never mount at runtime. Their styles are kept (and token-ised) only because deleting them
   would also mean deleting JSX in `result.tsx` and six i18n keys — a functional
   change disguised as a styling one. Don't build on them without a backend change.
 - Use the `@/` alias for imports (→ `src/`). State lives in Valtio stores under

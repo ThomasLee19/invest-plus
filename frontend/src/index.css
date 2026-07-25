@@ -65,8 +65,16 @@ body {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
 }
+
+/* 注：这里刻意不加 animation-duration / animation-iteration-count 的通用覆盖。
+ *
+ * 本项目自己的样式里没有任何 @keyframes，所以那两条只会命中 antd 运行时注入的
+ * 动画 —— 而 antd 在本项目里的动画全是功能性加载指示器（SyncOutlined spin、
+ * Spin、Button loading）。把它们冻住不是「减少动态效果」，是让界面看起来卡死：
+ * 「深度探索中」旁边那个不转的圈，会让人以为请求挂了，而它恰恰是长回答期间
+ * 唯一的进度反馈。
+ *
+ * reduce-motion 要消除的是装饰性/视差类运动，功能性进度指示属于例外。 */

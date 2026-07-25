@@ -22,14 +22,26 @@
   .com-page__sender {
     position: sticky;
     bottom: 0;
-    padding: 5px 40px 18px;
-    background-color: var(--bg-canvas);
+    // 上内边距从 5px 放到 32px：渐隐带需要足够高度才能过渡，否则跟硬边没区别。
+    padding: var(--space-6) 40px 18px;
+    // 原先是整块不透明的 --bg-canvas，会在滚动内容上切出一条硬边，
+    // 把页面割成上下两块（手机端尤其明显）。改为向下渐隐，
+    // 文字滚过去时逐渐淡出而不是被一刀切断。
+    background: var(--fade-to-canvas);
     z-index: 100;
+
+    // 渐隐带是视觉元素，不该拦截交互 —— 否则输入框上方那 32px 里的正文
+    // 选不中、链接点不了。容器放行事件，真正的输入框自己接收。
+    pointer-events: none;
+    > * {
+      pointer-events: auto;
+    }
 
     // 手机端底部导航栏（64px）会占据视口底部，输入框需上移等高的距离，
     // 避免被导航栏遮挡（导航栏方案见 layout/base/index.scss）
     @media (max-width: 768px) {
       bottom: 64px;
+      padding: var(--space-5) var(--space-4) var(--space-3);
     }
   }
 

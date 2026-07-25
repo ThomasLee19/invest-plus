@@ -5,6 +5,9 @@
     background-color: var(--bg-surface);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-default);
+    // 静置也带一层极淡阴影：对话页里内容是从它下面滚过去的，
+    // 有这层才读得出「浮在画布上」而不是「嵌在一块底色里」。
+    box-shadow: var(--shadow-xs);
     transition:
       border-color var(--transition-base),
       box-shadow var(--transition-base);

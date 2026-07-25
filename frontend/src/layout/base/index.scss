@@ -65,6 +65,14 @@
     }
   }
 
+  // 首页例外：内容居中、没有需要被遮住的长文，遮蔽层只会在底部压出一条
+  // 边界可见的横带。这里让壳透明，导航条以圆角浮起条的形态直接坐在页面背景上，
+  // 两侧透出内容。（对话页与资料库页有滚动正文，仍走上面的遮蔽方案。）
+  // 只覆盖底色，横排方向等其余规则继续继承上面那块。
+  .base-layout--transparent-nav .base-layout__sidebar {
+    background-color: transparent;
+  }
+
   .base-layout__content {
     padding-bottom: 64px;
   }

@@ -39,17 +39,25 @@
   // 硬编码）。它是零引用孤儿 —— nav.tsx 只用 base-layout-nav 与 __item，
   // 全仓 grep 只命中它自己的定义 —— 连同零引用的 assets/layout/open.svg 一并删除。
 
+  // 移动端保持底栏形态，但沿用桌面侧栏的外观：四角圆角 + 1px 边框。
+  // 左右留出边距让圆角真正露出来，成为一条浮在内容之上的常驻条 ——
+  // 这是设计语言里少数允许用阴影的浮层场景，故补一层 --shadow-sm 与滚动内容分离。
+  //
+  // 高度账（与 layout/base/index.scss 的 64px 和 page-layout 的 bottom: 64px 联动，
+  // 三处必须一起改）：padding 4px×2 + item 44px = 52px，居中放进 64px 的壳里，
+  // 上下各余 6px。
   @media (max-width: 768px) {
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    width: 100%;
-    height: 100%;
-    padding: 4px 8px;
+    width: auto;
+    height: auto;
+    margin: 0 var(--space-2);
+    padding: var(--space-1);
     gap: 0;
-    border-radius: 0;
-    border: none;
-    border-top: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-sm);
 
     .base-layout-nav__item {
       min-width: 44px;

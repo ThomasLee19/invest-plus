@@ -37,9 +37,13 @@
 }
 
 .greetingTitle {
-  font-size: var(--font-xl);
-  line-height: var(--lh-xl);
+  // 首屏唯一的标题，字号要撑得住场。桌面端用字阶顶格的 40px，
+  // 配 1.2 行高 —— 中文「今天想研究什么？」约 320px、英文约 600px，
+  // 都在 780px 容器内一行放得下。
+  font-size: var(--font-xxl);
+  line-height: var(--lh-xxl);
   font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   margin: 0;
 }
@@ -56,9 +60,13 @@
     margin-top: var(--space-5);
   }
 
+  // 移动端刻意不跟随桌面端放大。375px 宽下英文问候语
+  // "What are we researching today?" 比中文长得多，字号一大就会折成三行，
+  // 把输入框推到首屏之外 —— 那正是 b6d7b86 修过的那类问题。
   .greetingTitle {
     font-size: var(--font-lg);
     line-height: var(--lh-lg);
+    letter-spacing: normal;
   }
 
   .greetingSub {

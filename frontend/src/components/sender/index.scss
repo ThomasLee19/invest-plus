@@ -40,15 +40,46 @@
       &.ant-btn-variant-filled {
         border: solid 1px var(--ant-color-primary-border);
       }
+      // 发送按钮两态。antd 的 color="primary" variant="filled" 派生出来的填充色
+      // 很淡，在中性主色下有无输入几乎看不出区别 —— 而这恰恰是输入框上唯一需要
+      // 状态提示的地方。这里显式接管两态。
       &.btn-send {
+        transition: background-color var(--transition-base);
+
         &.ant-btn-variant-filled {
           border: solid 1px transparent;
         }
+
+        // 无输入：白底融进输入框，图标淡灰，整体退到背景里。
+        &:disabled,
+        &.ant-btn-disabled {
+          background-color: var(--bg-surface);
+          svg {
+            color: var(--text-tertiary);
+          }
+        }
+
+        // 有输入：深灰底 + 白图标。白字在 #35322E 上对比度 13.9:1。
+        &:not(:disabled):not(.ant-btn-disabled) {
+          background-color: var(--accent);
+          svg {
+            color: var(--text-on-accent);
+          }
+
+          &:hover {
+            background-color: var(--accent-hover);
+          }
+          &:active {
+            background-color: var(--accent-active);
+          }
+        }
+
         svg {
           width: 22px;
           height: 22px;
           -webkit-user-drag: none;
           transform: translate(-1px, 2px);
+          transition: color var(--transition-base);
         }
       }
     }

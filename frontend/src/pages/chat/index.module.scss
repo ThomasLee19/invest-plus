@@ -5,39 +5,9 @@
   @media (max-width: 768px) {
     padding: 16px;
   }
-
-  .chat-page__header {
-    text-align: center;
-
-    .chat-page__header-title-box {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .chat-page__header-logo {
-      width: 58px;
-      height: 40px;
-    }
-
-    .chat-page__header-title {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: bold;
-      font-size: 24px;
-    }
-
-    .chat-page__header-subtitle {
-      margin-top: 8px;
-      font-size: 60px;
-      font-weight: bold;
-    }
-
-    .chat-page__header-desc {
-      margin-top: 8px;
-      color: #6F798B;
-    }
-  }
 }
+
+// 注：此处原有一个 .chat-page__header 块（34 行，含 -title-box / -logo /
+// -title / -subtitle / -desc 五个子类与一处 #6F798B 硬编码）。它是零引用孤儿 ——
+// pages/chat/index.tsx 只用到 styles['chat-page']，全仓 grep 不到任何
+// chat-page__header 的使用点 —— 已删除。

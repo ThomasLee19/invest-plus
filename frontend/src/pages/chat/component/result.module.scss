@@ -1,31 +1,33 @@
 .chat-message-result {
-  margin-bottom: 30px;
+  margin-bottom: var(--space-6);
   .chat-message-result__think {
-    color: #8b8b8b;
-    border-left: 2px solid #e5e5e5;
-    padding-left: 10px;
-    margin-bottom: 10px;
+    color: var(--text-tertiary);
+    border-left: 2px solid var(--border-default);
+    padding-left: var(--space-3);
+    margin-bottom: var(--space-3);
+    font-size: var(--font-sm);
+    line-height: var(--lh-base);
   }
   .chat-message-result__md {
     :global {
       .reference-token {
-        color: var(--ant-color-primary);
-        font-weight: bold;
+        color: var(--accent);
+        font-weight: 600;
       }
     }
   }
 
   .chat-message-result__actions {
-    margin-top: 38px;
+    margin-top: var(--space-6);
     display: flex;
     align-items: center;
-    gap: 22px;
+    gap: var(--space-5);
 
     :global {
       .ant-btn {
-        border-radius: 4px;
+        border-radius: var(--radius-sm);
         --ant-control-height: 32px;
-        --ant-color-fill-tertiary: #f1f8f8;
+        --ant-color-fill-tertiary: var(--bg-subtle);
       }
     }
 
@@ -44,15 +46,15 @@
 }
 
 .chat-message-result-section {
-  margin-top: 40px;
+  margin-top: var(--space-7);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 
   .chat-message-result-section__title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
 
     .icon {
       width: 24px;
@@ -60,12 +62,15 @@
     }
 
     .title {
-      font-size: 22px;
-      font-weight: bold;
-      color: #333;
+      font-size: var(--font-lg);
+      line-height: var(--lh-lg);
+      font-weight: 600;
+      color: var(--text-primary);
 
       display: inline-block;
       position: relative;
+      // 原先这条标题下划线是 #e5fe53 荧光黄 —— 与整套暖白深青毫无关系，
+      // 是全页最刺眼的一处遗留。改为强调色淡底。
       &::after {
         content: '';
         position: absolute;
@@ -74,30 +79,36 @@
         left: 0;
         right: -8px;
         height: 8px;
-        border-radius: 12px;
-        background-color: #e5fe53;
+        border-radius: var(--radius-pill);
+        background-color: var(--bg-accent-subtle);
       }
     }
   }
 }
 
+// 来源引用列表 —— 活的 UI。后端确实在发 documents 事件
+// （backend/app/service/agent/agent.py:1406 → pages/chat/index.tsx:221-223
+// → result.tsx:367），正文里的 [1] 角标由 result.tsx 的 marked extension 生成。
+// 此前 spec 与 frontend/src/AGENTS.md 都把它误判成死分支，由 C9 修正文档。
 .chat-message-result__source {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: var(--space-5);
 
   .item {
-    background-color: #f4fafa;
-    border-radius: 12px;
-    padding: 20px;
+    background-color: var(--bg-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
     box-sizing: border-box;
     overflow: hidden;
     cursor: pointer;
     border: 2px solid transparent;
-    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+    transition:
+      background-color var(--transition-base),
+      border-color var(--transition-base);
 
     &:hover {
-      background-color: #e1e7e7;
+      background-color: var(--bg-accent-subtle);
     }
 
     flex-basis: calc(50% - 12px);
@@ -107,15 +118,15 @@
     }
 
     &.source-highlight {
-      background-color: #e5fe53;
-      border-color: var(--ant-color-primary);
+      background-color: var(--bg-accent-subtle);
+      border-color: var(--accent);
     }
   }
 
   .index {
-    font-size: 12px;
-    font-weight: bold;
-    color: var(--ant-color-primary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--accent);
   }
 
   .header {
@@ -131,9 +142,9 @@
 
     .url {
       min-width: 0;
-      font-size: 14px;
-      font-weight: bold;
-      color: #6f798b;
+      font-size: var(--font-base);
+      font-weight: 600;
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -141,17 +152,17 @@
   }
 
   .title {
-    margin-top: 8px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #3266f3;
+    margin-top: var(--space-2);
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--accent);
   }
 
   .content {
-    margin-top: 8px;
-    font-size: 14px;
+    margin-top: var(--space-2);
+    font-size: var(--font-base);
     line-height: 1.5;
-    color: #6f798b;
+    color: var(--text-secondary);
     -webkit-line-clamp: 3;
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -166,90 +177,33 @@
   }
 }
 
-.chat-message-result__xhs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+// 注：此处原有一个 .chat-message-result__xhs 块（73 行、2 处硬编码）。
+// 它是零引用孤儿 —— 全仓 grep 'xhs' 只命中它自己的定义，result.tsx 从未使用 ——
+// 已删除。
 
-  .item {
-    flex-basis: calc(25% - 12px);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.3s ease-in-out;
-
-    &:hover {
-      transform: scale(1.06);
-    }
-
-    @media (max-width: 768px) {
-      flex-basis: calc(50% - 12px);
-    }
-  }
-
-  .header {
-    height: 0;
-    padding-bottom: 124.5%;
-    position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-
-    .cover {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  .footer {
-    margin-top: 20px;
-
-    .title {
-      font-size: 20px;
-      color: #3266f3;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .user {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-top: 10px;
-
-      .avatar {
-        flex-shrink: 0;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        overflow: hidden;
-      }
-
-      .name {
-        font-size: 16px;
-        color: #6f798b;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-  }
-}
+// ---------------------------------------------------------------------------
+// 以下三块对应的后端事件在 backend/ 全库没有任何发送点（已核实：
+// grep -rn 'image_results\|video_results\|recommended_questions' backend/ 返回 0 行），
+// result.tsx:215/238/272 的对应分支运行时永不进入，因此这些样式从不显示。
+//
+// 保留而非删除的原因：删样式还要连带删 result.tsx 的 JSX 与 i18n 的 6 个 key，
+// 那会把一次纯样式提交变成跨 result.tsx + i18n.tsx 的功能删除，落在冻结边界
+// 的正隔壁、面试收益为零。照常 token 化只花几分钟，换来 AC-4 可以写成一条
+// 没有任何例外子句的门禁 —— 一个「必须返回 0」的判据，比「≤3 处且需人工确认
+// 理由」可靠得多。属于换肤完成后的独立清理任务。
+// ---------------------------------------------------------------------------
 
 .chat-message-result__images {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--space-4);
 
   .item {
-    border: 1px solid #dce3ea;
+    border: 1px solid var(--border-default);
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: transform 0.3s ease-in-out;
+    transition: transform var(--transition-base);
 
     &:hover {
       transform: scale(1.06);
@@ -282,14 +236,14 @@
 .chat-message-result__videos {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--space-4);
 
   .item {
-    border: 1px solid #dce3ea;
+    border: 1px solid var(--border-default);
     box-sizing: border-box;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: transform 0.3s ease-in-out;
+    transition: transform var(--transition-base);
 
     &:hover {
       transform: scale(1.06);
@@ -317,8 +271,8 @@
       height: 100%;
       background: linear-gradient(
         180deg,
-        rgba(0, 0, 0, 0.6) 0%,
-        rgba(0, 0, 0, 0) 80%
+        rgba(28, 27, 26, 0.6) 0%,
+        rgba(28, 27, 26, 0) 80%
       );
     }
 
@@ -343,23 +297,23 @@
 }
 
 .chat-message-result__quick-reply {
-  border-top: 1px solid #dce3ea;
-  border-bottom: 1px solid #dce3ea;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
   overflow: hidden;
 
   .item {
-    padding: 20px 0;
+    padding: var(--space-5) 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
 
     &:hover {
-      color: #3266f3;
+      color: var(--accent);
     }
 
     & + .item {
-      border-top: 1px solid #dce3ea;
+      border-top: 1px solid var(--border-default);
     }
 
     .text {

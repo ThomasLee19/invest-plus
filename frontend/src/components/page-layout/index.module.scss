@@ -23,7 +23,7 @@
     position: sticky;
     bottom: 0;
     padding: 5px 40px 18px;
-    background-color: #fff;
+    background-color: var(--bg-canvas);
     z-index: 100;
 
     // 手机端底部导航栏（56px）会占据视口底部，输入框需上移等高的距离，

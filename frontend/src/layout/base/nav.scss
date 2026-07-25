@@ -3,26 +3,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  background-color: #fafbff;
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: 2px 2px 10px 0 rgba(0, 0, 0, 0.1);
+  gap: var(--space-3);
+  background-color: var(--bg-surface);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  // 原先是 2px 2px 10px rgba(0,0,0,.1) 的投影。改为 1px 边框分层 —— 侧栏是常驻
+  // 结构元素，不是浮层，投影会让它在暖白底上显得廉价。
+  border: 1px solid var(--border-default);
 
   .base-layout-nav__item {
     width: 40px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color var(--transition-base);
 
     &:hover {
-      background-color: #eee;
+      background-color: var(--bg-subtle);
     }
     &:active {
-      background-color: #ddd;
+      background-color: var(--bg-accent-subtle);
     }
 
     img {
@@ -32,29 +35,9 @@
     }
   }
 
-  .base-layout-nav__open {
-    width: 54px;
-    height: 54px;
-    border-radius: 8px;
-    background-color: black;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-
-    &:hover {
-      background-color: #333;
-    }
-    &:active {
-      background-color: #666;
-    }
-
-    img {
-      width: 40px;
-      height: 40px;
-      display: block;
-    }
-  }
+  // 注：原先此处还有一个 .base-layout-nav__open 块（54px 黑底方块，23 行 3 处
+  // 硬编码）。它是零引用孤儿 —— nav.tsx 只用 base-layout-nav 与 __item，
+  // 全仓 grep 只命中它自己的定义 —— 连同零引用的 assets/layout/open.svg 一并删除。
 
   @media (max-width: 768px) {
     flex-direction: row;
@@ -65,7 +48,8 @@
     padding: 4px 8px;
     gap: 0;
     border-radius: 0;
-    box-shadow: none;
+    border: none;
+    border-top: 1px solid var(--border-default);
 
     .base-layout-nav__item {
       min-width: 44px;

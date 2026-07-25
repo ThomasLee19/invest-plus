@@ -55,22 +55,21 @@
     // 联动点共三处，必须一起改：本处、下方的 padding-bottom、
     // 以及 components/page-layout/index.module.scss 的 bottom。
     height: 64px;
-    // 壳本身要不透明。导航条为了露出四角圆角而左右留了 8px 外边距，
-    // 没有这层底色，正文就会从那两条缝里透出来 —— 圆角浮起条的代价。
-    // 色值与上方输入框区一致，两者在 64px 处相接，合成一整块连续的底区。
-    background-color: var(--bg-canvas);
+    // 壳默认透明：导航条为了露出四角圆角左右各留了 8px 外边距，透明时正文会从
+    // 那两条缝里透出来 —— 首页与资料库页要的正是这个效果。
 
     .base-layout__sidebar-main {
       flex-direction: row;
     }
   }
 
-  // 首页例外：内容居中、没有需要被遮住的长文，遮蔽层只会在底部压出一条
-  // 边界可见的横带。这里让壳透明，导航条以圆角浮起条的形态直接坐在页面背景上，
-  // 两侧透出内容。（对话页与资料库页有滚动正文，仍走上面的遮蔽方案。）
+  // 对话页例外。那里贴底的输入框本身是一块不透明区（见
+  // components/page-layout/index.module.scss 的 __sender），底栏若仍透明，
+  // 两者会在 64px 处断开：上面实底、下面透字，比整块遮蔽更割裂。
+  // 故补上同色底，与输入框合成一整块连续底区。
   // 只覆盖底色，横排方向等其余规则继续继承上面那块。
-  .base-layout--transparent-nav .base-layout__sidebar {
-    background-color: transparent;
+  .base-layout--masked-nav .base-layout__sidebar {
+    background-color: var(--bg-canvas);
   }
 
   .base-layout__content {

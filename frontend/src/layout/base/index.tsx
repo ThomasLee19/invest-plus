@@ -7,16 +7,17 @@ import { Nav } from './nav'
 export function BaseLayout({ children }: { children?: React.ReactNode }) {
   const { pathname } = useLocation()
 
-  // 移动端底栏默认带一层不透明底色，把从它下方滚过的正文遮住。
-  // 首页是例外：内容居中、不存在长文滚动，遮蔽层反而会在页面底部压出一条
-  // 与背景同色但边界可见的横带。这里让首页的导航条以圆角浮起条的形态直接坐在
-  // 页面背景上，两侧透出内容 —— 对话页与资料库页有滚动正文，仍需遮蔽。
-  const transparentNav = pathname === '/'
+  // 移动端底栏默认透明：导航条以圆角浮起条的形态直接坐在页面背景上，两侧透出内容。
+  //
+  // 只有对话页例外。那里贴底的输入框本身就是一块不透明区，如果底栏还是透明的，
+  // 两者会在 64px 处断开 —— 上面一块实底、下面透出正文，反而更割裂。
+  // 所以对话页给底栏补同色底，与输入框合成一整块连续的底区。
+  const maskedNav = pathname.startsWith('/chat')
 
   return (
     <div
       className={classNames('base-layout', {
-        'base-layout--transparent-nav': transparentNav,
+        'base-layout--masked-nav': maskedNav,
       })}
     >
       <HeaderBar className="base-layout__header" />

@@ -55,6 +55,10 @@
     // 联动点共三处，必须一起改：本处、下方的 padding-bottom、
     // 以及 components/page-layout/index.module.scss 的 bottom。
     height: 64px;
+    // 壳本身要不透明。导航条为了露出四角圆角而左右留了 8px 外边距，
+    // 没有这层底色，正文就会从那两条缝里透出来 —— 圆角浮起条的代价。
+    // 色值与上方输入框区一致，两者在 64px 处相接，合成一整块连续的底区。
+    background-color: var(--bg-canvas);
 
     .base-layout__sidebar-main {
       flex-direction: row;

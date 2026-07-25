@@ -22,26 +22,22 @@
   .com-page__sender {
     position: sticky;
     bottom: 0;
-    // 上内边距从 5px 放到 32px：渐隐带需要足够高度才能过渡，否则跟硬边没区别。
-    padding: var(--space-6) 40px 18px;
-    // 原先是整块不透明的 --bg-canvas，会在滚动内容上切出一条硬边，
-    // 把页面割成上下两块（手机端尤其明显）。改为向下渐隐，
-    // 文字滚过去时逐渐淡出而不是被一刀切断。
-    background: var(--fade-to-canvas);
+    padding: var(--space-4) 40px 18px;
+    // 完全不透明：正文滚到输入框一线即被遮住，输入框两侧也不漏字。
+    // 这里与下方底栏壳用同一个 --bg-canvas，且两者边界正好在 64px 处相接
+    // （本元素 bottom:64px，底栏壳 height:64px），因此合成一整块连续的底区，
+    // 中间不会出现色差或接缝。
+    //
+    // 曾试过向下渐隐（半透明渐变），但那样滚动时文字会从输入框两侧和背后透出来，
+    // 反而更花；「遮干净」比「柔和过渡」更接近 Claude 手机端的实际观感。
+    background-color: var(--bg-canvas);
     z-index: 100;
-
-    // 渐隐带是视觉元素，不该拦截交互 —— 否则输入框上方那 32px 里的正文
-    // 选不中、链接点不了。容器放行事件，真正的输入框自己接收。
-    pointer-events: none;
-    > * {
-      pointer-events: auto;
-    }
 
     // 手机端底部导航栏（64px）会占据视口底部，输入框需上移等高的距离，
     // 避免被导航栏遮挡（导航栏方案见 layout/base/index.scss）
     @media (max-width: 768px) {
       bottom: 64px;
-      padding: var(--space-5) var(--space-4) var(--space-3);
+      padding: var(--space-3) var(--space-4) var(--space-3);
     }
   }
 

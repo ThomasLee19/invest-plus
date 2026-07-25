@@ -87,8 +87,6 @@ export const tokens = {
   shadowMd: '0 8px 24px rgba(28, 27, 26, 0.08)',
   shadowFocus:
     '0 2px 4px rgba(28, 27, 26, 0.04), 0 6px 16px rgba(28, 27, 26, 0.07)',
-  fadeToCanvas:
-    'linear-gradient( to bottom, rgba(250, 250, 249, 0) 0%, rgba(250, 250, 249, 0.75) 38%, rgba(250, 250, 249, 0.97) 68%, rgba(250, 250, 249, 1) 100% )',
 
   // 动效
   transitionBase: '150ms ease-out',

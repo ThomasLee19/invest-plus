@@ -22,7 +22,11 @@
   .com-page__sender {
     position: sticky;
     bottom: 0;
-    padding: var(--space-4) 40px 18px;
+    // 上内边距必须是 0：任何上内边距都会让不透明区的上沿高出输入框上沿，
+    // 正文在真正碰到输入框之前就被切掉一截，看起来像遮罩浮在框的上方。
+    // padding-top: 0 让遮罩上沿与输入框上沿严格齐平 —— 输入框以下不可见，
+    // 以上完整可见，分界线就是框本身的边框。
+    padding: 0 40px 18px;
     // 完全不透明：正文滚到输入框一线即被遮住，输入框两侧也不漏字。
     // 这里与下方底栏壳用同一个 --bg-canvas，且两者边界正好在 64px 处相接
     // （本元素 bottom:64px，底栏壳 height:64px），因此合成一整块连续的底区，
@@ -37,7 +41,7 @@
     // 避免被导航栏遮挡（导航栏方案见 layout/base/index.scss）
     @media (max-width: 768px) {
       bottom: 64px;
-      padding: var(--space-3) var(--space-4) var(--space-3);
+      padding: 0 var(--space-4) var(--space-3);
     }
   }
 

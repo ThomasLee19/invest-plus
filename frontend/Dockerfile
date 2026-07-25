@@ -14,4 +14,9 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
+# 没有这份配置，nginx:alpine 的默认 server 块不做 SPA fallback，直接访问或刷新
+# /repository、/chat/<id> 会由 nginx 返回 404（请求根本进不到 React，
+# src/pages/404.tsx 救不了）。npm run dev 下 Vite 自带 fallback，所以这是一个
+# 只在生产暴露的 dev/prod 分歧。
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 HEALTHCHECK --interval=10s --timeout=3s CMD wget -q --spider http://localhost:80/ || exit 1

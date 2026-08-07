@@ -212,17 +212,44 @@ class ClassifySkillTests(unittest.TestCase):
             self.assertEqual(agent.classify_skill("x"), [])
 
     def test_classifier_prompt_lists_candidate_categories(self):
+        """候选分类名与输出格式属于静态前缀，应出现在 system message 里。
+
+        分类目录原本拼在 user message 中、且排在用户查询之后；为了让整段静态内容
+        构成可缓存前缀，它已连同规则与输出格式一起移入 system。这里跟着改成断言
+        system，检查的仍是同一件事：分类器确实把候选分类列给了模型。
+        """
         captured = {}
 
-        def _capture(prompt):
+        def _capture(prompt, system=None, stage=None):
             captured["prompt"] = prompt
+            captured["system"] = system
             return json.dumps({"skill_hits": []})
 
         with patch.object(agent, "_llm_json", side_effect=_capture):
             agent.classify_skill("some finance question")
         for name in agent._SKILL_NAMES:
-            self.assertIn(name, captured["prompt"])
-        self.assertIn("JSON", captured["prompt"])
+            self.assertIn(name, captured["system"])
+        self.assertIn("JSON", captured["system"])
+
+    def test_classifier_static_prefix_excludes_the_query(self):
+        """静态前缀里不得混入用户查询。
+
+        前缀缓存按最长公共前缀命中，查询一旦出现在 system 中，后面整段分类目录和
+        规则就全部落到变量下游、每次请求重算。这条断言把"变量必须留在 user
+        message"这个约束钉死，防止以后有人图省事又把 query 拼回静态块。
+        """
+        captured = {}
+        marker = "zzz-unique-query-marker"
+
+        def _capture(prompt, system=None, stage=None):
+            captured["prompt"] = prompt
+            captured["system"] = system
+            return json.dumps({"skill_hits": []})
+
+        with patch.object(agent, "_llm_json", side_effect=_capture):
+            agent.classify_skill(marker)
+        self.assertNotIn(marker, captured["system"])
+        self.assertIn(marker, captured["prompt"])
 
 
 class AppendDisclaimerTests(unittest.TestCase):

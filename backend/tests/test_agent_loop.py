@@ -1488,8 +1488,9 @@ class MergeStepAgentPlanContextTests(unittest.TestCase):
     def _capture_prompt(self, **plan_kwargs):
         captured = {}
 
-        def _fake_llm_json(prompt):
+        def _fake_llm_json(prompt, system=None, stage=None):
             captured["prompt"] = prompt
+            captured["system"] = system
             return '{"actions": null}'
 
         with patch.object(agent, "_llm_json", _fake_llm_json):

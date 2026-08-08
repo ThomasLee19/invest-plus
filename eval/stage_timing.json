@@ -1,0 +1,913 @@
+{
+  "repeats": 3,
+  "per_category": 2,
+  "aggregate": {
+    "db_roundtrip+profile": {
+      "n": 36,
+      "mean": 0.001595202777934901,
+      "median": 0.001317999998718733,
+      "min": 0.0011651000022538938,
+      "max": 0.010628299998643342
+    },
+    "get_llm_client": {
+      "n": 36,
+      "mean": 0.00038271669452822406,
+      "median": 1.8999999156221747e-06,
+      "min": 1.1999982234556228e-06,
+      "max": 0.013711001000046963
+    },
+    "detect_language": {
+      "n": 36,
+      "mean": 4.3324999751348514e-05,
+      "median": 8.349998097401112e-06,
+      "min": 6.599999323952943e-06,
+      "max": 0.0012542000004032161
+    },
+    "recall_all_conclusions": {
+      "n": 36,
+      "mean": 0.0003647722219789608,
+      "median": 4.700001227320172e-06,
+      "min": 3.4000004234258085e-06,
+      "max": 0.0017736000008881092
+    },
+    "classify_skill (LLM #1)": {
+      "n": 36,
+      "mean": 0.864318811778503,
+      "median": 0.7872327964996657,
+      "min": 0.5358680999997887,
+      "max": 1.68255760700049
+    },
+    "load_skill": {
+      "n": 36,
+      "mean": 4.683611071717072e-05,
+      "median": 1.0999974620062858e-06,
+      "min": 6.000009307172149e-07,
+      "max": 0.00018540000019129366
+    },
+    "agent_plan (LLM #2)": {
+      "n": 36,
+      "mean": 1.4441763342777751,
+      "median": 1.3068000469993422,
+      "min": 0.5742592009992222,
+      "max": 3.45962523399794
+    },
+    "_adjust_format": {
+      "n": 36,
+      "mean": 2.708333239651337e-06,
+      "median": 2.9999973776284605e-06,
+      "min": 5.000001692678779e-07,
+      "max": 5.49999822396785e-06
+    }
+  },
+  "grand_total": {
+    "n": 36,
+    "mean": 2.3109307071944283,
+    "median": 2.0361283470010676,
+    "min": 1.3866649010014953,
+    "max": 4.431793343002937
+  },
+  "records": [
+    {
+      "question": "对比一下苹果和微软现在的股价和市盈率",
+      "stages": {
+        "db_roundtrip+profile": 0.010628299998643342,
+        "get_llm_client": 0.013711001000046963,
+        "detect_language": 0.0012542000004032161,
+        "recall_all_conclusions": 7.99999907030724e-06,
+        "classify_skill (LLM #1)": 1.68255760700049,
+        "load_skill": 0.00016839999807416461,
+        "agent_plan (LLM #2)": 1.4343067059999157,
+        "_adjust_format": 4.6000022848602384e-06
+      },
+      "total": 3.1426388139989285,
+      "skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-16",
+      "category": "compound",
+      "rep": 0
+    },
+    {
+      "question": "苹果现在股价多少？另外它最近有没有什么值得关注的新闻？",
+      "stages": {
+        "db_roundtrip+profile": 0.0015289000002667308,
+        "get_llm_client": 2.4999972083605826e-06,
+        "detect_language": 7.300001016119495e-06,
+        "recall_all_conclusions": 5.199999577598646e-06,
+        "classify_skill (LLM #1)": 0.696856103000755,
+        "load_skill": 1.0000003385357559e-06,
+        "agent_plan (LLM #2)": 1.6911217080014467,
+        "_adjust_format": 4.999998054699972e-06
+      },
+      "total": 2.3895277109986637,
+      "skill_hits": [],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-17",
+      "category": "compound",
+      "rep": 0
+    },
+    {
+      "question": "AAPL 现在的股价是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.0014876999994157813,
+        "get_llm_client": 2.2000021999701858e-06,
+        "detect_language": 8.799997885944322e-06,
+        "recall_all_conclusions": 0.0012945000016770791,
+        "classify_skill (LLM #1)": 0.6717464059984195,
+        "load_skill": 6.000009307172149e-07,
+        "agent_plan (LLM #2)": 1.2217796119984996,
+        "_adjust_format": 3.5000011848751456e-06
+      },
+      "total": 1.8963233180002135,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-01",
+      "category": "finance_query",
+      "rep": 0
+    },
+    {
+      "question": "MSFT 现在的市盈率是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012843000004068017,
+        "get_llm_client": 1.7000020307023078e-06,
+        "detect_language": 8.39999847812578e-06,
+        "recall_all_conclusions": 0.0007884000006015413,
+        "classify_skill (LLM #1)": 0.9699613090015191,
+        "load_skill": 0.00011989999984507449,
+        "agent_plan (LLM #2)": 3.45962523399794,
+        "_adjust_format": 4.1000021155923605e-06
+      },
+      "total": 4.431793343002937,
+      "skill_hits": [
+        "valuation"
+      ],
+      "n_actions": 11,
+      "tools": [
+        "finance_query",
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-02",
+      "category": "finance_query",
+      "rep": 0
+    },
+    {
+      "question": "你好",
+      "stages": {
+        "db_roundtrip+profile": 0.001433600002201274,
+        "get_llm_client": 2.0999978005420417e-06,
+        "detect_language": 8.600000001024455e-06,
+        "recall_all_conclusions": 4.7000030463095754e-06,
+        "classify_skill (LLM #1)": 1.0923878100002185,
+        "load_skill": 1.0999974620062858e-06,
+        "agent_plan (LLM #2)": 0.7169113060008385,
+        "_adjust_format": 7.999988156370819e-07
+      },
+      "total": 1.8107500160003838,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-12",
+      "category": "no_tool",
+      "rep": 0
+    },
+    {
+      "question": "你是谁？你能做什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013202999980421737,
+        "get_llm_client": 1.7999991541728377e-06,
+        "detect_language": 8.700000762473792e-06,
+        "recall_all_conclusions": 6.099999154685065e-06,
+        "classify_skill (LLM #1)": 1.1387309010024182,
+        "load_skill": 1.0000003385357559e-06,
+        "agent_plan (LLM #2)": 0.5837016009973013,
+        "_adjust_format": 7.00001692166552e-07
+      },
+      "total": 1.7237711019988637,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-13",
+      "category": "no_tool",
+      "rep": 0
+    },
+    {
+      "question": "10-K 和 10-Q 报告有什么区别？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012421999999787658,
+        "get_llm_client": 1.5000005078036338e-06,
+        "detect_language": 7.700000423938036e-06,
+        "recall_all_conclusions": 0.0017736000008881092,
+        "classify_skill (LLM #1)": 1.156434401000297,
+        "load_skill": 7.999988156370819e-07,
+        "agent_plan (LLM #2)": 1.288563702000829,
+        "_adjust_format": 3.0000010156072676e-06
+      },
+      "total": 2.4480269030027557,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "rag-01",
+      "category": "rag_qa",
+      "rep": 0
+    },
+    {
+      "question": "资产负债表的基本会计恒等式是什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.0014437999998335727,
+        "get_llm_client": 1.8999999156221747e-06,
+        "detect_language": 1.6400001186411828e-05,
+        "recall_all_conclusions": 3.7999998312443495e-06,
+        "classify_skill (LLM #1)": 0.8342085010008304,
+        "load_skill": 0.00012240000069141388,
+        "agent_plan (LLM #2)": 0.7106104999984382,
+        "_adjust_format": 7.999988156370819e-07
+      },
+      "total": 1.5464081009995425,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "rag-02",
+      "category": "rag_qa",
+      "rep": 0
+    },
+    {
+      "question": "什么是自由现金流？",
+      "stages": {
+        "db_roundtrip+profile": 0.001253400001587579,
+        "get_llm_client": 2.0000006770715117e-06,
+        "detect_language": 8.39999847812578e-06,
+        "recall_all_conclusions": 4.699999408330768e-06,
+        "classify_skill (LLM #1)": 0.7414425010028936,
+        "load_skill": 9.999967005569488e-07,
+        "agent_plan (LLM #2)": 0.9433911010019074,
+        "_adjust_format": 2.6999987312592566e-06
+      },
+      "total": 1.6861058020003838,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-05",
+      "category": "rag_search",
+      "rep": 0
+    },
+    {
+      "question": "谷歌最近的 8-K 文件里披露了哪些优先股相关信息？",
+      "stages": {
+        "db_roundtrip+profile": 0.001187400001072092,
+        "get_llm_client": 1.5000005078036338e-06,
+        "detect_language": 6.999998731771484e-06,
+        "recall_all_conclusions": 0.0007370999992417637,
+        "classify_skill (LLM #1)": 0.5974643010013097,
+        "load_skill": 0.00012340000102994964,
+        "agent_plan (LLM #2)": 2.346546599997964,
+        "_adjust_format": 3.5000011848751456e-06
+      },
+      "total": 2.946070801001042,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 3,
+      "tools": [
+        "finance_query",
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-06",
+      "category": "rag_search",
+      "rep": 0
+    },
+    {
+      "question": "今天美股大盘的整体走势如何？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013591999995696824,
+        "get_llm_client": 2.7000023692380637e-06,
+        "detect_language": 9.999999747378752e-06,
+        "recall_all_conclusions": 4.399997123982757e-06,
+        "classify_skill (LLM #1)": 0.7275082010019105,
+        "load_skill": 6.999980541877449e-07,
+        "agent_plan (LLM #2)": 2.348837600002298,
+        "_adjust_format": 2.9999973776284605e-06
+      },
+      "total": 3.0777258009984507,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "web_search"
+      ],
+      "error": null,
+      "id": "route-09",
+      "category": "web_search",
+      "rep": 0
+    },
+    {
+      "question": "最近有什么关于美联储利率决议的最新消息？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013109999999869615,
+        "get_llm_client": 1.8000027921516448e-06,
+        "detect_language": 7.599999662488699e-06,
+        "recall_all_conclusions": 3.4000004234258085e-06,
+        "classify_skill (LLM #1)": 0.6605772000002617,
+        "load_skill": 6.999980541877449e-07,
+        "agent_plan (LLM #2)": 1.2611967010016087,
+        "_adjust_format": 3.2999996619764715e-06
+      },
+      "total": 1.9231017010024516,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "web_search"
+      ],
+      "error": null,
+      "id": "route-10",
+      "category": "web_search",
+      "rep": 0
+    },
+    {
+      "question": "对比一下苹果和微软现在的股价和市盈率",
+      "stages": {
+        "db_roundtrip+profile": 0.001399400000082096,
+        "get_llm_client": 2.1000014385208488e-06,
+        "detect_language": 7.99999907030724e-06,
+        "recall_all_conclusions": 3.7999998312443495e-06,
+        "classify_skill (LLM #1)": 0.7664030000014463,
+        "load_skill": 0.00016110000069602393,
+        "agent_plan (LLM #2)": 1.1154334009988816,
+        "_adjust_format": 2.6999987312592566e-06
+      },
+      "total": 1.8834135010001773,
+      "skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-16",
+      "category": "compound",
+      "rep": 1
+    },
+    {
+      "question": "苹果现在股价多少？另外它最近有没有什么值得关注的新闻？",
+      "stages": {
+        "db_roundtrip+profile": 0.0011751000020012725,
+        "get_llm_client": 1.5000005078036338e-06,
+        "detect_language": 6.899997970322147e-06,
+        "recall_all_conclusions": 4.19999923906289e-06,
+        "classify_skill (LLM #1)": 0.5358680999997887,
+        "load_skill": 9.00003215065226e-07,
+        "agent_plan (LLM #2)": 1.3185069009996369,
+        "_adjust_format": 3.2999996619764715e-06
+      },
+      "total": 1.855566901002021,
+      "skill_hits": [],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-17",
+      "category": "compound",
+      "rep": 1
+    },
+    {
+      "question": "AAPL 现在的股价是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.001377700002194615,
+        "get_llm_client": 2.0000006770715117e-06,
+        "detect_language": 8.299997716676444e-06,
+        "recall_all_conclusions": 0.0009314000017184298,
+        "classify_skill (LLM #1)": 0.6295471009980247,
+        "load_skill": 8.00002453615889e-07,
+        "agent_plan (LLM #2)": 1.3601501999983157,
+        "_adjust_format": 4.099998477613553e-06
+      },
+      "total": 1.9920216009995784,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-01",
+      "category": "finance_query",
+      "rep": 1
+    },
+    {
+      "question": "MSFT 现在的市盈率是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013919999983045273,
+        "get_llm_client": 1.3999997463542968e-06,
+        "detect_language": 7.99999907030724e-06,
+        "recall_all_conclusions": 0.0010206000006292015,
+        "classify_skill (LLM #1)": 1.1708085009995557,
+        "load_skill": 0.0001236000025528483,
+        "agent_plan (LLM #2)": 2.2319384000002174,
+        "_adjust_format": 3.0999981390777975e-06
+      },
+      "total": 3.4052956009982154,
+      "skill_hits": [
+        "valuation"
+      ],
+      "n_actions": 4,
+      "tools": [
+        "finance_query",
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-02",
+      "category": "finance_query",
+      "rep": 1
+    },
+    {
+      "question": "你好",
+      "stages": {
+        "db_roundtrip+profile": 0.0011976000023423694,
+        "get_llm_client": 1.5999976312741637e-06,
+        "detect_language": 7.500002539018169e-06,
+        "recall_all_conclusions": 3.4999975468963385e-06,
+        "classify_skill (LLM #1)": 0.7042200970026897,
+        "load_skill": 7.999988156370819e-07,
+        "agent_plan (LLM #2)": 0.8378891979991749,
+        "_adjust_format": 8.00002453615889e-07
+      },
+      "total": 1.5433210950031935,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-12",
+      "category": "no_tool",
+      "rep": 1
+    },
+    {
+      "question": "你是谁？你能做什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013739999994868413,
+        "get_llm_client": 1.6999983927235007e-06,
+        "detect_language": 9.800001862458885e-06,
+        "recall_all_conclusions": 3.999997716164216e-06,
+        "classify_skill (LLM #1)": 0.6841389979999803,
+        "load_skill": 7.00001692166552e-07,
+        "agent_plan (LLM #2)": 1.4227809949989023,
+        "_adjust_format": 7.00001692166552e-07
+      },
+      "total": 2.108310892999725,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-13",
+      "category": "no_tool",
+      "rep": 1
+    },
+    {
+      "question": "10-K 和 10-Q 报告有什么区别？",
+      "stages": {
+        "db_roundtrip+profile": 0.0011651000022538938,
+        "get_llm_client": 1.1999982234556228e-06,
+        "detect_language": 6.599999323952943e-06,
+        "recall_all_conclusions": 0.001261299999896437,
+        "classify_skill (LLM #1)": 0.8696007970029314,
+        "load_skill": 2.7999994927085936e-06,
+        "agent_plan (LLM #2)": 1.2081944959973043,
+        "_adjust_format": 2.8000031306874007e-06
+      },
+      "total": 2.080235093002557,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "rag-01",
+      "category": "rag_qa",
+      "rep": 1
+    },
+    {
+      "question": "资产负债表的基本会计恒等式是什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012112000003980938,
+        "get_llm_client": 1.7000020307023078e-06,
+        "detect_language": 6.999998731771484e-06,
+        "recall_all_conclusions": 3.6000019463244826e-06,
+        "classify_skill (LLM #1)": 0.9008058969993726,
+        "load_skill": 0.00012849999984609894,
+        "agent_plan (LLM #2)": 0.6726583979980205,
+        "_adjust_format": 9.00003215065226e-07
+      },
+      "total": 1.5748171950035612,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "rag-02",
+      "category": "rag_qa",
+      "rep": 1
+    },
+    {
+      "question": "什么是自由现金流？",
+      "stages": {
+        "db_roundtrip+profile": 0.0016639000023133121,
+        "get_llm_client": 2.6999987312592566e-06,
+        "detect_language": 1.179999890155159e-05,
+        "recall_all_conclusions": 5.300000339047983e-06,
+        "classify_skill (LLM #1)": 0.7906186010004603,
+        "load_skill": 1.3999997463542968e-06,
+        "agent_plan (LLM #2)": 1.1801265020003484,
+        "_adjust_format": 2.4000000848900527e-06
+      },
+      "total": 1.9724326030009252,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-05",
+      "category": "rag_search",
+      "rep": 1
+    },
+    {
+      "question": "谷歌最近的 8-K 文件里披露了哪些优先股相关信息？",
+      "stages": {
+        "db_roundtrip+profile": 0.0014999000013631303,
+        "get_llm_client": 2.5000008463393897e-06,
+        "detect_language": 9.399998816661537e-06,
+        "recall_all_conclusions": 0.0008148000015353318,
+        "classify_skill (LLM #1)": 1.26142610199895,
+        "load_skill": 0.00015179999900283292,
+        "agent_plan (LLM #2)": 1.822523604001617,
+        "_adjust_format": 3.4999975468963385e-06
+      },
+      "total": 3.086431605999678,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 3,
+      "tools": [
+        "finance_query",
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-06",
+      "category": "rag_search",
+      "rep": 1
+    },
+    {
+      "question": "今天美股大盘的整体走势如何？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012736999997287057,
+        "get_llm_client": 1.2999989849049598e-06,
+        "detect_language": 7.599999662488699e-06,
+        "recall_all_conclusions": 3.7999998312443495e-06,
+        "classify_skill (LLM #1)": 0.6409885009998106,
+        "load_skill": 8.999995770864189e-07,
+        "agent_plan (LLM #2)": 1.144740402000025,
+        "_adjust_format": 3.1000017770566046e-06
+      },
+      "total": 1.787019302999397,
+      "skill_hits": [],
+      "n_actions": 3,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-09",
+      "category": "web_search",
+      "rep": 1
+    },
+    {
+      "question": "最近有什么关于美联储利率决议的最新消息？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012103000008210074,
+        "get_llm_client": 1.2999989849049598e-06,
+        "detect_language": 9.60000033956021e-06,
+        "recall_all_conclusions": 5.099998816149309e-06,
+        "classify_skill (LLM #1)": 0.9545907020001323,
+        "load_skill": 7.999988156370819e-07,
+        "agent_plan (LLM #2)": 2.0889992070005974,
+        "_adjust_format": 3.7999998312443495e-06
+      },
+      "total": 3.044820808998338,
+      "skill_hits": [],
+      "n_actions": 2,
+      "tools": [
+        "web_search"
+      ],
+      "error": null,
+      "id": "route-10",
+      "category": "web_search",
+      "rep": 1
+    },
+    {
+      "question": "对比一下苹果和微软现在的股价和市盈率",
+      "stages": {
+        "db_roundtrip+profile": 0.001385600000503473,
+        "get_llm_client": 1.8999999156221747e-06,
+        "detect_language": 7.99999907030724e-06,
+        "recall_all_conclusions": 3.7999998312443495e-06,
+        "classify_skill (LLM #1)": 1.3607765050001035,
+        "load_skill": 0.00018540000019129366,
+        "agent_plan (LLM #2)": 1.4123873059979815,
+        "_adjust_format": 2.7000023692380637e-06
+      },
+      "total": 2.774751210999966,
+      "skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-16",
+      "category": "compound",
+      "rep": 2
+    },
+    {
+      "question": "苹果现在股价多少？另外它最近有没有什么值得关注的新闻？",
+      "stages": {
+        "db_roundtrip+profile": 0.0011943999998038635,
+        "get_llm_client": 1.3999997463542968e-06,
+        "detect_language": 8.200000593205914e-06,
+        "recall_all_conclusions": 4.300000000512227e-06,
+        "classify_skill (LLM #1)": 0.9589894029995776,
+        "load_skill": 7.999988156370819e-07,
+        "agent_plan (LLM #2)": 1.5102850059993216,
+        "_adjust_format": 3.4000004234258085e-06
+      },
+      "total": 2.470486908998282,
+      "skill_hits": [],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-17",
+      "category": "compound",
+      "rep": 2
+    },
+    {
+      "question": "AAPL 现在的股价是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012534999987110496,
+        "get_llm_client": 1.3999997463542968e-06,
+        "detect_language": 7.099999493220821e-06,
+        "recall_all_conclusions": 0.0006697999997413717,
+        "classify_skill (LLM #1)": 0.6386195030027011,
+        "load_skill": 7.999988156370819e-07,
+        "agent_plan (LLM #2)": 1.1461088020005263,
+        "_adjust_format": 3.0999981390777975e-06
+      },
+      "total": 1.7866640049978741,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-01",
+      "category": "finance_query",
+      "rep": 2
+    },
+    {
+      "question": "MSFT 现在的市盈率是多少？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013398999981291126,
+        "get_llm_client": 3.0000010156072676e-06,
+        "detect_language": 1.3900000340072438e-05,
+        "recall_all_conclusions": 0.0011991999999736436,
+        "classify_skill (LLM #1)": 0.8375032000003557,
+        "load_skill": 0.00012309999874560162,
+        "agent_plan (LLM #2)": 2.1050389020019793,
+        "_adjust_format": 2.9999973776284605e-06
+      },
+      "total": 2.9452242019979167,
+      "skill_hits": [
+        "valuation"
+      ],
+      "n_actions": 2,
+      "tools": [
+        "finance_query"
+      ],
+      "error": null,
+      "id": "route-02",
+      "category": "finance_query",
+      "rep": 2
+    },
+    {
+      "question": "你好",
+      "stages": {
+        "db_roundtrip+profile": 0.0015887000008660834,
+        "get_llm_client": 2.5999979698099196e-06,
+        "detect_language": 1.0700001439545304e-05,
+        "recall_all_conclusions": 4.099998477613553e-06,
+        "classify_skill (LLM #1)": 0.577164801001345,
+        "load_skill": 1.1999982234556228e-06,
+        "agent_plan (LLM #2)": 0.8078923000030045,
+        "_adjust_format": 5.000001692678779e-07
+      },
+      "total": 1.3866649010014953,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-12",
+      "category": "no_tool",
+      "rep": 2
+    },
+    {
+      "question": "你是谁？你能做什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012781999976141378,
+        "get_llm_client": 2.2999993234407157e-06,
+        "detect_language": 7.700000423938036e-06,
+        "recall_all_conclusions": 3.9000005926936865e-06,
+        "classify_skill (LLM #1)": 1.1776844010018976,
+        "load_skill": 8.999995770864189e-07,
+        "agent_plan (LLM #2)": 0.5742592009992222,
+        "_adjust_format": 6.999980541877449e-07
+      },
+      "total": 1.7532373019967054,
+      "skill_hits": [],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "route-13",
+      "category": "no_tool",
+      "rep": 2
+    },
+    {
+      "question": "10-K 和 10-Q 报告有什么区别？",
+      "stages": {
+        "db_roundtrip+profile": 0.0013156999993952923,
+        "get_llm_client": 1.8999999156221747e-06,
+        "detect_language": 8.400002116104588e-06,
+        "recall_all_conclusions": 0.0016997999991872348,
+        "classify_skill (LLM #1)": 0.6638401999989583,
+        "load_skill": 1.1000010999850929e-06,
+        "agent_plan (LLM #2)": 1.2950931929990475,
+        "_adjust_format": 2.6000016077887267e-06
+      },
+      "total": 1.9619628930013278,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "rag-01",
+      "category": "rag_qa",
+      "rep": 2
+    },
+    {
+      "question": "资产负债表的基本会计恒等式是什么？",
+      "stages": {
+        "db_roundtrip+profile": 0.001291799999307841,
+        "get_llm_client": 1.8999999156221747e-06,
+        "detect_language": 8.499999239575118e-06,
+        "recall_all_conclusions": 4.300000000512227e-06,
+        "classify_skill (LLM #1)": 0.8747564910008805,
+        "load_skill": 0.00011620000077527948,
+        "agent_plan (LLM #2)": 1.9512929809970956,
+        "_adjust_format": 6.000009307172149e-07
+      },
+      "total": 2.8274727719981456,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 0,
+      "tools": [],
+      "error": null,
+      "id": "rag-02",
+      "category": "rag_qa",
+      "rep": 2
+    },
+    {
+      "question": "什么是自由现金流？",
+      "stages": {
+        "db_roundtrip+profile": 0.00138639999931911,
+        "get_llm_client": 2.2000021999701858e-06,
+        "detect_language": 1.0199997632298619e-05,
+        "recall_all_conclusions": 4.400000761961564e-06,
+        "classify_skill (LLM #1)": 0.6628270930013969,
+        "load_skill": 1.0999974620062858e-06,
+        "agent_plan (LLM #2)": 0.929936191001616,
+        "_adjust_format": 5.49999822396785e-06
+      },
+      "total": 1.5941730839986121,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-05",
+      "category": "rag_search",
+      "rep": 2
+    },
+    {
+      "question": "谷歌最近的 8-K 文件里披露了哪些优先股相关信息？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012628000004042406,
+        "get_llm_client": 1.3999997463542968e-06,
+        "detect_language": 6.70000008540228e-06,
+        "recall_all_conclusions": 0.0008349999989150092,
+        "classify_skill (LLM #1)": 0.7838469919988711,
+        "load_skill": 0.00013810000018565916,
+        "agent_plan (LLM #2)": 1.8895404810027685,
+        "_adjust_format": 3.5999983083456755e-06
+      },
+      "total": 2.6756350729992846,
+      "skill_hits": [
+        "financial_statement"
+      ],
+      "n_actions": 3,
+      "tools": [
+        "finance_query",
+        "rag_search"
+      ],
+      "error": null,
+      "id": "route-06",
+      "category": "rag_search",
+      "rep": 2
+    },
+    {
+      "question": "今天美股大盘的整体走势如何？",
+      "stages": {
+        "db_roundtrip+profile": 0.0012291999992157798,
+        "get_llm_client": 1.8999999156221747e-06,
+        "detect_language": 8.700000762473792e-06,
+        "recall_all_conclusions": 3.899996954714879e-06,
+        "classify_skill (LLM #1)": 0.7731455980028841,
+        "load_skill": 1.0999974620062858e-06,
+        "agent_plan (LLM #2)": 1.383831999002723,
+        "_adjust_format": 2.6999987312592566e-06
+      },
+      "total": 2.158225096998649,
+      "skill_hits": [],
+      "n_actions": 1,
+      "tools": [
+        "web_search"
+      ],
+      "error": null,
+      "id": "route-09",
+      "category": "web_search",
+      "rep": 2
+    },
+    {
+      "question": "最近有什么关于美联储利率决议的最新消息？",
+      "stages": {
+        "db_roundtrip+profile": 0.0014811000000918284,
+        "get_llm_client": 2.2000021999701858e-06,
+        "detect_language": 7.99999907030724e-06,
+        "recall_all_conclusions": 3.999997716164216e-06,
+        "classify_skill (LLM #1)": 0.9274313990026712,
+        "load_skill": 1.1999982234556228e-06,
+        "agent_plan (LLM #2)": 2.574147597002593,
+        "_adjust_format": 2.8999966161791235e-06
+      },
+      "total": 3.5030783959991822,
+      "skill_hits": [],
+      "n_actions": 2,
+      "tools": [
+        "web_search"
+      ],
+      "error": null,
+      "id": "route-10",
+      "category": "web_search",
+      "rep": 2
+    }
+  ]
+}

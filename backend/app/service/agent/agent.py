@@ -139,6 +139,133 @@ def _log_cache_usage(stage: str, completion) -> None:
         print(f"[llm_cache] 读取 usage 失败（不影响主流程）：{e}")
 
 
+# 工具定义。与系统提示词一起构成静态前缀，由服务商随前缀一起缓存，因此这里的任何改动
+# 都会让缓存失效——确定之后就不要动。
+#
+# 描述按四个要素写（教材 2.4.6）：使用边界、具体示例、性能提示、协作关系。消融实验显示
+# 保留函数签名但移除描述性文本会让工具调用错误率上升约 45%，所以这里的啰嗦是有价值的，
+# 不要为了省 token 精简掉。
+#
+# 参数统一为单个 query 字符串：process_actions() 按 action_name 分发、每次只接受一个
+# prompt 字符串，schema 与执行侧保持一致，避免模型产出执行不了的参数结构。
+_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "rag_search",
+            "description": (
+                "检索本项目自建的金融知识库，内含已索引的 SEC 财报（10-K/10-Q/8-K）、"
+                "新闻稿与金融概念教育文档。\n"
+                "适用：财报条目与风险因素、已收录的公司新闻、金融概念解释。\n"
+                "不适用：实时行情与精确数值（用 finance_query）；知识库未收录的时效性内容"
+                "（用 web_search）。语料为英文，但支持中文提问，无需自行翻译。\n"
+                "示例：'AAPL latest 10-K risk factors'、'什么是自由现金流'。\n"
+                "可以一次发起多个检索覆盖问题的不同侧面，比串行追问更快。\n"
+                "若本工具返回空结果，改用 web_search 兜底，不要重复检索同一措辞。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "检索问题，一个子问题一次调用"}
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "finance_query",
+            "description": (
+                "查询股票的实时行情与基本面数值。\n"
+                "适用：股价、涨跌幅、市值、市盈率等可量化指标。\n"
+                "不适用：定性分析、财报原文、新闻解读（用 rag_search）。本工具只返回数值，"
+                "不返回观点。\n"
+                "参数必须包含大写股票代码，例如 'AAPL price'、'MSFT fundamentals'；"
+                "写成公司中文名或小写代码会查不到。\n"
+                "比较多家公司时对每家各发起一次调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "含大写股票代码的查询，如 'AAPL price'",
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": (
+                "搜索公开网络。\n"
+                "适用：知识库未收录的时效性内容，如宏观政策、监管动态、当日市场行情综述。\n"
+                "不适用：取代 finance_query 拿数值（网页数据不如接口准确）；"
+                "取代 rag_search 查已收录的财报内容。\n"
+                "示例：'美联储最新利率决议'。\n"
+                "作为 rag_search 无结果时的兜底；若 rag_search 已给出答案，不要再重复搜索。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "搜索关键词或问题"}},
+                "required": ["query"],
+            },
+        },
+    },
+]
+
+
+def _llm_tools(system: str, user: str, stage: str, tools: list | None = None) -> tuple[list, str]:
+    """带工具定义的 LLM 调用，返回 (tool_calls, content)。
+
+    与 _llm_json 的区别是让模型走原生 tool_calls 通道，而不是把工具调用编码成 JSON 文本
+    再由我们解析。这样做有两个原因：一是 Chat Template 会把 tools 字段翻译成模型训练时
+    见过的固定 token 序列，自行拼接会偏离这种格式；二是「要不要调工具」的判断本来就是
+    模型的原生能力，不必用提示词里的规则去教它。
+
+    返回值的两个分支对应 ReAct 的两种状态：拿到 tool_calls 表示还要继续行动，拿到
+    content 表示模型认为可以收尾了，此时 content 就是它给出的理由。
+    """
+    client = _get_llm_client()
+    completion = client.chat.completions.create(
+        model="qwen-plus",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        tools=tools if tools is not None else _TOOLS,
+    )
+    _log_cache_usage(stage, completion)
+    msg = completion.choices[0].message
+    return list(msg.tool_calls or []), (msg.content or "")
+
+
+def _tool_calls_to_actions(tool_calls: list) -> list[dict]:
+    """把原生 tool_calls 归组成既有的 {action_name, prompts:[...]} 结构。
+
+    保留这个形状是刻意的：process_actions()、_adjust_format()、以及 eval/ 下的 SOP 覆盖率
+    评测都按它编写，换掉会让本次改造的爆炸半径扩散到评测侧，也就失去了「中途可停」的性质。
+    参数取不到 query 时跳过该次调用而不是抛错——单个畸形调用不该让整轮规划失败。
+    """
+    grouped: dict[str, list[str]] = {}
+    for tc in tool_calls:
+        name = getattr(tc.function, "name", None)
+        if name not in {t["function"]["name"] for t in _TOOLS}:
+            continue
+        try:
+            args = json.loads(tc.function.arguments or "{}")
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        query = args.get("query")
+        if isinstance(query, str) and query.strip():
+            grouped.setdefault(name, []).append(query.strip())
+    return [{"action_name": n, "prompts": p} for n, p in grouped.items()]
+
+
 def _llm_json(prompt: str, system: str | None = None, stage: str = "unknown") -> str:
     """JSON 模式的 LLM 调用。
 
@@ -643,55 +770,36 @@ def _build_plan_context_block(
 # 随请求变化的字段，作为 system message 送出，构成一段跨请求逐字节稳定的可缓存前缀。
 # 日期与用户查询一律不得写进这里——它们只要出现一次，后面几百 token 的工具定义就
 # 全部落到变量下游，前缀缓存再也命中不了。
-_PLAN_SYSTEM = """# Invest+ Agent — Plan 模块
+_PLAN_SYSTEM = """# Invest+ Agent · 规划模块
 
-你是金融研究助手的规划模块。分析用户查询，决定调用哪些工具，并将查询拆解为 1-3 个子问题。
+你是金融投研助手的规划模块。用户提出一个投研问题，你判断需要哪些外部信息，并通过工具调用把它们取回来。
 
-## 可用工具
+## 工作流程
 
-1. **rag_search**：搜索金融知识库（filings/news/教育内容）
-   - 适用场景：财报/招股书内容、风险因素、近期新闻解读、金融概念解释
-   - 示例："AAPL 最新 10-K 的风险因素"、"什么是市盈率"
+第一步 · 判定领域
+    问题属于金融投资领域吗？
+      否 → 不调用任何工具，直接回复：我只能回答金融/投资相关的问题。
+      是 → 进入第二步
 
-2. **finance_query**：查询股票精确数据（实时调用 yfinance）
-   - 适用场景：实时行情、涨跌幅、市值、市盈率、基本面数据、近期新闻标题
-   - 示例："AAPL stock price"、"MSFT fundamentals"
-   - **重要：子问题必须包含大写的股票代码（ticker），如 "AAPL price"**
+第二步 · 判定信息缺口
+    回答这个问题需要外部信息吗？
+      日常问候、询问你的身份或能力、询问对话历史、常识性计算 → 不需要，不调用任何工具
+      需要 → 进入第三步
 
-3. **web_search**：网络搜索
-   - 适用场景：最新市场动态、知识库未覆盖的内容
-   - 示例："美联储最新利率决议"
+第三步 · 拆解并取数
+    把问题拆成 1 到 3 个彼此独立的子问题，每个子问题发起一次工具调用。
+    子问题要具体到可以直接检索，"分析一下 AAPL"这种无法直接检索的表述要先拆细。
+    同一个工具需要查多项时，发起多次调用，不要把多项塞进一次调用。
 
-## 工具选择规则
-默认不调用任何工具，输出 {"actions": null}；只有当问题清楚匹配下面某个场景时，才调用对应工具：
-- 精确数值（行情/市值/市盈率）→ finance_query
-- 财报内容/新闻解读/概念解释 → rag_search
-- 最新市场动态 → web_search
-- 复合问题可同时使用多个工具
+## 判断偏好
 
-以下情况一律不调用任何工具，输出 {"actions": null}——这些都属于正常的对话交互，不要为了"兜底"而调用 rag_search 或 web_search：
-- 日常问候（你好、谢谢等）
-- 与金融完全无关的问题（数学、地理、历史等）
-- 询问你的身份或能力（如"你是谁"、"你能做什么"、"介绍一下自己"、"Who are you?"、"What can you do?"）
-- 询问对话历史（如"我之前问过什么"、"我上一个问题是什么"、"what did I ask you before"）
-- 任何不清楚属于上述三个工具适用场景的问题：不确定时默认输出 {"actions": null}，绝不能因为"不知道怎么分类"就默认调用 rag_search 搜索
+宁可不调用，也不要为了"兜底"而调用。不确定问题属于哪个工具的适用范围时，
+按第二步处理为不需要外部信息，而不是随便挑一个工具试试。
 
-## 输出格式
-JSON 对象，包含一个 actions 字段（工具调用列表）；每个工具调用含 action_name 和
-prompts（子问题列表）：
-{
-  "actions": [
-    {
-      "action_name": "工具名称",
-      "prompts": ["子问题1", "子问题2"]
-    }
-  ]
-}
+## 输出约束
 
-工具名称必须是：rag_search、finance_query、web_search 之一。
-不需要调用任何工具时输出：{"actions": null}
-
-只输出 JSON 对象，不要输出任何其他内容。
+上面的工作流程是你的内部判断路径，不要把它写出来。不要复述步骤编号，不要说明你走到了
+哪一步、为什么这么判断。需要外部信息就直接发起工具调用；不需要就直接给出面向用户的回复。
 """
 
 
@@ -715,30 +823,19 @@ def agent_plan(
     # 而是降级为"不调用任何工具"（返回 None），让流程直接进入 Answer 阶段用模型
     # 自身知识作答——规划阶段的瞬时故障不应导致整条回答无法生成。
     try:
-        result = _llm_json(prompt, system=_PLAN_SYSTEM, stage="plan")
+        tool_calls, content = _llm_tools(_PLAN_SYSTEM, prompt, stage="plan")
     except Exception as e:
         print(f"[agent_plan] LLM 调用失败，降级为不调用工具：{e}")
         return None
-    print(f"[agent_plan] {result}")
-    # _llm_json 强制 response_format=json_object，模型返回顶层 JSON 对象；
-    # 从中读取 actions 字段（工具调用列表，或 null 表示不需要工具）。
-    json_obj = _extract_json_object(result)
-    try:
-        parsed = json.loads(json_obj) if json_obj else None
-    except Exception:
-        return None
-    if not isinstance(parsed, dict):
-        return None
-    actions = parsed.get("actions")
-    if actions is None:
-        return None
-    # 校验每一项都是带 action_name 的 dict，否则视为解析失败，安全降级为 None，
-    # 避免 _adjust_format 对字符串调用 .get() 而崩溃。
-    if not isinstance(actions, list) or not all(
-        isinstance(item, dict) and "action_name" in item for item in actions
-    ):
-        return None
-    return actions
+    actions = _tool_calls_to_actions(tool_calls)
+    print(f"[agent_plan] actions={actions} content={content[:80]!r}")
+    # 没有 tool_calls 即模型判定不需要外部信息（问候、身份、与金融无关的问题）。返回
+    # None 让 final_answer 跳过 Act+Reflect 直接进 Answer，与改造前输出 {"actions": null}
+    # 语义完全相同，因此下游的 `if plan:` 判断不用改。
+    #
+    # 这个判断现在由模型原生完成，不再依赖提示词里那份"以下情况一律不调用"的清单：
+    # 实测同一模型拿到"你好"会直接 finish_reason=stop 且不产出任何 tool_calls。
+    return actions or None
 
 
 def _adjust_format(plan: list[dict]) -> list[dict]:
@@ -1000,11 +1097,6 @@ def process_actions(
     return memory
 
 
-def _extract_json_object(text: str) -> str | None:
-    match = re.search(r"(\{[\s\S]*\})", text)
-    return match.group(1) if match else None
-
-
 # 单条 memory 里字符串字段的最大长度：工具结果（尤其是拼接后的 rag/web 文本）
 # 会随反思迭代无界增长，每轮又整体塞进 should_continue 与最终 prompt。此处按条
 # 截断，给上下文一个固定上界；语义足够判断"是否够答"，无需完整原文。
@@ -1018,21 +1110,6 @@ _MAX_MEMORY_LIST_ITEMS = 5
 _MAX_MEMORY_LIST_ITEM_STR_CHARS = 500
 # references 去重后允许进入最终答案引用块的上限。
 _MAX_REFERENCES = 20
-# 与判定为"假"的字符串取值集合（大小写不敏感）：LLM 常把布尔当字符串输出，
-# bool("false") 在 Python 里是 True，会把"信息不足"误判成"足够"而提前停止。
-_FALSY_STRINGS = {"false", "0", "no", ""}
-
-
-def _coerce_bool(value) -> bool:
-    """把 LLM 输出的 sufficient 字段稳健地转成 bool。已经是 bool 直接用；
-    是字符串则按 _FALSY_STRINGS 做大小写不敏感判定（避免 bool("false")==True）；
-    其余类型退回 Python 真值语义。"""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() not in _FALSY_STRINGS
-    return bool(value)
-
 
 def _bound_memory_value(val):
     """按值类型对单个 memory 字段设界：过长字符串截断；list（rag_search/
@@ -1096,32 +1173,30 @@ def _bounded_memory_for_final_prompt(memory: list[dict], seen_ref_keys: set) -> 
 
 # 静态前缀：Reflect 模块的任务定义、工具清单、判断规则、输出格式。日期、用户问题和
 # 已收集信息（体积最大、每轮都变）一律留在 user message，见 should_continue()。
-_REFLECT_SYSTEM = """# Invest+ Agent — Reflect 模块
+_REFLECT_SYSTEM = """# Invest+ Agent · 反思模块
 
-## 任务
-判断已有信息是否足以回答用户问题。如果不足，补充至多 2 个查询。
+你正处在一次投研任务的中途。已经取回的工具结果会随消息给你，你判断这些信息够不够支撑一个有依据的回答。
 
-## 可用工具
-- rag_search：金融知识库（filings/news/教育内容）
-- finance_query：股票精确数据（行情/基本面/新闻）【子问题必须包含大写 ticker】
-- web_search：网络搜索，适用于：1）最新市场动态；2）rag_search 没有返回任何相关内容时，用于补充信息
+## 工作流程
 
-## 判断规则
-- 如果用户问的是财报内容/新闻解读，但 rag_search 结果为空或没有相关内容 → 必须补充 web_search
-- 如果某次工具调用失败（已收集信息中标记了"错误": true）→ 判断是否需要换一种查询方式重试，或改用其他工具，或在 rationale 中说明该信息缺口
-- 如果已有完整的分析所需信息（行情/基本面/财报要点）→ sufficient 为 true
-- finance_query 的实时数值数据不能替代财报/新闻的定性分析，两者都需要时要分别补充
+第一步 · 判定是否够用
+    已收集的信息能否支撑一个有依据的回答？
+      够 → 不调用任何工具，用一句话说明为什么已经足够
+      不够 → 进入第二步
 
-## 输出格式
-必须输出 JSON 对象（不是列表），包含三个字段：
-{
-  "sufficient": true 或 false，
-  "rationale": "一句话说明你为什么认为信息已足够，或为什么还需要补充查询（将展示给用户，用于解释你的决策依据）",
-  "actions": 当 sufficient 为 true 时为空列表 []；为 false 时给出至多 2 个补充查询，格式：
-    [{"action_name": "工具名称", "prompts": ["补充问题"]}]
-}
+第二步 · 定位缺口并补齐
+    明确还缺什么，只针对缺口发起至多 2 次工具调用，并用一句话说明为什么还需要补。
+    某次调用返回了错误或空结果 → 换一种表述或换一个工具，不要原样重试同一个查询。
+    数值信息与定性信息互不替代，两者都缺时分别补。
 
-只输出 JSON 对象，不要输出其他内容。
+## 判断偏好
+
+已经能回答就停。多补一轮的代价是用户多等一次完整往返，不是"多查点更保险"。
+
+## 输出约束
+
+上面的工作流程是你的内部判断路径，不要复述步骤编号或说明你走到了哪一步。
+你的文字输出只用来写那一句判断理由，它会展示给用户。
 """
 
 
@@ -1157,7 +1232,7 @@ def should_continue(query: str, memory: list[dict]) -> dict:
     # 的信息作答），而非让异常冲出 final_answer 生成器整体中断——单次反思判断的
     # 瞬时故障不应导致整条回答无法生成。rationale 文案与"LLM 主动判定足够"可区分。
     try:
-        result = _llm_json(prompt, system=_REFLECT_SYSTEM, stage="reflect")
+        tool_calls, content = _llm_tools(_REFLECT_SYSTEM, prompt, stage="reflect")
     except Exception as e:
         print(f"[should_continue] LLM 调用失败，安全降级为停止循环：{e}")
         return {
@@ -1165,24 +1240,16 @@ def should_continue(query: str, memory: list[dict]) -> dict:
             "rationale": f"[llm error - defaulting to stop] {e}",
             "actions": [],
         }
-    print(f"[should_continue] {result}")
-    json_obj = _extract_json_object(result)
-    try:
-        parsed = json.loads(json_obj) if json_obj else None
-        if not isinstance(parsed, dict) or "sufficient" not in parsed:
-            raise ValueError("missing required 'sufficient' field")
-        return {
-            "sufficient": _coerce_bool(parsed["sufficient"]),
-            "rationale": parsed.get("rationale", ""),
-            "actions": parsed.get("actions") or [],
-        }
-    except Exception as e:
-        print(f"[should_continue] 解析失败，安全降级为停止循环：{e}")
-        return {
-            "sufficient": True,
-            "rationale": f"[parse error - defaulting to stop] {e}",
-            "actions": [],
-        }
+    # 「继续还是停止」不再是模型自报的一个布尔字段，而是它有没有发起工具调用这个事实本身：
+    # 有 tool_calls 就是要继续，没有就是收尾。这消掉了改造前那一整条解析链路（提取 JSON、
+    # 校验 sufficient 字段存在、把字符串 "false" 强转成布尔），以及它每一环各自的降级分支。
+    actions = _tool_calls_to_actions(tool_calls)
+    print(f"[should_continue] actions={actions} rationale={content[:80]!r}")
+    return {
+        "sufficient": not actions,
+        "rationale": content,
+        "actions": actions,
+    }
 
 
 def _detect_language(text: str) -> str:

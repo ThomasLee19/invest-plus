@@ -147,41 +147,59 @@ def _import_index_finance_module():
     return module
 
 
-def _llm_json_returning(payload) -> str:
-    """Build a fake `_llm_json` return value: a JSON string, optionally with
-    surrounding prose the way real LLM output sometimes includes it."""
-    return json.dumps(payload, ensure_ascii=False)
+def _tool_calls_returning(*calls, content: str = "") -> tuple[list, str]:
+    """Build a fake `_llm_tools` return value: (tool_calls, content).
+
+    Each positional argument is a (tool_name, query) pair. Passing none
+    simulates the model choosing not to call anything, which is how the loop
+    now signals "sufficient" — there is no boolean field to parse any more,
+    the absence of tool calls *is* the signal.
+    """
+    tool_calls = [
+        types.SimpleNamespace(
+            function=types.SimpleNamespace(
+                name=name, arguments=json.dumps({"query": q}, ensure_ascii=False)
+            )
+        )
+        for name, q in calls
+    ]
+    return tool_calls, content
 
 
 class ShouldContinueTests(unittest.TestCase):
-    """US-5: should_continue() against mocked LLM responses, no live calls."""
+    """US-5: should_continue() against mocked LLM responses, no live calls.
 
-    def test_sufficient_when_clear_answer_present(self):
-        memory = [{"提问": "garchomp speed stat", "结果": "Garchomp base speed: 102"}]
-        mocked_response = _llm_json_returning({
-            "sufficient": True,
-            "rationale": "已获得完整的种族值数据，足以回答。",
-            "actions": [],
-        })
-        with patch.object(agent, "_llm_json", return_value=mocked_response) as mocked:
-            decision = agent.should_continue("garchomp 速度种族值多少", memory)
+    Continue-vs-stop is now read off whether the model emitted tool calls,
+    so the tests that used to guard the JSON parsing layer (malformed output,
+    missing `sufficient` field, the string "false" being truthy) no longer
+    describe anything real. They are replaced below by the failure modes the
+    tool-call path actually has: the call itself raising, and individual
+    tool calls being unusable.
+    """
+
+    def test_sufficient_when_no_tool_calls_requested(self):
+        memory = [{"提问": "AAPL EPS", "结果": "AAPL diluted EPS: 6.42"}]
+        with patch.object(
+            agent, "_llm_tools",
+            return_value=_tool_calls_returning(content="已获得完整的每股收益数据，足以回答。"),
+        ) as mocked:
+            decision = agent.should_continue("苹果最新每股收益多少", memory)
             mocked.assert_called_once()
 
         self.assertTrue(decision["sufficient"])
         self.assertEqual(decision["actions"], [])
-        self.assertIn("种族值", decision["rationale"])
+        self.assertIn("每股收益", decision["rationale"])
 
     def test_not_sufficient_returns_retry_action_on_empty_result(self):
-        memory = [{"提问": "iron valiant battle strategy", "结果": []}]
-        mocked_response = _llm_json_returning({
-            "sufficient": False,
-            "rationale": "rag_search 未返回任何对战策略内容，需要补充网络搜索。",
-            "actions": [
-                {"action_name": "web_search", "prompts": ["iron valiant competitive strategy 2024"]}
-            ],
-        })
-        with patch.object(agent, "_llm_json", return_value=mocked_response):
-            decision = agent.should_continue("铁巨剑适合什么打法", memory)
+        memory = [{"提问": "AAPL 最新合作新闻", "结果": []}]
+        with patch.object(
+            agent, "_llm_tools",
+            return_value=_tool_calls_returning(
+                ("web_search", "Apple latest partnership announcement"),
+                content="rag_search 未返回任何相关内容，需要补充网络搜索。",
+            ),
+        ):
+            decision = agent.should_continue("苹果最近有什么合作", memory)
 
         self.assertFalse(decision["sufficient"])
         self.assertEqual(len(decision["actions"]), 1)
@@ -190,71 +208,81 @@ class ShouldContinueTests(unittest.TestCase):
 
     def test_reacts_to_tool_error_entry_in_memory(self):
         memory = [{
-            "提问": "garchomp stats",
-            "结果": "[工具调用失败] pokeapi_query: Connection timeout",
+            "提问": "AAPL price",
+            "结果": "[工具调用失败] finance_query: Connection timeout",
             "错误": True,
         }]
-        mocked_response = _llm_json_returning({
-            "sufficient": False,
-            "rationale": "pokeapi_query 调用失败（超时），需要重试。",
-            "actions": [
-                {"action_name": "pokeapi_query", "prompts": ["garchomp stats"]}
-            ],
-        })
-        with patch.object(agent, "_llm_json", return_value=mocked_response):
-            decision = agent.should_continue("garchomp 种族值", memory)
+        with patch.object(
+            agent, "_llm_tools",
+            return_value=_tool_calls_returning(
+                ("finance_query", "AAPL price"),
+                content="finance_query 调用失败（超时），需要重试。",
+            ),
+        ):
+            decision = agent.should_continue("苹果现在股价多少", memory)
 
         self.assertFalse(decision["sufficient"])
-        self.assertTrue(any(a["action_name"] == "pokeapi_query" for a in decision["actions"]))
+        self.assertTrue(any(a["action_name"] == "finance_query" for a in decision["actions"]))
         self.assertIn("失败", decision["rationale"])
 
-    def test_malformed_llm_output_falls_back_to_safe_stop(self):
+    def test_multiple_calls_to_same_tool_group_into_one_action(self):
+        """Native tool calling emits one call per sub-question, but the
+        downstream contract (_adjust_format, process_actions) expects them
+        grouped under a single action_name with a prompts list."""
         memory = [{"提问": "x", "结果": "y"}]
-        with patch.object(agent, "_llm_json", return_value="not valid json at all"):
+        with patch.object(
+            agent, "_llm_tools",
+            return_value=_tool_calls_returning(
+                ("finance_query", "AAPL price"),
+                ("finance_query", "MSFT price"),
+                ("web_search", "market outlook"),
+            ),
+        ):
+            decision = agent.should_continue("对比苹果微软", memory)
+
+        by_name = {a["action_name"]: a["prompts"] for a in decision["actions"]}
+        self.assertEqual(by_name["finance_query"], ["AAPL price", "MSFT price"])
+        self.assertEqual(by_name["web_search"], ["market outlook"])
+
+    def test_llm_failure_falls_back_to_safe_stop(self):
+        memory = [{"提问": "x", "结果": "y"}]
+        with patch.object(agent, "_llm_tools", side_effect=RuntimeError("upstream 500")):
             decision = agent.should_continue("test query", memory)
 
         self.assertTrue(decision["sufficient"])
         self.assertEqual(decision["actions"], [])
-        self.assertIn("parse error", decision["rationale"])
+        self.assertIn("llm error", decision["rationale"])
 
-    def test_missing_sufficient_field_falls_back_to_safe_stop(self):
+    def test_unparseable_arguments_skip_that_call_without_crashing(self):
         memory = [{"提问": "x", "结果": "y"}]
-        mocked_response = _llm_json_returning({"rationale": "oops, forgot the required field"})
-        with patch.object(agent, "_llm_json", return_value=mocked_response):
+        broken = types.SimpleNamespace(
+            function=types.SimpleNamespace(name="web_search", arguments="{not json")
+        )
+        good = types.SimpleNamespace(
+            function=types.SimpleNamespace(
+                name="rag_search", arguments=json.dumps({"query": "usable"})
+            )
+        )
+        with patch.object(agent, "_llm_tools", return_value=([broken, good], "")):
             decision = agent.should_continue("test query", memory)
 
-        self.assertTrue(decision["sufficient"])
-        self.assertEqual(decision["actions"], [])
-        self.assertIn("parse error", decision["rationale"])
-
-    def test_string_false_is_not_treated_as_sufficient(self):
-        """Regression test for bool("false") == True in Python: the LLM often
-        emits "sufficient" as a JSON string rather than a real boolean, and a
-        bare bool() cast would misread the literal string "false" as truthy,
-        stopping the reflection loop prematurely on insufficient info."""
-        memory = [{"提问": "iron valiant battle strategy", "结果": []}]
-        mocked_response = _llm_json_returning({
-            "sufficient": "false",
-            "rationale": "仍需补充信息。",
-            "actions": [{"action_name": "web_search", "prompts": ["iron valiant strategy"]}],
-        })
-        with patch.object(agent, "_llm_json", return_value=mocked_response):
-            decision = agent.should_continue("铁巨剑适合什么打法", memory)
-
-        self.assertFalse(decision["sufficient"])
         self.assertEqual(len(decision["actions"]), 1)
+        self.assertEqual(decision["actions"][0]["action_name"], "rag_search")
 
-    def test_string_true_is_treated_as_sufficient(self):
-        memory = [{"提问": "garchomp speed stat", "结果": "Garchomp base speed: 102"}]
-        mocked_response = _llm_json_returning({
-            "sufficient": "true",
-            "rationale": "已获得完整数据。",
-            "actions": [],
-        })
-        with patch.object(agent, "_llm_json", return_value=mocked_response):
-            decision = agent.should_continue("garchomp 速度种族值多少", memory)
+    def test_unknown_tool_name_is_dropped(self):
+        """A hallucinated tool name must not reach process_actions(), which
+        dispatches on action_name and has no branch for unknown tools."""
+        memory = [{"提问": "x", "结果": "y"}]
+        with patch.object(
+            agent, "_llm_tools",
+            return_value=_tool_calls_returning(
+                ("pokeapi_query", "garchomp stats"),
+                ("rag_search", "real one"),
+            ),
+        ):
+            decision = agent.should_continue("test query", memory)
 
-        self.assertTrue(decision["sufficient"])
+        self.assertEqual([a["action_name"] for a in decision["actions"]], ["rag_search"])
 
 
 class ProcessActionsErrorPropagationTests(unittest.TestCase):
@@ -1488,12 +1516,12 @@ class MergeStepAgentPlanContextTests(unittest.TestCase):
     def _capture_prompt(self, **plan_kwargs):
         captured = {}
 
-        def _fake_llm_json(prompt, system=None, stage=None):
-            captured["prompt"] = prompt
+        def _fake_llm_tools(system, user, stage, tools=None):
             captured["system"] = system
-            return '{"actions": null}'
+            captured["prompt"] = user
+            return [], ""
 
-        with patch.object(agent, "_llm_json", _fake_llm_json):
+        with patch.object(agent, "_llm_tools", _fake_llm_tools):
             agent.agent_plan("AAPL 估值贵不贵，和同行比？", **plan_kwargs)
         return captured["prompt"]
 

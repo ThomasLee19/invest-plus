@@ -1,0 +1,569 @@
+{
+  "label": "increment-2",
+  "backend_commit": "2054a3b@agent.py:a44d246f2151",
+  "started_at": "2026-08-09 04:13:07",
+  "cold_wait": 0.0,
+  "question_x": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+  "question_y": "微软云最近一个季度的营收表现如何？",
+  "records": [
+    {
+      "tag": "X1",
+      "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+      "wall_clock": "2026-08-09 04:14:15",
+      "backend_quiet": true,
+      "degraded": false,
+      "llm_calls": [
+        {
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 512,
+          "completion_tokens": 12
+        },
+        {
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 1408,
+          "completion_tokens": 48
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3627,
+          "cached_tokens": 1408,
+          "completion_tokens": 272
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 4402,
+          "cached_tokens": 2368,
+          "completion_tokens": 287
+        }
+      ],
+      "ok": true,
+      "error": null,
+      "elapsed": 64.68598214300073,
+      "first_feedback": 0.05138739999893005,
+      "events": 980,
+      "plan_tools": [
+        "rag_search",
+        "finance_query",
+        "finance_query",
+        "web_search"
+      ]
+    },
+    {
+      "tag": "X2",
+      "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+      "wall_clock": "2026-08-09 04:15:12",
+      "backend_quiet": true,
+      "degraded": false,
+      "llm_calls": [
+        {
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 2432,
+          "completion_tokens": 21
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3635,
+          "cached_tokens": 3456,
+          "completion_tokens": 35
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 4692,
+          "cached_tokens": 2432,
+          "completion_tokens": 61
+        }
+      ],
+      "ok": true,
+      "error": null,
+      "elapsed": 54.42564736699933,
+      "first_feedback": 0.004510000002483139,
+      "events": 976,
+      "plan_tools": [
+        "rag_search",
+        "finance_query",
+        "rag_search"
+      ]
+    },
+    {
+      "tag": "X3",
+      "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+      "wall_clock": "2026-08-09 04:16:30",
+      "backend_quiet": true,
+      "degraded": false,
+      "llm_calls": [
+        {
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 3456,
+          "completion_tokens": 21
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3635,
+          "cached_tokens": 0,
+          "completion_tokens": 35
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 4692,
+          "cached_tokens": 3456,
+          "completion_tokens": 87
+        }
+      ],
+      "ok": true,
+      "error": null,
+      "elapsed": 75.06201697300276,
+      "first_feedback": 0.004777900001499802,
+      "events": 1232,
+      "plan_tools": [
+        "rag_search",
+        "finance_query",
+        "rag_search"
+      ]
+    },
+    {
+      "tag": "Y1",
+      "question": "微软云最近一个季度的营收表现如何？",
+      "wall_clock": "2026-08-09 04:17:29",
+      "backend_quiet": true,
+      "degraded": false,
+      "llm_calls": [
+        {
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        },
+        {
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 0,
+          "completion_tokens": 49
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 0,
+          "completion_tokens": 34
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 4465,
+          "cached_tokens": 1920,
+          "completion_tokens": 205
+        }
+      ],
+      "ok": true,
+      "error": null,
+      "elapsed": 55.841474550001294,
+      "first_feedback": 0.003913300002750475,
+      "events": 867,
+      "plan_tools": [
+        "finance_query",
+        "rag_search",
+        "rag_search"
+      ]
+    },
+    {
+      "tag": "Y2",
+      "question": "微软云最近一个季度的营收表现如何？",
+      "wall_clock": "2026-08-09 04:18:20",
+      "backend_quiet": true,
+      "degraded": false,
+      "llm_calls": [
+        {
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        },
+        {
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 1920,
+          "completion_tokens": 49
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 3328,
+          "completion_tokens": 34
+        },
+        {
+          "stage": "reflect",
+          "prompt_tokens": 4465,
+          "cached_tokens": 0,
+          "completion_tokens": 148
+        }
+      ],
+      "ok": true,
+      "error": null,
+      "elapsed": 47.94097362700268,
+      "first_feedback": 0.005109100002300693,
+      "events": 764,
+      "plan_tools": [
+        "finance_query",
+        "rag_search",
+        "rag_search"
+      ]
+    }
+  ],
+  "verdict": {
+    "classify_skill": {
+      "series": [
+        {
+          "tag": "X1",
+          "present": true,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 512,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "X2",
+          "present": true,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "X3",
+          "present": true,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "Y1",
+          "present": true,
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        },
+        {
+          "tag": "Y2",
+          "present": true,
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        }
+      ],
+      "within_request": [
+        {
+          "tag": "X1",
+          "round": 1,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 512,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "X2",
+          "round": 1,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "X3",
+          "round": 1,
+          "stage": "classify_skill",
+          "prompt_tokens": 532,
+          "cached_tokens": 0,
+          "completion_tokens": 12
+        },
+        {
+          "tag": "Y1",
+          "round": 1,
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        },
+        {
+          "tag": "Y2",
+          "round": 1,
+          "stage": "classify_skill",
+          "prompt_tokens": 531,
+          "cached_tokens": 0,
+          "completion_tokens": 8
+        }
+      ],
+      "state": "X 侧命中、Y 侧未命中。受上游命中随机性影响，本样本量不足以判定跨题共享，需增加 Y 侧重复次数",
+      "cross_question_hit": null,
+      "hit_count": 1,
+      "observed_count": 5,
+      "prompt_tokens": 532
+    },
+    "plan": {
+      "series": [
+        {
+          "tag": "X1",
+          "present": true,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 1408,
+          "completion_tokens": 48
+        },
+        {
+          "tag": "X2",
+          "present": true,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "tag": "X3",
+          "present": true,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "tag": "Y1",
+          "present": true,
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 0,
+          "completion_tokens": 49
+        },
+        {
+          "tag": "Y2",
+          "present": true,
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 1920,
+          "completion_tokens": 49
+        }
+      ],
+      "within_request": [
+        {
+          "tag": "X1",
+          "round": 1,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 1408,
+          "completion_tokens": 48
+        },
+        {
+          "tag": "X2",
+          "round": 1,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "tag": "X3",
+          "round": 1,
+          "stage": "plan",
+          "prompt_tokens": 2418,
+          "cached_tokens": 2368,
+          "completion_tokens": 26
+        },
+        {
+          "tag": "Y1",
+          "round": 1,
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 0,
+          "completion_tokens": 49
+        },
+        {
+          "tag": "Y2",
+          "round": 1,
+          "stage": "plan",
+          "prompt_tokens": 1949,
+          "cached_tokens": 1920,
+          "completion_tokens": 49
+        }
+      ],
+      "state": "X 侧命中、Y 侧未命中。受上游命中随机性影响，本样本量不足以判定跨题共享，需增加 Y 侧重复次数",
+      "cross_question_hit": null,
+      "hit_count": 4,
+      "observed_count": 5,
+      "prompt_tokens": 2418
+    },
+    "reflect": {
+      "series": [
+        {
+          "tag": "X1",
+          "present": true,
+          "stage": "reflect",
+          "prompt_tokens": 3627,
+          "cached_tokens": 1408,
+          "completion_tokens": 272
+        },
+        {
+          "tag": "X2",
+          "present": true,
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 2432,
+          "completion_tokens": 21
+        },
+        {
+          "tag": "X3",
+          "present": true,
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 3456,
+          "completion_tokens": 21
+        },
+        {
+          "tag": "Y1",
+          "present": true,
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 0,
+          "completion_tokens": 34
+        },
+        {
+          "tag": "Y2",
+          "present": true,
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 3328,
+          "completion_tokens": 34
+        }
+      ],
+      "within_request": [
+        {
+          "tag": "X1",
+          "round": 1,
+          "stage": "reflect",
+          "prompt_tokens": 3627,
+          "cached_tokens": 1408,
+          "completion_tokens": 272
+        },
+        {
+          "tag": "X1",
+          "round": 2,
+          "stage": "reflect",
+          "prompt_tokens": 4402,
+          "cached_tokens": 2368,
+          "completion_tokens": 287
+        },
+        {
+          "tag": "X2",
+          "round": 1,
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 2432,
+          "completion_tokens": 21
+        },
+        {
+          "tag": "X2",
+          "round": 2,
+          "stage": "reflect",
+          "prompt_tokens": 3635,
+          "cached_tokens": 3456,
+          "completion_tokens": 35
+        },
+        {
+          "tag": "X2",
+          "round": 3,
+          "stage": "reflect",
+          "prompt_tokens": 4692,
+          "cached_tokens": 2432,
+          "completion_tokens": 61
+        },
+        {
+          "tag": "X3",
+          "round": 1,
+          "stage": "reflect",
+          "prompt_tokens": 3488,
+          "cached_tokens": 3456,
+          "completion_tokens": 21
+        },
+        {
+          "tag": "X3",
+          "round": 2,
+          "stage": "reflect",
+          "prompt_tokens": 3635,
+          "cached_tokens": 0,
+          "completion_tokens": 35
+        },
+        {
+          "tag": "X3",
+          "round": 3,
+          "stage": "reflect",
+          "prompt_tokens": 4692,
+          "cached_tokens": 3456,
+          "completion_tokens": 87
+        },
+        {
+          "tag": "Y1",
+          "round": 1,
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 0,
+          "completion_tokens": 34
+        },
+        {
+          "tag": "Y1",
+          "round": 2,
+          "stage": "reflect",
+          "prompt_tokens": 4465,
+          "cached_tokens": 1920,
+          "completion_tokens": 205
+        },
+        {
+          "tag": "Y2",
+          "round": 1,
+          "stage": "reflect",
+          "prompt_tokens": 3341,
+          "cached_tokens": 3328,
+          "completion_tokens": 34
+        },
+        {
+          "tag": "Y2",
+          "round": 2,
+          "stage": "reflect",
+          "prompt_tokens": 4465,
+          "cached_tokens": 0,
+          "completion_tokens": 148
+        }
+      ],
+      "state": "X 侧命中、Y 侧未命中。受上游命中随机性影响，本样本量不足以判定跨题共享，需增加 Y 侧重复次数",
+      "cross_question_hit": null,
+      "hit_count": 4,
+      "observed_count": 5,
+      "prompt_tokens": 3627
+    }
+  }
+}

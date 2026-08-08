@@ -9,14 +9,23 @@
 代价是**顺序是复刻出来的**，与 `final_answer()` 的真实顺序存在漂移风险。下面每一步都
 标注了它对应的源码行号，改动 agent.py 时应当一并核对：
 
-    agent.py:1210  _get_llm_client()
-    agent.py:1214  _detect_language(query)          language == "auto" 时
-    agent.py:1222  recall_all_conclusions(query)
-    agent.py:1229  classify_skill(query)            LLM 调用 #1
-    agent.py:1232  load_skill(name)                 每个命中的 SOP 一次
-    agent.py:1237  agent_plan(...)                  LLM 调用 #2
-    agent.py:1245  _adjust_format(plan)
-    agent.py:1247  第一条 yield ← 首次反馈发生在这里
+    agent.py:1332  _detect_language(query)          language == "auto" 时
+    agent.py:1335  第一条 yield（受理回执）← 首次反馈发生在这里，不等任何 LLM
+    agent.py:1337  _get_llm_client()
+    agent.py:1345  recall_all_conclusions(query)
+    agent.py:1352  classify_skill(query)            LLM 调用 #1
+    agent.py:1355  load_skill(name)                 每个命中的 SOP 一次
+    agent.py:1365  build_trajectory(...)            纯字符串拼装，不含 LLM
+    agent.py:1382  _llm_decide(messages)            LLM 调用 #2（第 1 轮决策）
+    agent.py:1421  「正在调用 …」yield ← 首个实质判断发生在这里
+
+本脚本量的是**首个实质判断**这一刻，不是首次反馈。自 `448b831` 起第一条 SSE 是受理
+回执，发生在任何 LLM 调用之前，恒为毫秒级常数，量它没有意义。
+
+增量二把 agent_plan 与 should_continue 合并成了一个决策操作，但**这不会缩短这条路径**：
+两者从来不是都在首个判断之前，should_continue 跑在工具执行之后。合并省下的是多轮请求
+里的第二份 system prompt 与第二套工具描述，不是这里的往返次数。这条路径上仍然是两次
+LLM 调用（classify_skill + 第 1 轮决策），要减少只能砍掉 classify_skill（增量三评估）。
 
 外加 `chat_rt.py` 在进入 `final_answer()` 之前做的：
 
@@ -50,15 +59,15 @@ def _load_pipeline():
     """导入被测函数。必须在 PYTHONPATH 指向 backend/app 的前提下运行。"""
     try:
         from service.agent.agent import (  # noqa: E402
-            _adjust_format, _detect_language, _get_llm_client, agent_plan,
-            classify_skill, load_skill, recall_all_conclusions,
+            _detect_language, _get_llm_client, _llm_decide, _tool_call_fields,
+            build_trajectory, classify_skill, load_skill, recall_all_conclusions,
         )
         from service.memory.profile import recall_user_profile  # noqa: E402
         return dict(
-            adjust_format=_adjust_format, detect_language=_detect_language,
-            get_llm_client=_get_llm_client, agent_plan=agent_plan,
-            classify_skill=classify_skill, load_skill=load_skill,
-            recall_all_conclusions=recall_all_conclusions,
+            detect_language=_detect_language, get_llm_client=_get_llm_client,
+            llm_decide=_llm_decide, tool_call_fields=_tool_call_fields,
+            build_trajectory=build_trajectory, classify_skill=classify_skill,
+            load_skill=load_skill, recall_all_conclusions=recall_all_conclusions,
             recall_user_profile=recall_user_profile,
         )
     except ImportError as e:
@@ -118,12 +127,16 @@ def time_one(question: str, fns: dict) -> dict:
             sops.append(sop)
     sw.lap("load_skill")
 
-    plan = fns["agent_plan"](question, user_profile=None, skill_sops=sops,
-                             recalled_conclusions=conclusions)
-    sw.lap("agent_plan (LLM #2)")
+    messages = fns["build_trajectory"](question, user_profile=None, skill_sops=sops,
+                                       recalled_conclusions=conclusions)
+    sw.lap("build_trajectory")
 
-    actions = fns["adjust_format"](plan) if plan else []
-    sw.lap("_adjust_format")
+    msg = fns["llm_decide"](messages, stage="plan")
+    sw.lap("decide round 1 (LLM #2)")
+
+    actions = [f for f in (fns["tool_call_fields"](tc) for tc in (msg.tool_calls or []))
+               if f is not None]
+    sw.lap("parse tool_calls")
 
     return {
         "question": question,
@@ -131,7 +144,7 @@ def time_one(question: str, fns: dict) -> dict:
         "total": sum(v for _, v in sw.marks),
         "skill_hits": hits,
         "n_actions": len(actions),
-        "tools": sorted({a["action_name"] for a in actions}) if actions else [],
+        "tools": sorted({name for name, _ in actions}) if actions else [],
         "error": err,
     }
 
@@ -181,7 +194,7 @@ def main():
             done += 1
             print(f"[{done}/{total}] {item['id']:<10} 合计 {r['total']:.3f}s  "
                   f"classify {r['stages']['classify_skill (LLM #1)']:.3f}s  "
-                  f"plan {r['stages']['agent_plan (LLM #2)']:.3f}s  "
+                  f"decide {r['stages']['decide round 1 (LLM #2)']:.3f}s  "
                   f"工具={','.join(r['tools']) or '-'}")
 
     # 阶段名与顺序取自实际记录，保证与 time_one() 里的打点顺序一致

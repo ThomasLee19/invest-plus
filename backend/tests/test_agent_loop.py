@@ -20,6 +20,7 @@ domain words in the fixture data don't affect what's being verified — the
 loop-mechanism and error-propagation behavior is domain-agnostic by
 construction. Finance-domain end-to-end scenarios belong in Phase 5.
 """
+import copy
 import json
 import os
 import sys
@@ -147,142 +148,246 @@ def _import_index_finance_module():
     return module
 
 
-def _tool_calls_returning(*calls, content: str = "") -> tuple[list, str]:
-    """Build a fake `_llm_tools` return value: (tool_calls, content).
+def _decision(*calls, content: str = ""):
+    """Build a fake `_llm_decide` return value: an assistant message object.
 
-    Each positional argument is a (tool_name, query) pair. Passing none
-    simulates the model choosing not to call anything, which is how the loop
-    now signals "sufficient" — there is no boolean field to parse any more,
-    the absence of tool calls *is* the signal.
+    Each positional argument is a (tool_name, query) pair. Passing none simulates
+    the model choosing not to call anything, which is how the merged loop signals
+    "done" — there is no boolean field to parse, the absence of tool calls *is*
+    the signal, on the first round and on every round after it alike.
     """
     tool_calls = [
         types.SimpleNamespace(
+            id=f"call_{i}",
             function=types.SimpleNamespace(
                 name=name, arguments=json.dumps({"query": q}, ensure_ascii=False)
-            )
+            ),
         )
-        for name, q in calls
+        for i, (name, q) in enumerate(calls)
     ]
-    return tool_calls, content
+    return types.SimpleNamespace(content=content, tool_calls=tool_calls)
 
 
-class ShouldContinueTests(unittest.TestCase):
-    """US-5: should_continue() against mocked LLM responses, no live calls.
+def _drive_loop(test, decisions, process_actions_result=None, query="test query",
+                language="en", **final_answer_kwargs):
+    """Run final_answer() with _llm_decide mocked to return `decisions` in order.
 
-    Continue-vs-stop is now read off whether the model emitted tool calls,
-    so the tests that used to guard the JSON parsing layer (malformed output,
-    missing `sufficient` field, the string "false" being truthy) no longer
-    describe anything real. They are replaced below by the failure modes the
-    tool-call path actually has: the call itself raising, and individual
-    tool calls being unusable.
+    Returns (events, trajectories). `trajectories` holds a deep copy of the
+    messages list as it looked at each decision call — deep, because the loop
+    appends to the same list in place, so a shallow reference would show every
+    round the final state.
+    """
+    it = iter(decisions)
+    trajectories = []
+
+    def _fake_decide(messages, stage):
+        trajectories.append(copy.deepcopy(messages))
+        try:
+            return next(it)
+        except StopIteration:
+            test.fail("loop asked for more decisions than the test supplied")
+
+    if process_actions_result is None:
+        def _fake_process(actions, *a, **kw):
+            return [{"提问": actions[0]["prompt"], "结果": f"result for {actions[0]['prompt']}"}]
+    else:
+        _fake_process = process_actions_result
+
+    fake_chunk = types.SimpleNamespace(choices=[types.SimpleNamespace(
+        delta=types.SimpleNamespace(content="done", reasoning_content=None),
+        finish_reason="stop",
+    )])
+
+    with patch.object(agent, "_llm_decide", _fake_decide), \
+         patch.object(agent, "process_actions", _fake_process), \
+         patch.object(agent, "classify_skill", return_value=[]), \
+         patch.object(agent, "recall_all_conclusions", return_value=[]), \
+         patch.object(agent, "OpenAI") as mocked_openai_cls:
+        mocked_openai_cls.return_value.chat.completions.create.return_value = [fake_chunk]
+        events = list(agent.final_answer(query, language=language, **final_answer_kwargs))
+
+    return events, trajectories
+
+
+class ToolCallFieldsTests(unittest.TestCase):
+    """_tool_call_fields() is the single place a raw tool call is validated.
+
+    It replaces the parsing layer that used to sit between the model's JSON text
+    and process_actions(). The failure modes it has to absorb are the ones the
+    native path actually produces: a hallucinated tool name, and arguments that
+    are not parseable JSON.
     """
 
-    def test_sufficient_when_no_tool_calls_requested(self):
-        memory = [{"提问": "AAPL EPS", "结果": "AAPL diluted EPS: 6.42"}]
-        with patch.object(
-            agent, "_llm_tools",
-            return_value=_tool_calls_returning(content="已获得完整的每股收益数据，足以回答。"),
-        ) as mocked:
-            decision = agent.should_continue("苹果最新每股收益多少", memory)
-            mocked.assert_called_once()
+    def test_wellformed_call_yields_name_and_query(self):
+        tc = _decision(("rag_search", " spaced query ")).tool_calls[0]
+        self.assertEqual(agent._tool_call_fields(tc), ("rag_search", "spaced query"))
 
-        self.assertTrue(decision["sufficient"])
-        self.assertEqual(decision["actions"], [])
-        self.assertIn("每股收益", decision["rationale"])
+    def test_unknown_tool_name_is_rejected(self):
+        """A hallucinated name must not reach process_actions(), which dispatches
+        on action_name and has no branch for unknown tools."""
+        tc = _decision(("pokeapi_query", "garchomp stats")).tool_calls[0]
+        self.assertIsNone(agent._tool_call_fields(tc))
 
-    def test_not_sufficient_returns_retry_action_on_empty_result(self):
-        memory = [{"提问": "AAPL 最新合作新闻", "结果": []}]
-        with patch.object(
-            agent, "_llm_tools",
-            return_value=_tool_calls_returning(
-                ("web_search", "Apple latest partnership announcement"),
-                content="rag_search 未返回任何相关内容，需要补充网络搜索。",
-            ),
-        ):
-            decision = agent.should_continue("苹果最近有什么合作", memory)
+    def test_unparseable_arguments_are_rejected(self):
+        tc = types.SimpleNamespace(
+            id="call_x",
+            function=types.SimpleNamespace(name="web_search", arguments="{not json"),
+        )
+        self.assertIsNone(agent._tool_call_fields(tc))
 
-        self.assertFalse(decision["sufficient"])
-        self.assertEqual(len(decision["actions"]), 1)
-        self.assertEqual(decision["actions"][0]["action_name"], "web_search")
-        self.assertIn("rag_search", decision["rationale"])
+    def test_blank_query_is_rejected(self):
+        tc = _decision(("rag_search", "   ")).tool_calls[0]
+        self.assertIsNone(agent._tool_call_fields(tc))
 
-    def test_reacts_to_tool_error_entry_in_memory(self):
-        memory = [{
-            "提问": "AAPL price",
-            "结果": "[工具调用失败] finance_query: Connection timeout",
-            "错误": True,
-        }]
-        with patch.object(
-            agent, "_llm_tools",
-            return_value=_tool_calls_returning(
-                ("finance_query", "AAPL price"),
-                content="finance_query 调用失败（超时），需要重试。",
-            ),
-        ):
-            decision = agent.should_continue("苹果现在股价多少", memory)
 
-        self.assertFalse(decision["sufficient"])
-        self.assertTrue(any(a["action_name"] == "finance_query" for a in decision["actions"]))
-        self.assertIn("失败", decision["rationale"])
+class DecisionLoopTests(unittest.TestCase):
+    """The merged decision operation, driven through final_answer().
 
-    def test_multiple_calls_to_same_tool_group_into_one_action(self):
-        """Native tool calling emits one call per sub-question, but the
-        downstream contract (_adjust_format, process_actions) expects them
-        grouped under a single action_name with a prompts list."""
-        memory = [{"提问": "x", "结果": "y"}]
-        with patch.object(
-            agent, "_llm_tools",
-            return_value=_tool_calls_returning(
-                ("finance_query", "AAPL price"),
-                ("finance_query", "MSFT price"),
-                ("web_search", "market outlook"),
-            ),
-        ):
-            decision = agent.should_continue("对比苹果微软", memory)
+    agent_plan() and should_continue() used to be two functions with two system
+    prompts; continue-vs-stop was a field parsed out of the second one. Both are
+    now the same operation executed at different trajectory lengths, and the
+    signal is whether that call emitted tool calls.
+    """
 
-        by_name = {a["action_name"]: a["prompts"] for a in decision["actions"]}
-        self.assertEqual(by_name["finance_query"], ["AAPL price", "MSFT price"])
-        self.assertEqual(by_name["web_search"], ["market outlook"])
+    def test_no_tool_calls_on_first_round_goes_straight_to_answer(self):
+        events, traj = _drive_loop(self, [_decision(content="这不需要外部信息。")])
+        self.assertEqual(len(traj), 1, "should not have asked for a second decision")
+        self.assertFalse(any("正在调用" in e for e in events))
 
-    def test_llm_failure_falls_back_to_safe_stop(self):
-        memory = [{"提问": "x", "结果": "y"}]
-        with patch.object(agent, "_llm_tools", side_effect=RuntimeError("upstream 500")):
-            decision = agent.should_continue("test query", memory)
+    def test_tool_calls_then_stop_runs_exactly_two_rounds(self):
+        events, traj = _drive_loop(self, [
+            _decision(("rag_search", "q1")),
+            _decision(content="够了"),
+        ])
+        self.assertEqual(len(traj), 2)
+        self.assertTrue(any("正在调用 rag_search" in e for e in events))
 
-        self.assertTrue(decision["sufficient"])
-        self.assertEqual(decision["actions"], [])
-        self.assertIn("llm error", decision["rationale"])
+    def test_each_tool_call_gets_its_own_paired_tool_message(self):
+        """Grouping calls by name (the old _adjust_format contract) is not legal
+        here: the API requires one `tool` message per tool_call_id."""
+        _, traj = _drive_loop(self, [
+            _decision(("finance_query", "AAPL price"),
+                      ("finance_query", "MSFT price"),
+                      ("web_search", "market outlook")),
+            _decision(content="够了"),
+        ])
+        final = traj[-1]
+        tool_msgs = [m for m in final if m["role"] == "tool"]
+        self.assertEqual(len(tool_msgs), 3)
+        self.assertEqual(
+            [m["tool_call_id"] for m in tool_msgs], ["call_0", "call_1", "call_2"]
+        )
 
-    def test_unparseable_arguments_skip_that_call_without_crashing(self):
-        memory = [{"提问": "x", "结果": "y"}]
+    def test_invalid_call_still_gets_a_tool_message(self):
+        """Skipping the reply would leave a tool_call_id unanswered, which makes
+        the *next* request malformed as a whole, not just that one call."""
         broken = types.SimpleNamespace(
-            function=types.SimpleNamespace(name="web_search", arguments="{not json")
+            id="call_bad",
+            function=types.SimpleNamespace(name="web_search", arguments="{not json"),
         )
-        good = types.SimpleNamespace(
-            function=types.SimpleNamespace(
-                name="rag_search", arguments=json.dumps({"query": "usable"})
+        good = _decision(("rag_search", "usable")).tool_calls[0]
+        first = types.SimpleNamespace(content="", tool_calls=[broken, good])
+        _, traj = _drive_loop(self, [first, _decision(content="够了")])
+
+        final = traj[-1]
+        tool_msgs = [m for m in final if m["role"] == "tool"]
+        self.assertEqual([m["tool_call_id"] for m in tool_msgs], ["call_bad", "call_0"])
+        self.assertIn("无效", tool_msgs[0]["content"])
+
+    def test_all_calls_invalid_stops_instead_of_looping(self):
+        broken = types.SimpleNamespace(
+            id="call_bad",
+            function=types.SimpleNamespace(name="nope", arguments="{}"),
+        )
+        _, traj = _drive_loop(self, [types.SimpleNamespace(content="", tool_calls=[broken])])
+        self.assertEqual(len(traj), 1, "a round of only-invalid calls must not loop")
+
+    def test_decision_call_failure_stops_the_loop_without_raising(self):
+        def _boom(messages, stage):
+            raise RuntimeError("upstream 500")
+
+        fake_chunk = types.SimpleNamespace(choices=[types.SimpleNamespace(
+            delta=types.SimpleNamespace(content="done", reasoning_content=None),
+            finish_reason="stop",
+        )])
+        with patch.object(agent, "_llm_decide", _boom), \
+             patch.object(agent, "classify_skill", return_value=[]), \
+             patch.object(agent, "recall_all_conclusions", return_value=[]), \
+             patch.object(agent, "OpenAI") as cls:
+            cls.return_value.chat.completions.create.return_value = [fake_chunk]
+            events = list(agent.final_answer("test query", language="en"))
+        self.assertTrue(any("event: end" in e for e in events))
+
+
+class TrajectoryShapeTests(unittest.TestCase):
+    """The trajectory must be a growing message list, not a re-serialized blob.
+
+    This is the structural claim of the increment. Textbook experiment 2-3 names
+    text-formatting the history as one of the most destructive patterns; the
+    guard is that round N's messages are a strict prefix of round N+1's.
+    """
+
+    def test_round_n_is_a_strict_prefix_of_round_n_plus_one(self):
+        _, traj = _drive_loop(self, [
+            _decision(("rag_search", "q1")),
+            _decision(("web_search", "q2")),
+            _decision(content="够了"),
+        ])
+        self.assertEqual(len(traj), 3)
+        for earlier, later in zip(traj, traj[1:]):
+            self.assertEqual(
+                later[:len(earlier)], earlier,
+                "an earlier round's messages were rewritten, so the prefix is not stable",
             )
-        )
-        with patch.object(agent, "_llm_tools", return_value=([broken, good], "")):
-            decision = agent.should_continue("test query", memory)
 
-        self.assertEqual(len(decision["actions"]), 1)
-        self.assertEqual(decision["actions"][0]["action_name"], "rag_search")
+    def test_static_prefix_is_system_then_single_user_message(self):
+        _, traj = _drive_loop(self, [_decision(content="不需要")])
+        msgs = traj[0]
+        self.assertEqual(msgs[0]["role"], "system")
+        self.assertEqual(msgs[1]["role"], "user")
+        self.assertEqual(len(msgs), 2)
 
-    def test_unknown_tool_name_is_dropped(self):
-        """A hallucinated tool name must not reach process_actions(), which
-        dispatches on action_name and has no branch for unknown tools."""
-        memory = [{"提问": "x", "结果": "y"}]
-        with patch.object(
-            agent, "_llm_tools",
-            return_value=_tool_calls_returning(
-                ("pokeapi_query", "garchomp stats"),
-                ("rag_search", "real one"),
-            ),
-        ):
-            decision = agent.should_continue("test query", memory)
+    def test_query_never_reappears_in_a_later_user_message(self):
+        """The old loop rebuilt a user message each round containing the query
+        and the whole serialized memory. There must be exactly one user message."""
+        _, traj = _drive_loop(self, [
+            _decision(("rag_search", "q1")),
+            _decision(("web_search", "q2")),
+            _decision(content="够了"),
+        ], query="独特查询字符串")
+        final = traj[-1]
+        user_msgs = [m for m in final if m["role"] == "user"]
+        self.assertEqual(len(user_msgs), 1)
+        self.assertIn("独特查询字符串", user_msgs[0]["content"])
 
-        self.assertEqual([a["action_name"] for a in decision["actions"]], ["rag_search"])
+    def test_tool_results_ride_in_tool_role_messages_not_user_messages(self):
+        def _fake_process(actions, *a, **kw):
+            return [{"提问": actions[0]["prompt"], "结果": "TOOL_RESULT_SENTINEL"}]
+
+        _, traj = _drive_loop(self, [
+            _decision(("rag_search", "q1")),
+            _decision(content="够了"),
+        ], process_actions_result=_fake_process)
+
+        final = traj[-1]
+        tool_msgs = [m for m in final if m["role"] == "tool"]
+        self.assertEqual(len(tool_msgs), 1)
+        self.assertIn("TOOL_RESULT_SENTINEL", tool_msgs[0]["content"])
+        for m in final:
+            if m["role"] == "user":
+                self.assertNotIn("TOOL_RESULT_SENTINEL", m["content"])
+
+    def test_assistant_message_carries_the_tool_calls_verbatim(self):
+        _, traj = _drive_loop(self, [
+            _decision(("rag_search", "q1")),
+            _decision(content="够了"),
+        ])
+        final = traj[-1]
+        assistant = [m for m in final if m["role"] == "assistant"][0]
+        self.assertEqual(len(assistant["tool_calls"]), 1)
+        self.assertEqual(assistant["tool_calls"][0]["id"], "call_0")
+        self.assertEqual(assistant["tool_calls"][0]["function"]["name"], "rag_search")
+
 
 
 class ProcessActionsErrorPropagationTests(unittest.TestCase):
@@ -308,10 +413,11 @@ class ProcessActionsErrorPropagationTests(unittest.TestCase):
 
 
 class ProcessActionsDedupPersistenceTests(unittest.TestCase):
-    """L4: process_actions()'s dedup set must be able to persist across
-    multiple calls (Act + each Reflect iteration within one chat turn) when
-    the caller shares a single `seen` set, instead of being recreated fresh
-    on every call."""
+    """L4 + increment 2: process_actions() still accepts a caller-supplied `seen`
+    set (its own unit contract, exercised below), but final_answer() no longer
+    supplies one — the two dedup layers it used to maintain across Act and every
+    Reflect round were removed when the trajectory became real.
+    """
 
     def test_shared_seen_dedups_identical_action_across_separate_calls(self):
         actions = [{"action_name": "finance_query", "prompt": "AAPL price"}]
@@ -334,143 +440,52 @@ class ProcessActionsDedupPersistenceTests(unittest.TestCase):
         self.assertEqual(len(first), 1)
         self.assertEqual(len(second), 1)
 
-    def test_final_answer_reflection_loop_does_not_duplicate_identical_supplementary_action(self):
-        # should_continue keeps re-requesting the exact same finance_query
-        # action that Act already ran. Two things must hold (debug/
-        # 26_7_4_debug_4.md Medium#1): (a) the real process_actions() dedup
-        # (not mocked here) must ensure the action's result lands in memory
-        # only once, and (b) the reflect loop itself must recognize the
-        # repeated (action_name, prompt) *before* yielding a '补充调用' SSE
-        # message or re-invoking should_continue, so the user never sees a
-        # duplicate "补充调用" prompt and should_continue isn't re-queried for
-        # a decision that can't produce new information (previously this
-        # spun for up to MAX_REFLECTION_ITERATIONS, yielding one duplicate
-        # message per wasted round).
-        decisions = [
-            {"sufficient": False, "rationale": "需要更多数据", "actions": [
-                {"action_name": "finance_query", "prompts": ["AAPL price"]}
-            ]},
-            {"sufficient": False, "rationale": "还是需要同样的数据", "actions": [
-                {"action_name": "finance_query", "prompts": ["AAPL price"]}
-            ]},
-            {"sufficient": True, "rationale": "已足够", "actions": []},
-        ]
-        call_count = {"n": 0}
+    def test_final_answer_no_longer_shares_a_dedup_set_across_rounds(self):
+        """Increment 2 removed both dedup layers (seen_actions / seen_prompts).
 
-        def _fake_should_continue(query, memory):
-            decision = decisions[call_count["n"]]
-            call_count["n"] += 1
-            return decision
+        The load-bearing claim of the increment is that repeated tool triggering
+        will not come back once the trajectory is real, because the model can now
+        see what it already asked and what came back — rather than facing a blob
+        of re-serialized text that hides its own history.
 
-        fake_chunk = types.SimpleNamespace(
-            choices=[types.SimpleNamespace(
-                delta=types.SimpleNamespace(content="done", reasoning_content=None),
-                finish_reason="stop",
-            )]
+        What a mocked test can honestly guard is only the structural half: that
+        the dedup is genuinely gone. Whether repeats actually stay away is a
+        property of the live model, and asserting it against a scripted mock
+        would just be the test answering its own question. That half is settled
+        by the routing eval, and its verdict is recorded either way.
+        """
+        seen_kwargs = []
+
+        def _fake_process(actions, *a, **kw):
+            seen_kwargs.append(kw.get("seen"))
+            return [{"提问": actions[0]["prompt"], "结果": "r"}]
+
+        _drive_loop(self, [
+            _decision(("finance_query", "AAPL price")),
+            _decision(("finance_query", "AAPL price")),
+            _decision(content="够了"),
+        ], process_actions_result=_fake_process)
+
+        self.assertEqual(len(seen_kwargs), 2)
+        self.assertTrue(
+            all(s is None for s in seen_kwargs),
+            "final_answer must no longer hand process_actions a shared dedup set",
         )
 
-        # Patch _get_llm_client() directly (as its own docstring recommends)
-        # rather than the OpenAI class: _get_llm_client() caches its client in
-        # a module-level global on first use, so patching `agent.OpenAI` here
-        # would have no effect if an earlier test in this same process
-        # already populated that cache -- this sidesteps that hazard entirely.
-        captured = {}
-
-        def _fake_create(**kwargs):
-            captured["messages"] = kwargs["messages"]
-            return [fake_chunk]
-
-        fake_client = types.SimpleNamespace(
-            chat=types.SimpleNamespace(
-                completions=types.SimpleNamespace(create=_fake_create)
-            )
-        )
-
-        with patch.object(agent, "agent_plan", return_value=[{"action_name": "finance_query", "prompts": ["AAPL price"]}]), \
-             patch.object(agent, "finance_tool", return_value="AAPL: $200"), \
-             patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
-             patch.object(agent, "_get_llm_client", return_value=fake_client):
-            events = list(agent.final_answer("AAPL 怎么样", language="en"))
-
-        supplementary_msgs = [e for e in events if "补充调用" in e]
-        self.assertEqual(
-            len(supplementary_msgs), 0,
-            "the re-requested action was already fetched in the Act phase, so "
-            "no '补充调用' message should ever be yielded for it",
-        )
-        self.assertEqual(
-            call_count["n"], 1,
-            "should_continue must not be re-invoked once its only requested "
-            "action is a repeat of something already in memory -- the loop "
-            "must break instead of spinning on a decision that can't change",
-        )
-
-        prompt_text = captured["messages"][0]["content"]
-        self.assertEqual(
-            prompt_text.count("AAPL: $200"), 1,
-            "the identical re-requested action must appear only once in the final memory",
-        )
-
-    def test_reflect_loop_breaks_early_on_repeated_identical_action_across_iterations(self):
-        # Unlike the test above (repeat of the *Act*-phase action), this
-        # covers a repeat introduced *within* the reflect loop itself: two
-        # separate reflect iterations both ask for the same brand-new
-        # (never seen in Act) action. The second occurrence must be filtered
-        # out before yielding/executing, and the loop must break instead of
-        # continuing to a third should_continue() call.
-        decisions = [
-            {"sufficient": False, "rationale": "第一次要 MSFT", "actions": [
-                {"action_name": "finance_query", "prompts": ["MSFT price"]}
-            ]},
-            {"sufficient": False, "rationale": "又要一次同样的 MSFT", "actions": [
-                {"action_name": "finance_query", "prompts": ["MSFT price"]}
-            ]},
-            {"sufficient": True, "rationale": "不应该被调用到这里", "actions": []},
-        ]
-        call_count = {"n": 0}
-
-        def _fake_should_continue(query, memory):
-            decision = decisions[call_count["n"]]
-            call_count["n"] += 1
-            return decision
-
-        fake_chunk = types.SimpleNamespace(
-            choices=[types.SimpleNamespace(
-                delta=types.SimpleNamespace(content="done", reasoning_content=None),
-                finish_reason="stop",
-            )]
-        )
-        fake_client = types.SimpleNamespace(
-            chat=types.SimpleNamespace(
-                completions=types.SimpleNamespace(create=lambda **kw: [fake_chunk])
-            )
-        )
-
-        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
-             patch.object(agent, "process_actions") as mocked_process_actions, \
-             patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
-             patch.object(agent, "_get_llm_client", return_value=fake_client):
-            mocked_process_actions.side_effect = [
-                [{"提问": "q", "结果": "act-result"}],       # Act call
-                [{"提问": "MSFT price", "结果": "$400"}],     # 1st reflect call (new action)
-            ]
-            events = list(agent.final_answer("MSFT 怎么样", language="en"))
-
-        supplementary_msgs = [e for e in events if "补充调用" in e]
-        self.assertEqual(
-            len(supplementary_msgs), 1,
-            "the first MSFT request is genuinely new and should be yielded "
-            "once; the second, identical one must not be",
-        )
-        self.assertEqual(
-            call_count["n"], 2,
-            "should_continue runs once for the first (new) MSFT request, then "
-            "the loop breaks on the second (duplicate) request instead of "
-            "calling should_continue a third time",
-        )
-        # process_actions must only have been invoked for Act + the one
-        # genuinely-new reflect action -- never for the duplicate.
-        self.assertEqual(mocked_process_actions.call_count, 2)
+    def test_repeated_request_is_executed_rather_than_silently_dropped(self):
+        """With the filter gone, a repeat is carried out and shows up twice in
+        the trajectory. That is the intended exposure: the previous result is
+        sitting right there in a tool message for the model to read, so a second
+        identical request is now the model's decision to answer for, not a
+        symptom the loop papers over."""
+        _, traj = _drive_loop(self, [
+            _decision(("finance_query", "AAPL price")),
+            _decision(("finance_query", "AAPL price")),
+            _decision(content="够了"),
+        ])
+        tool_msgs = [m for m in traj[-1] if m["role"] == "tool"]
+        self.assertEqual(len(tool_msgs), 2)
+        self.assertEqual(tool_msgs[0]["content"], tool_msgs[1]["content"])
 
 
 class DetectLanguageTests(unittest.TestCase):
@@ -501,83 +516,71 @@ class DetectLanguageTests(unittest.TestCase):
 
 
 class ReflectionLoopTests(unittest.TestCase):
-    """US-2/US-4: the bounded while-loop in final_answer() must be genuinely
-    LLM-driven (iterates more than once when asked to, stops on sufficient,
-    and distinguishes a safety-cap stop from an LLM-signaled stop), and must
-    stream should_continue()'s rationale into the existing SSE content field.
+    """US-2/US-4: the bounded loop in final_answer() must be genuinely
+    LLM-driven (iterates more than once when asked to, stops when the model
+    stops calling tools, and distinguishes a safety-cap stop from a
+    model-signaled stop), and must stream the model's rationale into the
+    existing SSE content field.
 
-    v5 note: a later bug fix made final_answer() skip Act+Reflect entirely
-    when agent_plan() returns None/empty (agent.py's `if actions:` guard) —
-    previously an identity/history/off-topic query's null plan didn't stop
-    should_continue() from independently deciding to search anyway. These
-    reflect-loop mechanics tests used to exploit `plan_result=None` as a
-    shortcut to skip straight to a mocked process_actions()/should_continue()
-    fixture; that shortcut is now a real no-op by design, so
-    _drive_final_answer() defaults to a minimal well-formed plan instead.
+    Increment 2 note: the plan call and the reflect call are now one operation
+    executed at different trajectory lengths, so there is no longer a
+    should_continue() to mock separately. _drive_final_answer() below keeps the
+    old (plan_result, decisions) calling convention and maps it onto the single
+    ordered decision list the merged loop consumes — round 1 is what used to be
+    Plan, every round after it is what used to be Reflect.
     """
 
     def _drive_final_answer(self, decisions, plan_result=None, process_actions_result=None):
-        """Run final_answer() with agent_plan/process_actions/should_continue
-        mocked, and the final-answer streaming LLM call stubbed to emit a
-        single completed chunk immediately. `decisions` is a list of dicts
-        consumed one per should_continue() call, in order. `process_actions_result`
-        overrides the memory process_actions() returns (defaults to the
-        original string-only fixture used by the pre-existing tests below).
-        `plan_result` defaults to a minimal single-action plan (not None) so
-        Act+Reflect actually runs — these tests exercise the reflect loop's
-        iteration/logging mechanics via the mocked should_continue/
-        process_actions, so the plan's specific content doesn't matter, only
-        that it's non-empty."""
         if plan_result is None:
             plan_result = [{"action_name": "rag_search", "prompts": ["q"]}]
-        decisions_iter = iter(decisions)
 
-        def _fake_should_continue(query, memory):
-            return next(decisions_iter)
+        def _pairs(grouped):
+            return [
+                (a["action_name"], p)
+                for a in (grouped or [])
+                for p in (a.get("prompts") or [])
+            ]
 
-        fake_chunk = types.SimpleNamespace(
-            choices=[types.SimpleNamespace(
-                delta=types.SimpleNamespace(content="done", reasoning_content=None),
-                finish_reason="stop",
-            )]
-        )
+        rounds = [_decision(*_pairs(plan_result))]
+        for d in decisions:
+            rounds.append(_decision(*_pairs(d.get("actions")), content=d.get("rationale", "")))
 
         if process_actions_result is None:
-            process_actions_result = [{"提问": "q", "结果": "r"}]
+            def _fake_process(actions, *a, **kw):
+                return [{"提问": "q", "结果": "r"}]
+        else:
+            fixed = process_actions_result
 
-        with patch.object(agent, "agent_plan", return_value=plan_result), \
-             patch.object(agent, "process_actions", return_value=process_actions_result), \
-             patch.object(agent, "should_continue", side_effect=_fake_should_continue), \
-             patch.object(agent, "OpenAI") as mocked_openai_cls:
-            mocked_client = mocked_openai_cls.return_value
-            mocked_client.chat.completions.create.return_value = [fake_chunk]
-            events = list(agent.final_answer("test query", language="en"))
+            def _fake_process(actions, *a, **kw):
+                return list(fixed)
 
+        events, _ = _drive_loop(self, rounds, process_actions_result=_fake_process)
         return events
 
     def test_loop_iterates_multiple_times_when_llm_keeps_requesting_actions(self):
+        # Tool names here must be real ones. A hallucinated name is now rejected
+        # by _tool_call_fields() before it can produce a "补充调用" event at all,
+        # so the old pokeapi_query fixture would have measured the rejection path
+        # rather than the iteration it is named after.
         decisions = [
-            {"sufficient": False, "rationale": "需要补充种族值数据", "actions": [
-                {"action_name": "pokeapi_query", "prompts": ["garchomp stats"]}
+            {"sufficient": False, "rationale": "需要补充基本面数据", "actions": [
+                {"action_name": "finance_query", "prompts": ["AAPL fundamentals"]}
             ]},
-            {"sufficient": False, "rationale": "还需要确认最新 meta 排名", "actions": [
-                {"action_name": "web_search", "prompts": ["garchomp tier ranking 2024"]}
+            {"sufficient": False, "rationale": "还需要确认最新新闻", "actions": [
+                {"action_name": "web_search", "prompts": ["AAPL latest news"]}
             ]},
             {"sufficient": True, "rationale": "现在信息已经完整", "actions": []},
         ]
         events = self._drive_final_answer(decisions)
 
         agent_events = [e for e in events if '"role": "agent"' in e]
-        # Two reflection iterations actually requested actions (the third just
-        # signals sufficient with no action), so we expect 2 streamed
-        # "补充调用" messages.
         followup_events = [e for e in agent_events if "补充调用" in e]
         self.assertEqual(len(followup_events), 2)
 
     def test_rationale_streamed_into_existing_content_field(self):
         decisions = [
-            {"sufficient": False, "rationale": "需要补充种族值数据", "actions": [
-                {"action_name": "pokeapi_query", "prompts": ["garchomp stats"]}
+            {"sufficient": False, "rationale": "需要补充基本面数据", "actions": [
+                {"action_name": "finance_query", "prompts": ["AAPL fundamentals"]}
             ]},
             {"sufficient": True, "rationale": "信息已足够", "actions": []},
         ]
@@ -587,79 +590,27 @@ class ReflectionLoopTests(unittest.TestCase):
         self.assertEqual(len(followup_events), 1)
         payload = json.loads(followup_events[0].split("data: ", 1)[1].strip())
         self.assertEqual(payload["role"], "agent")
-        self.assertIn("需要补充种族值数据", payload["content"])
+        self.assertIn("需要补充基本面数据", payload["content"])
         self.assertNotIn("thinking", payload)  # no new schema field added
 
-    def test_llm_signaled_stop_does_not_hit_safety_cap(self):
-        decisions = [
-            {"sufficient": True, "rationale": "信息已足够，第一轮就判定停止", "actions": []},
-        ]
-        # agent_plan must return a real (non-empty) plan here: a None/empty
-        # plan now short-circuits Act+Reflect entirely (see class docstring),
-        # which would make should_continue() never get called at all rather
-        # than being called once and stopping on its own — the exact
-        # distinction this test exists to verify.
-        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
-             patch.object(agent, "process_actions", return_value=[]), \
-             patch.object(agent, "should_continue", side_effect=iter(decisions)) as mocked_sc, \
-             patch.object(agent, "OpenAI") as mocked_openai_cls:
-            fake_chunk = types.SimpleNamespace(
-                choices=[types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content="done", reasoning_content=None),
-                    finish_reason="stop",
-                )]
-            )
-            mocked_client = mocked_openai_cls.return_value
-            mocked_client.chat.completions.create.return_value = [fake_chunk]
-            list(agent.final_answer("test query", language="en"))
+    def test_model_signaled_stop_does_not_hit_safety_cap(self):
+        """Round 1 asks for a tool, round 2 stops. Exactly two decision calls —
+        the loop forces no extra iterations of its own."""
+        decisions = [{"sufficient": True, "rationale": "信息已足够，一轮就停", "actions": []}]
+        rounds = [_decision(("rag_search", "q")), _decision(content=decisions[0]["rationale"])]
+        _, traj = _drive_loop(self, rounds)
+        self.assertEqual(len(traj), 2)
 
-        # should_continue was called exactly once: the LLM stopped the loop on
-        # its first judgment, proving the loop doesn't force extra iterations.
-        self.assertEqual(mocked_sc.call_count, 1)
+    def test_safety_cap_is_hit_and_distinguishable_when_model_never_stops(self):
+        # Every round asks for a *different* prompt, so nothing but the cap can
+        # end the loop. Round 1 is the former Plan, so the total number of
+        # decision calls is MAX_DECISION_ROUNDS, not the old reflect-only count.
+        rounds = [_decision(("web_search", f"more info {i}")) for i in range(1, 21)]
 
-    def test_safety_cap_is_hit_and_distinguishable_when_llm_never_signals_sufficient(self):
-        # Always request more actions -> loop should hit MAX_REFLECTION_ITERATIONS
-        # and stop via the cap path, never via an LLM sufficient=True signal.
-        #
-        # Each reflect iteration asks for a *different* prompt ("more info 1",
-        # "more info 2", ...): the M1 fix (debug/26_7_4_debug_4.md) makes the
-        # loop break early once should_continue() repeats an identical
-        # (action_name, prompt) it already asked for, since re-asking the same
-        # question against unchanged memory can never produce new information.
-        # That early-break behavior is covered by its own test below
-        # (test_reflect_loop_breaks_early_on_repeated_identical_action); this
-        # test instead exercises the genuinely-never-satisfied case where the
-        # LLM keeps asking new (but still fruitless) questions every round, so
-        # the safety cap -- not the dedup break -- is what stops it.
-        decisions = [
-            {
-                "sufficient": False,
-                "rationale": "总是觉得不够",
-                "actions": [{"action_name": "web_search", "prompts": [f"more info {i}"]}],
-            }
-            for i in range(1, 11)  # more than enough to exhaust the cap
-        ]
+        with patch("builtins.print") as mocked_print:
+            _, traj = _drive_loop(self, rounds)
 
-        # See test_llm_signaled_stop_does_not_hit_safety_cap: agent_plan must
-        # return a real plan or Act+Reflect (and should_continue with it)
-        # never runs at all, which would trivially "pass" this test for the
-        # wrong reason (0 calls, not 5).
-        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
-             patch.object(agent, "process_actions", return_value=[{"提问": "q", "结果": "r"}]), \
-             patch.object(agent, "should_continue", side_effect=iter(decisions)) as mocked_sc, \
-             patch.object(agent, "OpenAI") as mocked_openai_cls, \
-             patch("builtins.print") as mocked_print:
-            fake_chunk = types.SimpleNamespace(
-                choices=[types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content="done", reasoning_content=None),
-                    finish_reason="stop",
-                )]
-            )
-            mocked_client = mocked_openai_cls.return_value
-            mocked_client.chat.completions.create.return_value = [fake_chunk]
-            list(agent.final_answer("test query", language="en"))
-
-        self.assertEqual(mocked_sc.call_count, 5)  # MAX_REFLECTION_ITERATIONS
+        self.assertEqual(len(traj), agent.MAX_DECISION_ROUNDS)
         cap_logs = [
             call for call in mocked_print.call_args_list
             if call.args and "安全上限" in str(call.args[0])
@@ -851,7 +802,6 @@ class BoundedMemoryTests(unittest.TestCase):
     def test_final_answer_prompt_uses_bounded_memory_not_raw(self):
         long_str = "z" * (agent._MAX_MEMORY_ENTRY_CHARS + 500)
         process_actions_result = [{"提问": "q", "结果": long_str}]
-        decisions = [{"sufficient": True, "rationale": "信息已足够", "actions": []}]
 
         fake_chunk = types.SimpleNamespace(
             choices=[types.SimpleNamespace(
@@ -871,9 +821,9 @@ class BoundedMemoryTests(unittest.TestCase):
                 completions=types.SimpleNamespace(create=mocked_create)
             )
         )
-        with patch.object(agent, "agent_plan", return_value=[{"action_name": "rag_search", "prompts": ["q"]}]), \
+        with patch.object(agent, "_llm_decide",
+                          side_effect=[_decision(("rag_search", "q")), _decision(content="够了")]), \
              patch.object(agent, "process_actions", return_value=process_actions_result), \
-             patch.object(agent, "should_continue", side_effect=iter(decisions)), \
              patch.object(agent, "_get_llm_client", return_value=fake_client):
             list(agent.final_answer("test query", language="en"))
 
@@ -1516,12 +1466,12 @@ class MergeStepAgentPlanContextTests(unittest.TestCase):
     def _capture_prompt(self, **plan_kwargs):
         captured = {}
 
-        def _fake_llm_tools(system, user, stage, tools=None):
-            captured["system"] = system
-            captured["prompt"] = user
-            return [], ""
+        def _fake_decide(messages, stage):
+            captured["system"] = messages[0]["content"]
+            captured["prompt"] = messages[1]["content"]
+            return types.SimpleNamespace(content="", tool_calls=[])
 
-        with patch.object(agent, "_llm_tools", _fake_llm_tools):
+        with patch.object(agent, "_llm_decide", _fake_decide):
             agent.agent_plan("AAPL 估值贵不贵，和同行比？", **plan_kwargs)
         return captured["prompt"]
 
@@ -1614,13 +1564,15 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         plan_seen = {}
 
         def _capture_plan(query, user_profile=None, skill_sops=None, recalled_conclusions=None):
+            # final_answer() 不再调用 agent_plan()——同一组上下文参数现在交给
+            # build_trajectory() 去拼装轨迹的首条 user 消息，捕获点随之前移。
             plan_seen["recalled_conclusions"] = recalled_conclusions
             plan_seen["user_profile"] = user_profile
             return None  # no actions => straight to Answer
 
         with patch.object(agent, "recall_all_conclusions", return_value=self._CONCL), \
              patch.object(agent, "classify_skill", return_value=[]), \
-             patch.object(agent, "agent_plan", side_effect=_capture_plan), \
+             patch.object(agent, "build_trajectory", side_effect=_capture_plan), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             list(agent.final_answer("AAPL 怎么样", language="zh",
                                     user_profile={"risk_preference": "moderate"}))
@@ -1638,7 +1590,7 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         captured = {}
         with patch.object(agent, "recall_all_conclusions", return_value=self._CONCL), \
              patch.object(agent, "classify_skill", return_value=[]), \
-             patch.object(agent, "agent_plan", return_value=None), \
+             patch.object(agent, "_llm_decide", return_value=_decision()), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             list(agent.final_answer("AAPL 怎么样", language="zh"))
         fp = captured["final_prompt"]
@@ -1650,7 +1602,7 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         captured = {}
         with patch.object(agent, "recall_all_conclusions", return_value=[]), \
              patch.object(agent, "classify_skill", return_value=[]), \
-             patch.object(agent, "agent_plan", return_value=None), \
+             patch.object(agent, "_llm_decide", return_value=_decision()), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             list(agent.final_answer("你好", language="zh"))
         self.assertNotIn("## 已知历史结论", captured["final_prompt"])
@@ -1662,13 +1614,15 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         plan_seen = {}
 
         def _capture_plan(query, user_profile=None, skill_sops=None, recalled_conclusions=None):
+            # final_answer() 不再调用 agent_plan()——同一组上下文参数现在交给
+            # build_trajectory() 去拼装轨迹的首条 user 消息，捕获点随之前移。
             plan_seen["skill_sops"] = skill_sops
-            return None
+            return [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}]
 
         with patch.object(agent, "recall_all_conclusions", return_value=[]), \
              patch.object(agent, "classify_skill", return_value=["valuation", "risk_scan"]), \
              patch.object(agent, "load_skill", return_value=None), \
-             patch.object(agent, "agent_plan", side_effect=_capture_plan), \
+             patch.object(agent, "build_trajectory", side_effect=_capture_plan), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             events = list(agent.final_answer("AAPL 有什么风险", language="zh"))
 
@@ -1684,13 +1638,15 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
             return {"name": name, "body": "估值SOP正文"} if name == "valuation" else None
 
         def _capture_plan(query, user_profile=None, skill_sops=None, recalled_conclusions=None):
+            # final_answer() 不再调用 agent_plan()——同一组上下文参数现在交给
+            # build_trajectory() 去拼装轨迹的首条 user 消息，捕获点随之前移。
             plan_seen["skill_sops"] = skill_sops
-            return None
+            return [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}]
 
         with patch.object(agent, "recall_all_conclusions", return_value=[]), \
              patch.object(agent, "classify_skill", return_value=["valuation", "risk_scan"]), \
              patch.object(agent, "load_skill", side_effect=_load), \
-             patch.object(agent, "agent_plan", side_effect=_capture_plan), \
+             patch.object(agent, "build_trajectory", side_effect=_capture_plan), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             list(agent.final_answer("AAPL 估值和风险", language="zh"))
 
@@ -1701,7 +1657,7 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         captured = {}
         with patch.object(agent, "recall_all_conclusions", side_effect=RuntimeError("db down")), \
              patch.object(agent, "classify_skill", return_value=[]), \
-             patch.object(agent, "agent_plan", return_value=None), \
+             patch.object(agent, "_llm_decide", return_value=_decision()), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
             events = list(agent.final_answer("AAPL 怎么样", language="zh"))
         self.assertTrue(any("event: end" in e for e in events))
@@ -1778,7 +1734,7 @@ class AnswerStreamCloseOffThreadTests(unittest.TestCase):
         return (
             patch.object(agent, "recall_all_conclusions", return_value=[]),
             patch.object(agent, "classify_skill", return_value=[]),
-            patch.object(agent, "agent_plan", return_value=None),
+            patch.object(agent, "_llm_decide", return_value=_decision()),
             patch.object(agent, "_get_llm_client", return_value=client),
         )
 

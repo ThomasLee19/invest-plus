@@ -1,0 +1,457 @@
+[
+  {
+    "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+    "session_id": "6b3b7406695944fa",
+    "elapsed": 111.01,
+    "events": 1494,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL 最新 10-K 的风险因素章节"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL 近期重大诉讼、监管处罚或退市预警信息"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL 客户集中度与供应商依赖情况"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / debt"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / cash flow"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / goodwill"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL 2025 Form 10-K Item 1A Risk Factors full text"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL 2026 Q2 10-Q risk factors update vs 2025 10-K"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL 2026 Q2 10-Q Item 1A Risk Factors full text"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Apple Q2 2026 earnings report risk factors summary"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL 2026 Q2 10-Q Item 7 Management's Discussion and Analysis risk discussion"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Apple Q2 2026 earnings call transcript risk factors summary"
+      ]
+    ],
+    "n_calls": 12,
+    "n_followup_calls": 6,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "对比一下苹果和微软的估值水平，哪个更贵，为什么？",
+    "session_id": "77fff768c1a14e86",
+    "elapsed": 92.26,
+    "events": 1293,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation / P/E / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/E / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation / P/B / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/B / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation / P/S / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/S / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation / EV/EBITDA / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / EV/EBITDA / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL dividend yield / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT dividend yield / fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL and MSFT 3-year historical P/E range"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "MSFT and AAPL industry peer group for valuation comparison"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL vs MSFT profitability metrics (gross margin, net margin, ROE) comparison"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL P/B ratio, P/S ratio, EV/EBITDA ratio as of 2026-08-09"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "MSFT P/B ratio, P/S ratio, EV/EBITDA ratio as of 2026-08-09"
+      ]
+    ],
+    "n_calls": 15,
+    "n_followup_calls": 2,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "微软最近有什么重要的业务变动，对它的估值有什么影响？",
+    "session_id": "67d300f68bfc4378",
+    "elapsed": 148.22,
+    "events": 1867,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/E / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/B / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / P/S / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / EV/EBITDA / fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT valuation / dividend yield / fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "MSFT 最近重大业务变动 2026年"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "微软 2026年收购或战略调整"
+      ],
+      [
+        "正在调用",
+        "web_search",
+        "Microsoft recent business developments August 2026"
+      ],
+      [
+        "正在调用",
+        "web_search",
+        "MSFT valuation analysis vs peers 2026"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT 10-Q 2026 Q4 management discussion valuation impact of gaming impairment and AI strategy"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT analyst consensus EPS revision after Build 2026 and June 2026 layoffs"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT analyst EPS forecast revision Q2 2026 after June layoffs and Build 2026 announcements"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "MSFT consensus EPS estimate change June-July 2026"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "MSFT consensus EPS estimate change June 2026 vs May 2026 analyst revisions"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT 2026 Q4 10-Q management discussion gaming impairment charge amount and tax treatment"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT 2026 Q4 gaming impairment charge amount and impact on EPS"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Microsoft Build 2026 analyst valuation impact assessment after June layoffs"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Microsoft Build 2026 analyst target price revision valuation impact"
+      ]
+    ],
+    "n_calls": 18,
+    "n_followup_calls": 9,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "分析一下 AAPL 现在的基本面，从盈利能力、估值和风险三个方面说",
+    "session_id": "5c215b29984d4ab1",
+    "elapsed": 76.31,
+    "events": 1152,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / financials"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / debt"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals / cash flow"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL 最新 10-K 的风险因素"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL 最新财报管理层讨论与分析（MD&A）"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL latest financial ratios including gross margin, operating margin, net margin, ROE, revenue growth YoY"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL 2025 10-K MD&A profitability analysis and key risk factors summary"
+      ]
+    ],
+    "n_calls": 7,
+    "n_followup_calls": 2,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "谷歌的云业务和微软云相比表现如何，各自的增长动能在哪里？",
+    "session_id": "e5d5ffa4efe84f98",
+    "elapsed": 115.5,
+    "events": 1494,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL P/E"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT P/E"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL P/S"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT P/S"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL EV/EBITDA"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT EV/EBITDA"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL gross margin"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT gross margin"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL net margin"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT net margin"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL ROE"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT ROE"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL revenue growth"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT revenue growth"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL net income growth"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT net income growth"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud vs Microsoft Azure market share 2026"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud vs Microsoft Azure competitive advantages and moats"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud vs Microsoft Azure recent strategic developments"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Google Cloud vs Microsoft Azure market share and growth rate 2026 Q1 official report"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "GOOGL Google Cloud revenue growth 2026 Q1 vs MSFT Azure revenue growth 2026 Q1"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "GOOGL Google Cloud profitability and margin trend 2025-2026"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "MSFT Azure gross margin and operating leverage 2026 Q1"
+      ]
+    ],
+    "n_calls": 25,
+    "n_followup_calls": 4,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  }
+]

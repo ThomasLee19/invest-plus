@@ -1,0 +1,157 @@
+[
+  {
+    "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+    "session_id": "40445f7ce44140c9",
+    "elapsed": 56.99,
+    "events": 854,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Apple latest 10-K risk factors"
+      ]
+    ],
+    "n_calls": 2,
+    "n_followup_calls": 0,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "对比一下苹果和微软的估值水平，哪个更贵，为什么？",
+    "session_id": "4b21b18c761d447e",
+    "elapsed": 59.34,
+    "events": 893,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Apple Inc. historical P/E valuation percentile last 5 years"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Microsoft Corporation historical P/E valuation percentile last 5 years"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "tech sector peer group for Apple and Microsoft valuation comparison"
+      ]
+    ],
+    "n_calls": 5,
+    "n_followup_calls": 0,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "微软最近有什么重要的业务变动，对它的估值有什么影响？",
+    "session_id": "ecb8016a7b974a8f",
+    "elapsed": 79.8,
+    "events": 1498,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Microsoft recent business changes 2025–2026"
+      ],
+      [
+        "正在调用",
+        "web_search",
+        "Microsoft major business developments August 2026"
+      ]
+    ],
+    "n_calls": 3,
+    "n_followup_calls": 0,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "分析一下 AAPL 现在的基本面，从盈利能力、估值和风险三个方面说",
+    "session_id": "8c90945cd3404fb3",
+    "elapsed": 51.65,
+    "events": 900,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL latest 10-K risk factors"
+      ]
+    ],
+    "n_calls": 3,
+    "n_followup_calls": 0,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "谷歌的云业务和微软云相比表现如何，各自的增长动能在哪里？",
+    "session_id": "92a83f1674134d05",
+    "elapsed": 65.2,
+    "events": 1136,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud vs Microsoft Azure market share 2025"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud and Azure growth drivers cloud infrastructure services"
+      ]
+    ],
+    "n_calls": 4,
+    "n_followup_calls": 0,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  }
+]

@@ -1,0 +1,242 @@
+[
+  {
+    "question": "苹果公司最近的财报里有哪些值得关注的风险因素？",
+    "session_id": "1b9a4be4ceef41fe",
+    "elapsed": 57.54,
+    "events": 843,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "rag_search",
+        "Apple latest 10-K risk factors"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Apple 2025 10-K Item 1A Risk Factors summary"
+      ]
+    ],
+    "n_calls": 3,
+    "n_followup_calls": 2,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "对比一下苹果和微软的估值水平，哪个更贵，为什么？",
+    "session_id": "e5b4b226c4414f59",
+    "elapsed": 68.53,
+    "events": 1011,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Apple Inc. and Microsoft Corporation industry comparison valuation metrics 2024-2026"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL PEG ratio"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "MSFT PEG ratio"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Apple and Microsoft historical P/E 3-year percentile comparison"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL EV/EBITDA"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "MSFT EV/EBITDA"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Apple and Microsoft P/B and P/S ratio comparison 2026"
+      ]
+    ],
+    "n_calls": 9,
+    "n_followup_calls": 6,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "微软最近有什么重要的业务变动，对它的估值有什么影响？",
+    "session_id": "bdbee4601b364401",
+    "elapsed": 94.13,
+    "events": 1518,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Microsoft recent business changes 2026"
+      ],
+      [
+        "正在调用",
+        "web_search",
+        "Microsoft major business developments August 2026"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "GOOGL fundamentals"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Microsoft historical P/E valuation 3-year range"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Microsoft vs Apple vs Google valuation comparison 2026"
+      ],
+      [
+        "补充调用",
+        "web_search",
+        "Microsoft P/E 3-year historical range 2023-2026"
+      ]
+    ],
+    "n_calls": 8,
+    "n_followup_calls": 5,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "分析一下 AAPL 现在的基本面，从盈利能力、估值和风险三个方面说",
+    "session_id": "52d5cdee64604a85",
+    "elapsed": 74.28,
+    "events": 1173,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "AAPL valuation"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "AAPL latest 10-K risk factors"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL latest 10-Q financial statements revenue net income gross margin"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL latest 10-Q cash flow statement operating cash flow free cash flow"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "AAPL latest 10-Q balance sheet total assets total liabilities current ratio"
+      ]
+    ],
+    "n_calls": 6,
+    "n_followup_calls": 3,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  },
+  {
+    "question": "谷歌的云业务和微软云相比表现如何，各自的增长动能在哪里？",
+    "session_id": "044b9cd576bb40f3",
+    "elapsed": 82.06,
+    "events": 1370,
+    "degraded": false,
+    "calls": [
+      [
+        "正在调用",
+        "finance_query",
+        "GOOGL fundamentals"
+      ],
+      [
+        "正在调用",
+        "finance_query",
+        "MSFT fundamentals"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud vs Microsoft Azure market share 2026"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Google Cloud growth drivers and competitive advantages"
+      ],
+      [
+        "正在调用",
+        "rag_search",
+        "Microsoft Azure growth drivers and competitive advantages"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "GOOGL revenue growth rate"
+      ],
+      [
+        "补充调用",
+        "finance_query",
+        "MSFT revenue growth rate"
+      ],
+      [
+        "补充调用",
+        "rag_search",
+        "Google Cloud and Microsoft Azure competitive positioning 2026"
+      ]
+    ],
+    "n_calls": 8,
+    "n_followup_calls": 3,
+    "exact_repeats": 0,
+    "approx_repeats": 0,
+    "repeated_pairs": []
+  }
+]

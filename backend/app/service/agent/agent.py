@@ -1207,11 +1207,30 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     history: 历史对话，格式 [{"user": "...", "assistant": "..."}]
     session_id: 当前 chat session，用于 rag_search 的检索范围限定（chat() 恒传入真实值）
     """
-    client = _get_llm_client()
-
-    # 语言提前确定：web_search 在 Act/Reflect 阶段就需要它来设置 Serper 的 hl 区域偏好
+    # 语言提前确定：web_search 在 Act/Reflect 阶段就需要它来设置 Serper 的 hl 区域偏好；
+    # 同时下面那条受理回执也要按语言选文案。_detect_language 是本地正则判断，实测耗时
+    # 为 0，放在第一条 yield 之前不会推迟反馈。
     if language == "auto":
         language = _detect_language(query)
+
+    # ── 第一级反馈：受理回执 ──
+    # 在任何 LLM 调用之前推出，让用户立刻知道请求已被接收。
+    #
+    # 为什么需要它：分阶段实测（eval/stage_timing.py）显示，到第一条「正在调用 …」为止
+    # 的耗时里，classify_skill 与 agent_plan 两次 LLM 往返合计占 99.9%，其中约三分之二
+    # 是「发起一次调用」本身的固定开销（网络往返 + 排队 + prefill），换模型或改提示词都
+    # 消不掉。也就是说「第一条消息必须携带真实规划结果」这个设计，天然把首次反馈锁死在
+    # 一次 LLM 往返之上，本机实测 2.8-4.4 秒。
+    #
+    # 拆成两级之后两个时刻各自有明确含义，也各自可优化：
+    #   第一级 受理回执    用户多久知道系统在动          不等 LLM，毫秒级
+    #   第二级 正在调用 …  系统多久拿出第一个实质判断    仍是两次 LLM 往返之后
+    # 这不是让系统变快，是把「已受理」与「已决策」两件不同的事分开告知，不再让用户对着
+    # 空白界面猜测请求有没有发出去。
+    ack = "已收到，正在分析…" if language == "zh" else "Received, analyzing…"
+    yield f"event: message\ndata: {json.dumps({'role': 'agent', 'content': ack}, ensure_ascii=False)}\n\n"
+
+    client = _get_llm_client()
 
     # ── 合流准备：记忆召回 + SOP 分类（Plan 之前一次性备好三路上下文）──
     # 调研结论只召回一次，同一份结果既喂给 agent_plan()（影响工具规划），也注入下方 Answer

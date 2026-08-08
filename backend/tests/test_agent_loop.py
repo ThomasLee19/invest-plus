@@ -1708,5 +1708,110 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
         self.assertNotIn("## 已知历史结论", captured["final_prompt"])
 
 
+def _answer_chunk(finish_reason=None):
+    return types.SimpleNamespace(choices=[types.SimpleNamespace(
+        delta=types.SimpleNamespace(content="tok", reasoning_content=None),
+        finish_reason=finish_reason,
+    )])
+
+
+class _RecordingCompletion:
+    """A fake answer stream that records which thread closed it.
+
+    `endless=True` never finishes, so the consumer can be abandoned while parked
+    mid-stream; `endless=False` emits one finishing chunk and stops.
+    """
+
+    def __init__(self, endless=True):
+        import threading
+        self._endless = endless
+        self.closed_by = None
+        self.closed = threading.Event()
+
+    def __iter__(self):
+        if not self._endless:
+            yield _answer_chunk(finish_reason="stop")
+            return
+        while True:
+            yield _answer_chunk()
+
+    def close(self):
+        import threading
+        self.closed_by = threading.get_ident()
+        self.closed.set()
+
+
+class AnswerStreamCloseOffThreadTests(unittest.TestCase):
+    """final_answer() must never close the LLM answer stream on the thread that
+    is tearing the generator down.
+
+    Why this is load-bearing: httpcore returns a connection to the pool under a
+    non-reentrant threading.Lock (PoolByteStream.close ->
+    `with self._pool._optional_thread_lock`). Starlette 1.3.1 never closes a
+    StreamingResponse's body_iterator — there is no aclose() in
+    StreamingResponse, and iterate_in_threadpool doesn't close the sync iterator
+    it wraps — so when a client disconnects mid-answer this generator is reaped
+    by the garbage collector, and its finally therefore runs at whatever moment
+    GC happens to fire. One such moment is inside httpcore's own
+    `PoolRequest(request)` allocation, which runs *while that thread holds the
+    pool lock*. Closing in place there asks the same thread for the same
+    non-reentrant lock a second time: permanent self-deadlock, with every other
+    thread waiting on a lock that is never released.
+
+    The test doesn't try to reproduce GC timing. It pins the invariant that
+    makes the GC case harmless: whoever runs the teardown, the close lands
+    somewhere else.
+    """
+
+    def _drive_until_streaming(self, gen):
+        """Pull events until the answer stream's own tokens start arriving, so
+        the generator is parked inside the streaming loop when we abandon it."""
+        for _ in range(50):
+            if "tok" in next(gen):
+                return
+        self.fail("never reached the answer streaming loop")
+
+    def _patched(self, completion):
+        client = types.SimpleNamespace(chat=types.SimpleNamespace(
+            completions=types.SimpleNamespace(create=lambda **kwargs: completion)
+        ))
+        return (
+            patch.object(agent, "recall_all_conclusions", return_value=[]),
+            patch.object(agent, "classify_skill", return_value=[]),
+            patch.object(agent, "agent_plan", return_value=None),
+            patch.object(agent, "_get_llm_client", return_value=client),
+        )
+
+    def test_abandoned_stream_is_not_closed_on_the_abandoning_thread(self):
+        import threading
+
+        completion = _RecordingCompletion(endless=True)
+        p1, p2, p3, p4 = self._patched(completion)
+        with p1, p2, p3, p4:
+            gen = agent.final_answer("AAPL 怎么样", language="zh")
+            self._drive_until_streaming(gen)
+            gen.close()  # stands in for GC reaping the abandoned generator
+
+        self.assertTrue(completion.closed.wait(timeout=5),
+                        "被遗弃的回答流最终仍然必须被关闭，否则连接会泄漏")
+        self.assertNotEqual(
+            completion.closed_by, threading.get_ident(),
+            "关闭动作发生在拆解生成器的线程上——这正是自锁死锁的成因",
+        )
+
+    def test_normally_exhausted_stream_is_still_closed(self):
+        """Offloading must not turn into leaking: the ordinary path closes too."""
+        import threading
+
+        completion = _RecordingCompletion(endless=False)
+        p1, p2, p3, p4 = self._patched(completion)
+        with p1, p2, p3, p4:
+            events = list(agent.final_answer("AAPL 怎么样", language="zh"))
+
+        self.assertTrue(any("event: end" in e for e in events))
+        self.assertTrue(completion.closed.wait(timeout=5),
+                        "正常读完的回答流也必须被关闭")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -59,6 +59,7 @@ def _current_date_str() -> str:
 # ── LLM / ES 客户端（进程内单例，避免每次调用重建）────────────────────────────
 
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 _llm_client = None
 _es_client = None
@@ -80,6 +81,30 @@ def _get_llm_client() -> OpenAI:
                     api_key=DASHSCOPE_API_KEY, base_url=DASHSCOPE_BASE_URL, timeout=60.0, max_retries=2
                 )
     return _llm_client
+
+
+_stream_closer = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm-stream-close")
+
+
+def _close_stream_off_thread(completion) -> None:
+    """把 LLM 流的关闭动作交给专用线程，绝不在调用方线程上原地执行。
+
+    原因是一个真实死锁。httpcore 归还连接时要拿连接池锁（PoolByteStream.close
+    → `with self._pool._optional_thread_lock`），这把锁是不可重入的
+    threading.Lock。而客户端中途断开时，Starlette 不会关闭 body_iterator——
+    1.3.1 的 StreamingResponse 里没有任何 aclose，iterate_in_threadpool 也不关
+    它包住的同步迭代器——所以这个生成器是被 GC 回收的，它的 finally 由此在
+    "任意一次内存分配"这个时机上运行。其中就包括 httpcore 自己在**持有池锁期间**
+    构造 PoolRequest 的那次分配。于是 close() 在同一个线程上第二次申请同一把锁，
+    永久自锁；池里其余等锁的线程全部跟着挂死，进程对外表现为整个后端卡住。
+
+    换到专用线程后，持锁的线程和关流的线程不再是同一个，自锁不成立。这里只提交
+    不等待：调用方可能正处在 GC 回收的 finally 里，阻塞它就等于把风险搬回原处。
+    """
+    try:
+        _stream_closer.submit(completion.close)
+    except Exception as e:  # 执行器已关闭等极端情况，不能让收尾路径抛出
+        print(f"[final_answer] 提交关闭回答流的任务失败：{e}")
 
 
 def _get_es():
@@ -1627,8 +1652,6 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
             yield f"event: message\ndata: {json.dumps(disclaimer_msg, ensure_ascii=False)}\n\n"
             yield "event: end\ndata: [DONE]\n\n"
     finally:
-        try:
-            completion.close()
-        except Exception as e:
-            # 关闭失败不能盖掉正在传播的异常（含 GeneratorExit），也不该阻断收尾。
-            print(f"[final_answer] 关闭回答流失败：{e}")
+        # 不能写成 completion.close()：这个 finally 在客户端断开时是由 GC 触发的，
+        # 原地关流会撞上不可重入的连接池锁。理由详见 _close_stream_off_thread()。
+        _close_stream_off_thread(completion)

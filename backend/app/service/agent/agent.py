@@ -1577,37 +1577,58 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     )
 
     ended = False
-    for chunk in completion:
-        # 某些兼容实现首个/末个 chunk 的 choices 可能为空列表，先安全取出
-        if not chunk.choices:
-            continue
-        choice = chunk.choices[0]
-        delta = choice.delta
+    # try/finally 的唯一目的是让这条流被确定性地关闭，绝不能交给垃圾回收。
+    #
+    # 客户端中途断开时（评测超时、用户关标签页），本生成器会在某个 yield 处收到
+    # GeneratorExit 而被丢弃，此时若不显式 close()，这个 Stream 对象就只剩 GC 可回收。
+    # 而 GC 在哪个线程、什么时刻触发是不确定的，一旦它落在某个正持有 httpcore 连接池
+    # 锁的线程里，清理链路 Stream.close() → client.close() → connection_pool.close()
+    # 会去申请同一把锁——非可重入，当场自锁，且永不释放。后续所有请求都会阻塞在这把锁上，
+    # 整个服务对 /chat 静默失去响应（异步端点如 /docs 仍正常，因为它们不走线程池）。
+    #
+    # 实测过这个死锁：py-spy 抓到 16 个 AnyIO 工作线程全部阻塞在
+    # httpcore/_synchronization.py 的锁上，持锁那个线程的栈里同时出现 handle_request
+    # 与 openai/_streaming.py 的 close，正是上面这条自锁路径。
+    #
+    # yield 必须留在 try 内：GeneratorExit 之后再 yield 会抛 RuntimeError。
+    try:
+        for chunk in completion:
+            # 某些兼容实现首个/末个 chunk 的 choices 可能为空列表，先安全取出
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = choice.delta
 
-        # 先输出本 chunk 携带的内容：带 finish_reason 的最后一个 chunk 仍可能有 content。
-        # reasoning_content 与 content 分别用独立的 if 判断（而非 if/elif）——两者
-        # 通过各自独立的字段返回，理论上同一 chunk 可能同时携带两者，用 elif 会丢失
-        # 这种情况下的 reasoning_content。reasoning_content 用 `is not None` 而非真值
-        # 判断，因为空字符串 "" 也代表"仍在思考阶段"这一有效信号。
-        if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
-            msg = {"role": "assistant", "content": delta.reasoning_content, "thinking": True}
-            yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
-        if delta and delta.content:
-            msg = {"role": "assistant", "content": delta.content, "thinking": False}
-            yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
+            # 先输出本 chunk 携带的内容：带 finish_reason 的最后一个 chunk 仍可能有 content。
+            # reasoning_content 与 content 分别用独立的 if 判断（而非 if/elif）——两者
+            # 通过各自独立的字段返回，理论上同一 chunk 可能同时携带两者，用 elif 会丢失
+            # 这种情况下的 reasoning_content。reasoning_content 用 `is not None` 而非真值
+            # 判断，因为空字符串 "" 也代表"仍在思考阶段"这一有效信号。
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content is not None:
+                msg = {"role": "assistant", "content": delta.reasoning_content, "thinking": True}
+                yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
+            if delta and delta.content:
+                msg = {"role": "assistant", "content": delta.content, "thinking": False}
+                yield f"event: message\ndata: {json.dumps(msg, ensure_ascii=False)}\n\n"
 
-        # 内容已输出后再判定结束
-        if choice.finish_reason is not None:
+            # 内容已输出后再判定结束
+            if choice.finish_reason is not None:
+                disclaimer_msg = {"role": "assistant", "content": _append_disclaimer(language), "thinking": False}
+                yield f"event: message\ndata: {json.dumps(disclaimer_msg, ensure_ascii=False)}\n\n"
+                yield "event: end\ndata: [DONE]\n\n"
+                ended = True
+                break
+
+        # 兜底：若流直接耗尽且从未发出结束事件，补发 [DONE]，保证前端解析器收到结束信号。
+        # 免责声明同样在此路径拼接，确保两条结束路径都 100% 携带（正常 finish_reason
+        # 结束、流提前耗尽两种情形一致）。
+        if not ended:
             disclaimer_msg = {"role": "assistant", "content": _append_disclaimer(language), "thinking": False}
             yield f"event: message\ndata: {json.dumps(disclaimer_msg, ensure_ascii=False)}\n\n"
             yield "event: end\ndata: [DONE]\n\n"
-            ended = True
-            break
-
-    # 兜底：若流直接耗尽且从未发出结束事件，补发 [DONE]，保证前端解析器收到结束信号。
-    # 免责声明同样在此路径拼接，确保两条结束路径都 100% 携带（正常 finish_reason
-    # 结束、流提前耗尽两种情形一致）。
-    if not ended:
-        disclaimer_msg = {"role": "assistant", "content": _append_disclaimer(language), "thinking": False}
-        yield f"event: message\ndata: {json.dumps(disclaimer_msg, ensure_ascii=False)}\n\n"
-        yield "event: end\ndata: [DONE]\n\n"
+    finally:
+        try:
+            completion.close()
+        except Exception as e:
+            # 关闭失败不能盖掉正在传播的异常（含 GeneratorExit），也不该阻断收尾。
+            print(f"[final_answer] 关闭回答流失败：{e}")

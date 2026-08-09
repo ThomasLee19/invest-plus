@@ -162,27 +162,65 @@ def _load_agent():
     return agent
 
 
+def execute_and_capture(agent, acts) -> tuple[str, int, int]:
+    """执行一份 plan，返回 (工具实际产出的拼接文本, 原始调用数, 去重后信息源数)。
+
+    为什么必须执行而不是只看子问题文本：`finance_tool` 不解析具体指标，
+    "AAPL PE ratio" 与 "AAPL fundamentals" 返回**逐字节相同**的一张基本面卡。
+    旧口径在子问题文字里数关键词，于是把「三次调用拿回三张同样的卡」判成高覆盖，
+    把「一次调用拿全」判成低覆盖——它奖励的是啰嗦，不是信息量。
+
+    去重**不能**依赖 process_actions：它的去重键是 (prompt, 结果)，而
+    "AAPL PE ratio" 与 "AAPL PEG ratio" 的 prompt 不同，即使返回逐字节相同的卡
+    也不会被判重。这里按结果内容单独做哈希，才是真正的「不同信息源数」。
+    """
+    if not acts:
+        return [], 0, 0
+    flat = agent._adjust_format(acts)
+    try:
+        memory = agent.process_actions(flat, "zh", None)
+    except Exception as e:
+        print(f"    [execute] 失败：{e}", flush=True)
+        return [], len(flat), 0
+    results = [str(e.get("结果", "")) for e in memory]
+    distinct = len({agent._dedup_result_key(e.get("结果")) for e in memory})
+    return results, len(flat), distinct
+
+
 def run_and_collect(agent, samples: int = SAMPLES) -> dict:
     """跑完整对比实验，收集每题两条件各 `samples` 次采样的原始子问题文本（不打分）。
     injected 条件对每题只 classify 一次、复用命中的 SOP，再采样 samples 次 agent_plan。"""
     def collect(item):
         q = item["question"]
-        baseline_texts = [actions_to_text(agent.agent_plan(q)) for _ in range(samples)]
+        print(f"  [{item['id']}] {q[:30]}", flush=True)
         hits = agent.classify_skill(q)
         matched = []
         for name in hits:
             sop = agent.load_skill(name)
             if sop and sop.get("body"):
                 matched.append(sop)
-        injected_texts = [
-            actions_to_text(agent.agent_plan(q, skill_sops=matched)) for _ in range(samples)
-        ]
+
+        def sample(**kw):
+            acts = agent.agent_plan(q, **kw)
+            results, n_calls, n_distinct = execute_and_capture(agent, acts)
+            return actions_to_text(acts), results, n_calls, n_distinct
+
+        base = [sample() for _ in range(samples)]
+        inj = [sample(skill_sops=matched) for _ in range(samples)]
         return {
             "id": item["id"], "question": q,
             "expect_skill_hits": item["expect_skill_hits"],
             "classified_hits": hits,
-            "baseline_texts": baseline_texts,
-            "injected_texts": injected_texts,
+            "baseline_texts": [x[0] for x in base],
+            "injected_texts": [x[0] for x in inj],
+            "baseline_obtained": ["\n".join(x[1]) for x in base],
+            "injected_obtained": ["\n".join(x[1]) for x in inj],
+            "baseline_results": [x[1] for x in base],
+            "injected_results": [x[1] for x in inj],
+            "baseline_calls": [x[2] for x in base],
+            "injected_calls": [x[2] for x in inj],
+            "baseline_distinct": [x[3] for x in base],
+            "injected_distinct": [x[3] for x in inj],
         }
     return {
         "single": [collect(it) for it in SINGLE_HIT_VALUATION],
@@ -194,55 +232,86 @@ def _avg_cov(skill, texts, subject) -> float:
     return sum(coverage(skill, t, subject) for t in texts) / len(texts) if texts else 0.0
 
 
+def _avg(v):
+    return sum(v) / len(v) if v else 0.0
+
+
+def _cost(r, cond):
+    """调用效率：原始调用数、去重后信息源数、冗余率。"""
+    calls = _avg(r.get(f"{cond}_calls") or [])
+    distinct = _avg(r.get(f"{cond}_distinct") or [])
+    redundancy = 1 - distinct / calls if calls else 0.0
+    return {"calls": calls, "distinct": distinct, "redundancy": redundancy}
+
+
 def score(raw: dict) -> dict:
-    """从原始文本（run_and_collect 收集或 --rescore 读入）计算覆盖率结果。纯确定性。
-    每条件对 baseline_texts / injected_texts 的多次采样取平均覆盖率。"""
-    single = []
-    for r in raw["single"]:
+    """从采集数据计算覆盖率。纯确定性，可用 --rescore 离线复算。
+
+    **主口径**（`obtained`）按工具**实际返回的内容**打分。**旧口径**（`asked`）按
+    子问题文字打分，仅作对照保留：它把「三次调用拿回同一张基本面卡」判成高覆盖，
+    奖励啰嗦而非信息量，不可用于验收。`*_obtained` 缺失时（旧存档）主口径留空。
+    """
+    def one(r, skill):
         subj = extract_tickers(r["question"])
-        single.append({
-            "id": r["id"], "classified_hits": r.get("classified_hits"),
-            "baseline": _avg_cov("valuation", r["baseline_texts"], subj),
-            "injected": _avg_cov("valuation", r["injected_texts"], subj),
-        })
-    dual = []
-    for r in raw["dual"]:
-        subj = extract_tickers(r["question"])
-        per_skill = {}
-        for skill in r["expect_skill_hits"]:
-            per_skill[skill] = {
-                "baseline": _avg_cov(skill, r["baseline_texts"], subj),
-                "injected": _avg_cov(skill, r["injected_texts"], subj),
+        out = {}
+        for cond in ("baseline", "injected"):
+            out[cond] = {
+                "asked": _avg_cov(skill, r[f"{cond}_texts"], subj),
+                "obtained": (_avg_cov(skill, r[f"{cond}_obtained"], subj)
+                             if r.get(f"{cond}_obtained") else None),
+                **_cost(r, cond),
             }
-        dual.append({"id": r["id"], "classified_hits": r.get("classified_hits"), "skills": per_skill})
+        return out
+
+    single = [{"id": r["id"], "classified_hits": r.get("classified_hits"),
+               **one(r, "valuation")} for r in raw["single"]]
+    dual = [{"id": r["id"], "classified_hits": r.get("classified_hits"),
+             "skills": {sk: one(r, sk) for sk in r["expect_skill_hits"]}}
+            for r in raw["dual"]]
     return {"single": single, "dual": dual}
 
 
-def summarize(results: dict) -> tuple[str, bool]:
+def _pct(v):
+    return "  n/a" if v is None else f"{v:5.0%}"
+
+
+def summarize(results: dict, ruler: str = "obtained") -> tuple[str, bool]:
+    """ruler='obtained' 按工具实际产出验收（主口径）；'asked' 是旧的子问题关键词口径，
+    仅供对照，不作验收依据。"""
     lines = []
+    lines.append(f"口径：{'工具实际返回内容（主）' if ruler == 'obtained' else '子问题关键词（旧口径，仅对照）'}")
     single = results["single"]
-    b_avg = sum(r["baseline"] for r in single) / len(single)
-    i_avg = sum(r["injected"] for r in single) / len(single)
+    have = [r for r in single if r["baseline"].get(ruler) is not None]
+    if not have:
+        return f"主口径数据缺失（该存档由旧版脚本采集，无 *_obtained）。请重跑采集。", False
+    b_avg = _avg([r["baseline"][ruler] for r in have])
+    i_avg = _avg([r["injected"][ruler] for r in have])
     delta_pp = (i_avg - b_avg) * 100
     single_pass = delta_pp >= SINGLE_THRESHOLD_PP
-    lines.append("== 单命中 valuation（覆盖率=估值倍数广度 & 同行/历史对比 两维均值）==")
-    for r in single:
-        lines.append(f"  {r['id']}: baseline {r['baseline']:.0%} -> injected {r['injected']:.0%}"
-                     f"{' ↑' if r['injected'] > r['baseline'] + 1e-9 else ''}"
-                     f"   (classify={r.get('classified_hits')})")
-    lines.append(f"  baseline avg: {b_avg:.1%}   injected avg: {i_avg:.1%}")
-    lines.append(f"  提升: {delta_pp:+.1f} 个百分点  (门槛 ≥{SINGLE_THRESHOLD_PP:.0f}) -> "
-                 f"{'PASS' if single_pass else 'FAIL'}")
+    lines.append("\n== 单命中 valuation ==")
+    lines.append(f"  {'题':<14}{'baseline':>9}{'injected':>9}   {'调用/去重(base)':>16}{'调用/去重(inj)':>16}")
+    for r in have:
+        b, i = r["baseline"], r["injected"]
+        lines.append(f"  {r['id']:<14}{_pct(b[ruler]):>9}{_pct(i[ruler]):>9}"
+                     f"{'↑' if i[ruler] > b[ruler] + 1e-9 else ' '}"
+                     f"   {b['calls']:.1f}/{b['distinct']:.1f}{'':>8}{i['calls']:.1f}/{i['distinct']:.1f}")
+    lines.append(f"  baseline avg {b_avg:.1%}   injected avg {i_avg:.1%}   提升 {delta_pp:+.1f}pp"
+                 f"  (门槛 ≥{SINGLE_THRESHOLD_PP:.0f}) -> {'PASS' if single_pass else 'FAIL'}")
+    lines.append(f"  冗余率 baseline {_avg([r['baseline']['redundancy'] for r in have]):.0%}"
+                 f"   injected {_avg([r['injected']['redundancy'] for r in have]):.0%}"
+                 f"   （1 - 去重信息源/原始调用；越低越好）")
 
-    lines.append("== 双命中（每个 SOP 各自覆盖率都要相对 baseline 提升）==")
+    lines.append("\n== 双命中（每个 SOP 各自覆盖率都要相对 baseline 提升）==")
     dual_pass = True
     for r in results["dual"]:
-        parts = []
-        item_ok = True
+        parts, item_ok = [], True
         for skill, cov in r["skills"].items():
-            up = cov["injected"] > cov["baseline"] + 1e-9
+            b, i = cov["baseline"][ruler], cov["injected"][ruler]
+            if b is None or i is None:
+                continue
+            up = i > b + 1e-9
             item_ok = item_ok and up
-            parts.append(f"{skill}: {cov['baseline']:.0%}->{cov['injected']:.0%}{'↑' if up else '·'}")
+            parts.append(f"{skill}: {b:.0%}->{i:.0%}{'↑' if up else '·'}")
         dual_pass = dual_pass and item_ok
         lines.append(f"  {r['id']} (classify={r.get('classified_hits')}): " + "; ".join(parts)
                      + f"  -> {'PASS' if item_ok else 'FAIL'}")
@@ -298,9 +367,7 @@ def main() -> int:
     if args.rescore:
         with open(args.rescore, encoding="utf-8") as f:
             raw = json.load(f)
-        report, overall = summarize(score(raw))
-        print(report)
-        return 0 if overall else 1
+        return _report_both(score(raw))
     try:
         agent = _load_agent()
         raw = run_and_collect(agent, samples=args.samples)
@@ -314,8 +381,21 @@ def main() -> int:
         with open(args.dump, "w", encoding="utf-8") as f:
             json.dump(raw, f, ensure_ascii=False, indent=2)
         print(f"[dump] raw sub-questions saved to {args.dump}\n")
-    report, overall = summarize(score(raw))
+    return _report_both(score(raw))
+
+
+def _report_both(results: dict) -> int:
+    """先出主口径（工具实际产出）并据此判定，再附旧口径供对照。
+
+    两把尺子并列打印是刻意的：旧口径把「三次调用拿回同一张基本面卡」判成高覆盖，
+    新旧并列才能看清历史成绩里有多少是真信息量、多少只是子问题写得啰嗦。
+    """
+    report, overall = summarize(results, ruler="obtained")
     print(report)
+    print("\n" + "─" * 70)
+    print("以下为旧口径（子问题关键词），仅供对照，不作验收依据：\n")
+    old_report, _ = summarize(results, ruler="asked")
+    print(old_report)
     return 0 if overall else 1
 
 

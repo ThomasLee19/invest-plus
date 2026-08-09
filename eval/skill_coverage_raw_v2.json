@@ -1,0 +1,1272 @@
+{
+  "single": [
+    {
+      "id": "sop-val-01",
+      "question": "AAPL 现在市盈率贵不贵？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AAPL fundamentals",
+        "AAPL fundamentals"
+      ],
+      "injected_texts": [
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nAAPL historical P/E 3-year percentile",
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nAAPL latest 10-K valuation metrics historical range"
+      ],
+      "baseline_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD"
+      ],
+      "injected_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        1
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        1,
+        1
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-val-02",
+      "question": "MSFT 目前的估值水平合理吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "MSFT fundamentals\nMSFT latest 10-K valuation analysis",
+        "MSFT fundamentals\nMSFT valuation reasonableness analysis"
+      ],
+      "injected_texts": [
+        "MSFT fundamentals\nAAPL fundamentals\nGOOGL fundamentals",
+        "MSFT fundamentals\nMSFT price\nMSFT historical P/E 3-year range\nMicrosoft comparable companies valuation metrics"
+      ],
+      "baseline_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:310] [bool] failed to parse field [should]', [1:310] [bool] failed to parse field [should])\"}]",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:313] [bool] failed to parse field [should]', [1:313] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:307] [bool] failed to parse field [should]', [1:307] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:310] [bool] failed to parse field [should]', [1:310] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:313] [bool] failed to parse field [should]', [1:313] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:307] [bool] failed to parse field [should]', [1:307] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        2,
+        2
+      ],
+      "injected_calls": [
+        3,
+        4
+      ],
+      "baseline_distinct": [
+        2,
+        2
+      ],
+      "injected_distinct": [
+        3,
+        4
+      ]
+    },
+    {
+      "id": "sop-val-03",
+      "question": "英伟达 NVDA 现在是不是被高估了？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "NVDA fundamentals",
+        "NVDA fundamentals\nNVDA latest 10-Q MD&A growth outlook and risks"
+      ],
+      "injected_texts": [
+        "NVDA fundamentals\nNVDA price\nNVIDIA historical P/E valuation range last 5 years\nNVIDIA peer group P/E and P/S comparison semiconductor AI chip companies",
+        "NVDA fundamentals\nNVDA price\nNVDA historical P/E valuation percentile last 5 years\nNVIDIA peer group semiconductor companies for valuation comparison"
+      ],
+      "baseline_obtained": [
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:317] [bool] failed to parse field [should]', [1:317] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:343] [bool] failed to parse field [should]', [1:343] [bool] failed to parse field [should])\"}]",
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:337] [bool] failed to parse field [should]', [1:337] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD"
+        ],
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:317] [bool] failed to parse field [should]', [1:317] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:343] [bool] failed to parse field [should]', [1:343] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:337] [bool] failed to parse field [should]', [1:337] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        2
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        1,
+        2
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-val-04",
+      "question": "从估值角度看，TSLA 现在这个价位值不值？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "TSLA fundamentals",
+        "TSLA fundamentals"
+      ],
+      "injected_texts": [
+        "TSLA fundamentals\nTSLA price\nTesla historical P/E valuation range 3-5 years\nTesla peer companies for valuation comparison",
+        "TSLA fundamentals\nTSLA price\nTesla historical P/E valuation range 3-5 years\nTesla peer group valuation comparison P/E P/S EV/EBITDA"
+      ],
+      "baseline_obtained": [
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+      ],
+      "injected_obtained": [
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n【Tesla, Inc.（TSLA）】\n最新价：328.58 USD\n涨跌：+8.11 （+2.53%）\n昨收：320.47 | 最高：333.73 | 最低：321.25\n成交量：39,370,100\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:316] [bool] failed to parse field [should]', [1:316] [bool] failed to parse field [should])\"}]",
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n【Tesla, Inc.（TSLA）】\n最新价：328.58 USD\n涨跌：+8.11 （+2.53%）\n昨收：320.47 | 最高：333.73 | 最低：321.25\n成交量：39,370,100\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+        ],
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "【Tesla, Inc.（TSLA）】\n最新价：328.58 USD\n涨跌：+8.11 （+2.53%）\n昨收：320.47 | 最高：333.73 | 最低：321.25\n成交量：39,370,100",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:316] [bool] failed to parse field [should]', [1:316] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "【Tesla, Inc.（TSLA）】\n最新价：328.58 USD\n涨跌：+8.11 （+2.53%）\n昨收：320.47 | 最高：333.73 | 最低：321.25\n成交量：39,370,100",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        1
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        1,
+        1
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-val-05",
+      "question": "AMZN 现在便宜吗，估值处于什么水平？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AMZN fundamentals",
+        "AMZN fundamentals"
+      ],
+      "injected_texts": [
+        "AMZN fundamentals\nAMZN price\nAMZN historical P/E valuation percentile last 5 years\nAmazon comparable companies valuation metrics P/E P/S EV/EBITDA",
+        "AMZN P/E\nAMZN P/B\nAMZN P/S\nAMZN EV/EBITDA\nAMZN dividend yield"
+      ],
+      "baseline_obtained": [
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+      ],
+      "injected_obtained": [
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:338] [bool] failed to parse field [should]', [1:338] [bool] failed to parse field [should])\"}]",
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300\n【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300\n【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300\n【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+      ],
+      "baseline_results": [
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+        ],
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:338] [bool] failed to parse field [should]', [1:338] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300",
+          "【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300",
+          "【Amazon.com, Inc.（AMZN）】\n最新价：274.48 USD\n涨跌：+2.29 （+0.84%）\n昨收：272.19 | 最高：278.31 | 最低：272.75\n成交量：33,833,300",
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        1
+      ],
+      "injected_calls": [
+        4,
+        5
+      ],
+      "baseline_distinct": [
+        1,
+        1
+      ],
+      "injected_distinct": [
+        4,
+        2
+      ]
+    },
+    {
+      "id": "sop-val-06",
+      "question": "GOOGL 的市盈率和 PEG 现在处于高位还是低位？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "GOOGL fundamentals",
+        "GOOGL fundamentals\n如何判断市盈率和 PEG 比率是否处于高位或低位"
+      ],
+      "injected_texts": [
+        "GOOGL fundamentals\nGOOGL historical P/E valuation percentile 3-year\nGOOGL peer companies for valuation comparison",
+        "GOOGL fundamentals\nGOOGL historical P/E valuation percentile 3-year\nGoogle LLC comparable companies valuation metrics P/E P/S"
+      ],
+      "baseline_obtained": [
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:316] [bool] failed to parse field [should]', [1:316] [bool] failed to parse field [should])\"}]",
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:332] [bool] failed to parse field [should]', [1:332] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ],
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:316] [bool] failed to parse field [should]', [1:316] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:323] [bool] failed to parse field [should]', [1:323] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:332] [bool] failed to parse field [should]', [1:332] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        2
+      ],
+      "injected_calls": [
+        3,
+        3
+      ],
+      "baseline_distinct": [
+        1,
+        2
+      ],
+      "injected_distinct": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "sop-val-07",
+      "question": "META 现在这个价位是高估还是低估？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "META fundamentals",
+        "META fundamentals\n如何判断一家科技公司是否被高估或低估"
+      ],
+      "injected_texts": [
+        "META fundamentals\nAAPL fundamentals\nGOOGL fundamentals\nMSFT fundamentals",
+        "META valuation\nAAPL valuation\nGOOGL valuation\nMSFT valuation"
+      ],
+      "baseline_obtained": [
+        "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+        "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:317] [bool] failed to parse field [should]', [1:317] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+        "【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700\n【Apple Inc.（AAPL）】\n最新价：313.33 USD\n涨跌：+0.77 （+0.25%）\n昨收：312.56 | 最高：314.81 | 最低：310.74\n成交量：34,407,100\n【Alphabet Inc.（GOOGL）】\n最新价：354.30 USD\n涨跌：-4.60 （-1.28%）\n昨收：358.90 | 最高：358.90 | 最低：353.78\n成交量：19,805,200\n【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000"
+      ],
+      "baseline_results": [
+        [
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD"
+        ],
+        [
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:317] [bool] failed to parse field [should]', [1:317] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD"
+        ],
+        [
+          "【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700",
+          "【Apple Inc.（AAPL）】\n最新价：313.33 USD\n涨跌：+0.77 （+0.25%）\n昨收：312.56 | 最高：314.81 | 最低：310.74\n成交量：34,407,100",
+          "【Alphabet Inc.（GOOGL）】\n最新价：354.30 USD\n涨跌：-4.60 （-1.28%）\n昨收：358.90 | 最高：358.90 | 最低：353.78\n成交量：19,805,200",
+          "【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        2
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        1,
+        2
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-val-08",
+      "question": "AAPL 的市净率和市销率现在算贵吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AAPL fundamentals\nAAPL 市净率 市销率 历史分位数 行业比较",
+        "AAPL fundamentals\n如何判断市净率和市销率是否偏高"
+      ],
+      "injected_texts": [
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals",
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals"
+      ],
+      "baseline_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:308] [bool] failed to parse field [should]', [1:308] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+      ],
+      "baseline_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:308] [bool] failed to parse field [should]', [1:308] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ]
+      ],
+      "baseline_calls": [
+        2,
+        2
+      ],
+      "injected_calls": [
+        3,
+        3
+      ],
+      "baseline_distinct": [
+        2,
+        2
+      ],
+      "injected_distinct": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "sop-val-09",
+      "question": "NFLX 现在的估值贵不贵，值不值得关注？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "NFLX fundamentals\nNFLX latest 10-K management discussion and analysis\n如何判断科技公司估值是否合理",
+        "NFLX fundamentals"
+      ],
+      "injected_texts": [
+        "NFLX fundamentals\nNFLX price\nNetflix historical P/E valuation range last 5 years\nNetflix peer group P/E and P/S comparison streaming industry",
+        "NFLX P/E\nNFLX P/S\nNFLX EV/EBITDA\nNFLX P/B\nNFLX dividend yield"
+      ],
+      "baseline_obtained": [
+        "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:305] [bool] failed to parse field [should]', [1:305] [bool] failed to parse field [should])\"}]",
+        "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD"
+      ],
+      "injected_obtained": [
+        "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD\n【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:331] [bool] failed to parse field [should]', [1:331] [bool] failed to parse field [should])\"}]",
+        "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD\n【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400\n【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400\n【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400\n【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD"
+      ],
+      "baseline_results": [
+        [
+          "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:305] [bool] failed to parse field [should]', [1:305] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD",
+          "【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:331] [bool] failed to parse field [should]', [1:331] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD",
+          "【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400",
+          "【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400",
+          "【Netflix, Inc.（NFLX）】\n最新价：74.14 USD\n涨跌：+0.50 （+0.68%）\n昨收：73.64 | 最高：74.50 | 最低：73.08\n成交量：24,783,400",
+          "【Netflix, Inc.（NFLX）基本面】\n行业：Communication Services / Entertainment\n市值：3,087.1 亿 USD\n市盈率（TTM）：23.31 | 市盈率（预期）：19.42\n每股收益（TTM）：3.18 | 股息率：无\nBeta：1.51\n52周区间：65.08 - 126.71 USD"
+        ]
+      ],
+      "baseline_calls": [
+        3,
+        1
+      ],
+      "injected_calls": [
+        4,
+        5
+      ],
+      "baseline_distinct": [
+        3,
+        1
+      ],
+      "injected_distinct": [
+        4,
+        2
+      ]
+    },
+    {
+      "id": "sop-val-10",
+      "question": "KO 可口可乐的股息率和市盈率现在有吸引力吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "KO fundamentals",
+        "KO fundamentals"
+      ],
+      "injected_texts": [
+        "KO fundamentals\nKO historical P/E valuation range 3-5 years\nCoca-Cola peer group valuation comparison P/E P/S",
+        "KO fundamentals\nKO historical P/E valuation range 3-5 years\nCoca-Cola peer companies for valuation comparison"
+      ],
+      "baseline_obtained": [
+        "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD",
+        "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD"
+      ],
+      "injected_obtained": [
+        "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:318] [bool] failed to parse field [should]', [1:318] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:324] [bool] failed to parse field [should]', [1:324] [bool] failed to parse field [should])\"}]",
+        "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:318] [bool] failed to parse field [should]', [1:318] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:320] [bool] failed to parse field [should]', [1:320] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD"
+        ],
+        [
+          "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:318] [bool] failed to parse field [should]', [1:318] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:324] [bool] failed to parse field [should]', [1:324] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Coca-Cola Company (The)（KO）基本面】\n行业：Consumer Defensive / Beverages - Non-Alcoholic\n市值：3,745.4 亿 USD\n市盈率（TTM）：26.14 | 市盈率（预期）：24.69\n每股收益（TTM）：3.33 | 股息率：2.44%\nBeta：0.34\n52周区间：65.35 - 90.92 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:318] [bool] failed to parse field [should]', [1:318] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:320] [bool] failed to parse field [should]', [1:320] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        1
+      ],
+      "injected_calls": [
+        3,
+        3
+      ],
+      "baseline_distinct": [
+        1,
+        1
+      ],
+      "injected_distinct": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "sop-val-11",
+      "question": "AMD 当前的估值分位处于历史什么位置？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "AMD 市盈率历史分位数 2026",
+        "AMD fundamentals\nAMD 估值分位数 2026 历史百分位 PE PB PS"
+      ],
+      "injected_texts": [
+        "AMD fundamentals\nAMD historical P/E valuation percentile\nAMD peer group valuation comparison semiconductor industry",
+        "AMD fundamentals\nAMD historical P/E valuation percentile 3-year\nAMD peer companies for valuation comparison"
+      ],
+      "baseline_obtained": [
+        "[{'title': 'AMD的高估值与近期传闻，这些会否影响其财报表现？', 'url': 'http://www.moomoo.com/hans/community/feed/amd-premium-valuation-and-recent-rumour-will-these-affect-its-115997635969030', 'content': '市盈率为预计2026年收益2026年每股收益的共识大约为$6.36,这意味着远期市盈率约为35至40倍.'}, {'title': 'AMD股价在2026年上涨了130%。美银刚刚将其目标价上调 ...', 'url': 'https://www.tikr.com/zh/blog/amd-stock-rose-130-in-2026-bofa-just-raised-its-target-to-560-heres-what-the-cfo-said-that-could-push-it-even-higher', 'content': 'AMD股票关键数据 · 当前股价：485.63美元 · TIKR模型目标价（中位数，2030年12月）：约1,757美元（模型起始价：452.40美元） · 潜在总回报率（中位数）：约 ...'}, {'title': 'AMD PE Ratio 2012-2026', 'url': 'https://www.macrotrends.net/stocks/charts/AMD/amd/pe-ratio', 'content': 'AMD has a current PE ratio of 101.55 as of August 09, 2026. This is 40.4% below its 8-year average of 170.26. Data ranges from 0 to 1285.25.'}, {'title': '高級微設備公司(AMD) 估值方法和財務統計數據', 'url': 'https://hk.finance.yahoo.com/quote/AMD/key-statistics/', 'content': '目前 31/3/2026 ・ 市盈率 158.72 77.94 ・ 市盈增長率(預期5 年) 1.12 0.60 0.48 0.50 0.77 0.41 股價營收比20.87 9.61 10.92'}, {'title': '美国超微公司AMD (AMD) 市盈率', 'url': 'https://cn.investing.com/pro/NASDAQGS:AMD/explorer/pe_ltm', 'content': '美国超微公司AMD的市盈率于2021 (43.8x, -65.1%)和2024 (107.3x, -90.6%)减少和于2022 (45.9x, +4.9%)、2023 (1,144.9x, +2,391.9%)和2025 (111.4x, +3.7%)增加。 指标使用 ...'}, {'title': 'AMD (AMD) 股价和资讯- Google 财经', 'url': 'https://www.google.com/finance/quote/AMD:NASDAQ?hl=zh', 'content': 'Q2 2026 财报 • 已发布 • 每股收益超出预期+3.21% • 收入超出预期+2.01 ... -. 网站amd.com. 分析师评级. 基于过去3 个月内34 位分析师对AMD的股票评级. 强力买入.'}, {'title': 'AMD 股票预测2025-2030：价格预测与分析', 'url': 'https://www.bybit.com/zh-MY/wiki/article/amd-stock-forecast-2025-2030-price-prediction-analysis/', 'content': 'AMD 的远期市盈率(P/E) 为25 倍，高于SOX 半导体指数的平均约22 倍以及标准普尔500 指数的平均约20 倍，这反映了投资者为AMD 超平均水平的盈利增长前景所 ...'}, {'title': '20年经验美股分析师看AMD：不“贵”的话，还怪好嘞', 'url': 'https://www.eet-china.com/mp/a325987.html', 'content': 'AMD的10年和5年平均市盈率(P/E Ratio)分别为110和136。这表明,与其历史平均市盈率范围相比,AMD目前的交易价格可能偏高。'}, {'title': 'AMD $AMD 2026年第二季財報分析#AMD 財報漂亮，把一些 ...', 'url': 'https://www.threads.com/@unclestocknotes/post/DbqDxO_DmAB/amd-amd-2026%E5%B9%B4%E7%AC%AC%E4%BA%8C%E5%AD%A3%E8%B2%A1%E5%A0%B1%E5%88%86%E6%9E%90-amd-%E8%B2%A1%E5%A0%B1%E6%BC%82%E4%BA%AE%E6%8A%8A%E4%B8%80%E4%BA%9B%E9%9B%9C%E8%A8%8A%E6%8B%BF%E6%8E%89%E4%B9%9F%E7%AB%99%E5%BE%97%E4%BD%8F%E8%85%B3%E8%B3%87%E6%96%99%E4%B8%AD%E5%BF%83%E6%9C%89-anthropic-2gwmicrosoft-%E6%93%B4%E5%A4%A7%E9%83%A8%E7%BD%B2openai/', 'content': '市場目前預期AMD Q2 營收大概113 億美元、調整後EPS 1.62 美元；AMD 上季度自己給的營收指引中位數是112 億. 現在AMD 最大的底氣還是兩塊：EPYC 伺服器CPU ...'}]",
+        "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD\n[{'title': '指数估值(2026-08-04)', 'url': 'https://danjuanfunds.com/djmodule/value-center', 'content': '... 估值数据，并基于PE或PB历史百分位水平进行三色分类显示。 如图所示：. PE百分位<30%，且PB百分位<30%；. PE百分位>70%，或PE百分位>30%且PB百分位>30%；. 其余是估值适中 ...'}, {'title': 'https://alphaspace.finance.yahoo.com/?view=analysi...', 'url': 'https://alphaspace.finance.yahoo.com/?view=analysis&ticker=AMD&ncid=100003536', 'content': 'No information is available for this page.'}, {'title': '恒生科技指数估值到底低不低？PE、PB、PS、PEG四个维度 ...', 'url': 'https://finance.sina.com.cn/jjxw/2026-05-29/doc-inhzqccr7636404.shtml', 'content': '文章从PE、PB、PS、PEG四个维度分析其估值，截至2026年5月27日，PE - TTM为20.14倍，处近5年9.31%分位；PB ... 分位数，比历史上超过90%的时间都便宜。历史 ...'}, {'title': 'AMD PE Ratio 2012-2026', 'url': 'https://www.macrotrends.net/stocks/charts/AMD/amd/pe-ratio', 'content': 'AMD has a current PE ratio of 101.55 as of August 09, 2026. This is 40.4% below its 8-year average of 170.26. Data ranges from 0 to 1285.25.'}, {'title': '請從基本面、估值、籌碼、事件驅動及市場環境，多維度分析 ...', 'url': 'https://www.threads.com/@voltima_quant/post/Dbs6yQlk8sy/%E4%BD%A0%E6%98%AF%E4%B8%80%E5%90%8D%E5%B0%8D%E6%B2%96%E5%9F%BA%E9%87%91%E9%87%8F%E5%8C%96%E7%A0%94%E7%A9%B6%E5%93%A1%E8%AB%8B%E5%BE%9E%E5%9F%BA%E6%9C%AC%E9%9D%A2%E4%BC%B0%E5%80%BC%E7%B1%8C%E7%A2%BC%E4%BA%8B%E4%BB%B6%E9%A9%85%E5%8B%95%E5%8F%8A%E5%B8%82%E5%A0%B4%E7%92%B0%E5%A2%83%E5%A4%9A%E7%B6%AD%E5%BA%A6%E5%88%86%E6%9E%90-%E8%82%A1%E7%A5%A8%E4%BB%A3%E8%99%9F-ipo-%E4%B8%8A%E5%B8%82%E5%BE%8C%E7%9A%84%E6%8A%95%E8%B3%87%E5%83%B9%E5%80%BC%E8%AB%8B%E5%88%86%E6%9E%90%E2%91%A0%E5%95%86%E6%A5%AD%E6%A8%A1%E5%BC%8F%E6%88%90%E9%95%B7%E6%80%A7%E7%9B%88%E5%88%A9%E8%83%BD%E5%8A%9B%E5%8F%8A%E7%AB%B6%E7%88%AD%E5%84%AA%E5%8B%A2%E2%91%A1ipo%E4%BC%B0%E5%80%BC/', 'content': '2026 at 2:48 … 基本面:營收、利潤、估值(PE/PB/PS 同行業比較) 一旦2027 年的獲利成長率無法維持先前的雙位數爆發,估值自然需要下修重估。'}, {'title': '存储涨价效应加速释放，后期价格或高位宽幅震荡', 'url': 'https://pdf.dfcfw.com/pdf/H3_AP202607091826844045_1.pdf', 'content': '当前半导体在历史5年与10年. 分位数来看，PE分别是100.00%、99.79%，PB分别是100.00%、100.00 ... 图8 不同板块在不同估值指标下的历史分位数.'}, {'title': 'Price History', 'url': 'https://ir.amd.com/stock-data/price-history', 'content': 'Price History :: Advanced Micro Devices, Inc. (AMD) Stock Data Price History Stock ・ 2026 QuoteMedia. Data delayed 15 minutes unless otherwise indicated ・ ...'}, {'title': '科创板估值方法全景透视', 'url': 'https://img3.gelonghui.com/pdf/3de21-be17ea0f-1b81-4fcd-a9f5-1079698a962a.pdf', 'content': '企业以PE 估值为主, ; IC 制造以PB 估值为主,封测则PE、PEG、PS、PCF 等估值方法。 估值方法包括EV/EBITDA、PS、EV/S 等。'}, {'title': '公司估值-app使用手冊', 'url': 'https://www.futuhk.com/manual/topic11_78', 'content': '詳情頁提供了市盈率、市淨率和市銷率三種估值模型，模型計算公式如下：. PE（市盈率TTM）=股價/每股收益（每股收益=最近12個月歸屬母公司股東的淨 ...'}]"
+      ],
+      "injected_obtained": [
+        "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:333] [bool] failed to parse field [should]', [1:333] [bool] failed to parse field [should])\"}]",
+        "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "[{'title': 'AMD的高估值与近期传闻，这些会否影响其财报表现？', 'url': 'http://www.moomoo.com/hans/community/feed/amd-premium-valuation-and-recent-rumour-will-these-affect-its-115997635969030', 'content': '市盈率为预计2026年收益2026年每股收益的共识大约为$6.36,这意味着远期市盈率约为35至40倍.'}, {'title': 'AMD股价在2026年上涨了130%。美银刚刚将其目标价上调 ...', 'url': 'https://www.tikr.com/zh/blog/amd-stock-rose-130-in-2026-bofa-just-raised-its-target-to-560-heres-what-the-cfo-said-that-could-push-it-even-higher', 'content': 'AMD股票关键数据 · 当前股价：485.63美元 · TIKR模型目标价（中位数，2030年12月）：约1,757美元（模型起始价：452.40美元） · 潜在总回报率（中位数）：约 ...'}, {'title': 'AMD PE Ratio 2012-2026', 'url': 'https://www.macrotrends.net/stocks/charts/AMD/amd/pe-ratio', 'content': 'AMD has a current PE ratio of 101.55 as of August 09, 2026. This is 40.4% below its 8-year average of 170.26. Data ranges from 0 to 1285.25.'}, {'title': '高級微設備公司(AMD) 估值方法和財務統計數據', 'url': 'https://hk.finance.yahoo.com/quote/AMD/key-statistics/', 'content': '目前 31/3/2026 ・ 市盈率 158.72 77.94 ・ 市盈增長率(預期5 年) 1.12 0.60 0.48 0.50 0.77 0.41 股價營收比20.87 9.61 10.92'}, {'title': '美国超微公司AMD (AMD) 市盈率', 'url': 'https://cn.investing.com/pro/NASDAQGS:AMD/explorer/pe_ltm', 'content': '美国超微公司AMD的市盈率于2021 (43.8x, -65.1%)和2024 (107.3x, -90.6%)减少和于2022 (45.9x, +4.9%)、2023 (1,144.9x, +2,391.9%)和2025 (111.4x, +3.7%)增加。 指标使用 ...'}, {'title': 'AMD (AMD) 股价和资讯- Google 财经', 'url': 'https://www.google.com/finance/quote/AMD:NASDAQ?hl=zh', 'content': 'Q2 2026 财报 • 已发布 • 每股收益超出预期+3.21% • 收入超出预期+2.01 ... -. 网站amd.com. 分析师评级. 基于过去3 个月内34 位分析师对AMD的股票评级. 强力买入.'}, {'title': 'AMD 股票预测2025-2030：价格预测与分析', 'url': 'https://www.bybit.com/zh-MY/wiki/article/amd-stock-forecast-2025-2030-price-prediction-analysis/', 'content': 'AMD 的远期市盈率(P/E) 为25 倍，高于SOX 半导体指数的平均约22 倍以及标准普尔500 指数的平均约20 倍，这反映了投资者为AMD 超平均水平的盈利增长前景所 ...'}, {'title': '20年经验美股分析师看AMD：不“贵”的话，还怪好嘞', 'url': 'https://www.eet-china.com/mp/a325987.html', 'content': 'AMD的10年和5年平均市盈率(P/E Ratio)分别为110和136。这表明,与其历史平均市盈率范围相比,AMD目前的交易价格可能偏高。'}, {'title': 'AMD $AMD 2026年第二季財報分析#AMD 財報漂亮，把一些 ...', 'url': 'https://www.threads.com/@unclestocknotes/post/DbqDxO_DmAB/amd-amd-2026%E5%B9%B4%E7%AC%AC%E4%BA%8C%E5%AD%A3%E8%B2%A1%E5%A0%B1%E5%88%86%E6%9E%90-amd-%E8%B2%A1%E5%A0%B1%E6%BC%82%E4%BA%AE%E6%8A%8A%E4%B8%80%E4%BA%9B%E9%9B%9C%E8%A8%8A%E6%8B%BF%E6%8E%89%E4%B9%9F%E7%AB%99%E5%BE%97%E4%BD%8F%E8%85%B3%E8%B3%87%E6%96%99%E4%B8%AD%E5%BF%83%E6%9C%89-anthropic-2gwmicrosoft-%E6%93%B4%E5%A4%A7%E9%83%A8%E7%BD%B2openai/', 'content': '市場目前預期AMD Q2 營收大概113 億美元、調整後EPS 1.62 美元；AMD 上季度自己給的營收指引中位數是112 億. 現在AMD 最大的底氣還是兩塊：EPYC 伺服器CPU ...'}]"
+        ],
+        [
+          "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD",
+          "[{'title': '指数估值(2026-08-04)', 'url': 'https://danjuanfunds.com/djmodule/value-center', 'content': '... 估值数据，并基于PE或PB历史百分位水平进行三色分类显示。 如图所示：. PE百分位<30%，且PB百分位<30%；. PE百分位>70%，或PE百分位>30%且PB百分位>30%；. 其余是估值适中 ...'}, {'title': 'https://alphaspace.finance.yahoo.com/?view=analysi...', 'url': 'https://alphaspace.finance.yahoo.com/?view=analysis&ticker=AMD&ncid=100003536', 'content': 'No information is available for this page.'}, {'title': '恒生科技指数估值到底低不低？PE、PB、PS、PEG四个维度 ...', 'url': 'https://finance.sina.com.cn/jjxw/2026-05-29/doc-inhzqccr7636404.shtml', 'content': '文章从PE、PB、PS、PEG四个维度分析其估值，截至2026年5月27日，PE - TTM为20.14倍，处近5年9.31%分位；PB ... 分位数，比历史上超过90%的时间都便宜。历史 ...'}, {'title': 'AMD PE Ratio 2012-2026', 'url': 'https://www.macrotrends.net/stocks/charts/AMD/amd/pe-ratio', 'content': 'AMD has a current PE ratio of 101.55 as of August 09, 2026. This is 40.4% below its 8-year average of 170.26. Data ranges from 0 to 1285.25.'}, {'title': '請從基本面、估值、籌碼、事件驅動及市場環境，多維度分析 ...', 'url': 'https://www.threads.com/@voltima_quant/post/Dbs6yQlk8sy/%E4%BD%A0%E6%98%AF%E4%B8%80%E5%90%8D%E5%B0%8D%E6%B2%96%E5%9F%BA%E9%87%91%E9%87%8F%E5%8C%96%E7%A0%94%E7%A9%B6%E5%93%A1%E8%AB%8B%E5%BE%9E%E5%9F%BA%E6%9C%AC%E9%9D%A2%E4%BC%B0%E5%80%BC%E7%B1%8C%E7%A2%BC%E4%BA%8B%E4%BB%B6%E9%A9%85%E5%8B%95%E5%8F%8A%E5%B8%82%E5%A0%B4%E7%92%B0%E5%A2%83%E5%A4%9A%E7%B6%AD%E5%BA%A6%E5%88%86%E6%9E%90-%E8%82%A1%E7%A5%A8%E4%BB%A3%E8%99%9F-ipo-%E4%B8%8A%E5%B8%82%E5%BE%8C%E7%9A%84%E6%8A%95%E8%B3%87%E5%83%B9%E5%80%BC%E8%AB%8B%E5%88%86%E6%9E%90%E2%91%A0%E5%95%86%E6%A5%AD%E6%A8%A1%E5%BC%8F%E6%88%90%E9%95%B7%E6%80%A7%E7%9B%88%E5%88%A9%E8%83%BD%E5%8A%9B%E5%8F%8A%E7%AB%B6%E7%88%AD%E5%84%AA%E5%8B%A2%E2%91%A1ipo%E4%BC%B0%E5%80%BC/', 'content': '2026 at 2:48 … 基本面:營收、利潤、估值(PE/PB/PS 同行業比較) 一旦2027 年的獲利成長率無法維持先前的雙位數爆發,估值自然需要下修重估。'}, {'title': '存储涨价效应加速释放，后期价格或高位宽幅震荡', 'url': 'https://pdf.dfcfw.com/pdf/H3_AP202607091826844045_1.pdf', 'content': '当前半导体在历史5年与10年. 分位数来看，PE分别是100.00%、99.79%，PB分别是100.00%、100.00 ... 图8 不同板块在不同估值指标下的历史分位数.'}, {'title': 'Price History', 'url': 'https://ir.amd.com/stock-data/price-history', 'content': 'Price History :: Advanced Micro Devices, Inc. (AMD) Stock Data Price History Stock ・ 2026 QuoteMedia. Data delayed 15 minutes unless otherwise indicated ・ ...'}, {'title': '科创板估值方法全景透视', 'url': 'https://img3.gelonghui.com/pdf/3de21-be17ea0f-1b81-4fcd-a9f5-1079698a962a.pdf', 'content': '企业以PE 估值为主, ; IC 制造以PB 估值为主,封测则PE、PEG、PS、PCF 等估值方法。 估值方法包括EV/EBITDA、PS、EV/S 等。'}, {'title': '公司估值-app使用手冊', 'url': 'https://www.futuhk.com/manual/topic11_78', 'content': '詳情頁提供了市盈率、市淨率和市銷率三種估值模型，模型計算公式如下：. PE（市盈率TTM）=股價/每股收益（每股收益=最近12個月歸屬母公司股東的淨 ...'}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:333] [bool] failed to parse field [should]', [1:333] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Advanced Micro Devices, Inc.（AMD）基本面】\n行业：Technology / Semiconductors\n市值：7,890.7 亿 USD\n市盈率（TTM）：123.31 | 市盈率（预期）：31.27\n每股收益（TTM）：3.92 | 股息率：无\nBeta：2.49\n52周区间：149.22 - 584.73 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        2
+      ],
+      "injected_calls": [
+        3,
+        3
+      ],
+      "baseline_distinct": [
+        1,
+        2
+      ],
+      "injected_distinct": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "sop-val-12",
+      "question": "分析一下MSFT现在估值高不高",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "classified_hits": [
+        "valuation"
+      ],
+      "baseline_texts": [
+        "MSFT fundamentals\nMicrosoft valuation metrics interpretation and benchmarks",
+        "MSFT fundamentals\nMicrosoft 2026 Q2 10-Q earnings growth outlook"
+      ],
+      "injected_texts": [
+        "MSFT fundamentals\nAAPL fundamentals\nGOOGL fundamentals",
+        "MSFT fundamentals\nMSFT price\nMSFT historical P/E valuation range 3-year and 5-year percentile\nMicrosoft peer group valuation comparison P/E P/S EV/EBITDA"
+      ],
+      "baseline_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:335] [bool] failed to parse field [should]', [1:335] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:334] [bool] failed to parse field [should]', [1:334] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Microsoft Corporation（MSFT）】\n最新价：499.99 USD\n涨跌：+1.02 （+0.20%）\n昨收：498.97 | 最高：505.18 | 最低：498.73\n成交量：28,818,000",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:335] [bool] failed to parse field [should]', [1:335] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:334] [bool] failed to parse field [should]', [1:334] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        2,
+        2
+      ],
+      "injected_calls": [
+        3,
+        4
+      ],
+      "baseline_distinct": [
+        2,
+        2
+      ],
+      "injected_distinct": [
+        3,
+        4
+      ]
+    }
+  ],
+  "dual": [
+    {
+      "id": "sop-dual-01",
+      "question": "AAPL 现在估值贵不贵，和同行业比怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nTSLA fundamentals\nINTC fundamentals\nNVDA fundamentals",
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nMETA fundamentals\nTSLA fundamentals"
+      ],
+      "injected_texts": [
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nTSLA fundamentals",
+        "AAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nTSLA fundamentals"
+      ],
+      "baseline_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n【Intel Corporation（INTC）基本面】\n行业：Technology / Semiconductors\n市值：5,127.2 亿 USD\n市盈率（TTM）：未知 | 市盈率（预期）：49.35\n每股收益（TTM）：-2.09 | 股息率：无\nBeta：2.24\n52周区间：20.44 - 142.35 USD\n【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+      ],
+      "injected_obtained": [
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+        "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+      ],
+      "baseline_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "【Intel Corporation（INTC）基本面】\n行业：Technology / Semiconductors\n市值：5,127.2 亿 USD\n市盈率（TTM）：未知 | 市盈率（预期）：49.35\n每股收益（TTM）：-2.09 | 股息率：无\nBeta：2.24\n52周区间：20.44 - 142.35 USD",
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+        ],
+        [
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD"
+        ]
+      ],
+      "baseline_calls": [
+        6,
+        5
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        6,
+        5
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-dual-02",
+      "question": "MSFT 最新财报解读一下，顺便看看它在行业里的地位？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "MSFT fundamentals\nMSFT latest 10-K summary\nMicrosoft industry position and competitors",
+        "MSFT fundamentals\nMSFT latest 10-K summary\nMicrosoft industry position and competitors"
+      ],
+      "injected_texts": [
+        "MSFT fundamentals\nMSFT latest 10-K management discussion and analysis\nMicrosoft industry position market share cloud computing software",
+        "MSFT fundamentals\nMSFT latest 10-K management discussion and analysis\nMicrosoft industry position and market share cloud computing software"
+      ],
+      "baseline_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:299] [bool] failed to parse field [should]', [1:299] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:299] [bool] failed to parse field [should]', [1:299] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:340] [bool] failed to parse field [should]', [1:340] [bool] failed to parse field [should])\"}]",
+        "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:340] [bool] failed to parse field [should]', [1:340] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:299] [bool] failed to parse field [should]', [1:299] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:299] [bool] failed to parse field [should]', [1:299] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:314] [bool] failed to parse field [should]', [1:314] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:340] [bool] failed to parse field [should]', [1:340] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:340] [bool] failed to parse field [should]', [1:340] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        3,
+        3
+      ],
+      "injected_calls": [
+        3,
+        3
+      ],
+      "baseline_distinct": [
+        3,
+        3
+      ],
+      "injected_distinct": [
+        3,
+        3
+      ]
+    },
+    {
+      "id": "sop-dual-03",
+      "question": "NVDA 现在估值是不是太高了，有什么下行风险？",
+      "expect_skill_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "classified_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "baseline_texts": [
+        "NVDA fundamentals",
+        "NVDA fundamentals\nNVDA latest 10-K risk factors"
+      ],
+      "injected_texts": [
+        "NVDA valuation\nNVDA fundamentals\nNVDA latest 10-K risk factors\nNVDA P/E historical percentile 3-year",
+        "NVDA valuation\nNVDA fundamentals\nNVDA latest 10-K risk factors\nNVDA P/E historical percentile 3-year"
+      ],
+      "baseline_obtained": [
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+        "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700\n【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]",
+        "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700\n【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD"
+        ],
+        [
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700",
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【NVIDIA Corporation（NVDA）】\n最新价：223.96 USD\n涨跌：+4.54 （+2.07%）\n昨收：219.42 | 最高：224.76 | 最低：220.66\n成交量：105,473,700",
+          "【NVIDIA Corporation（NVDA）基本面】\n行业：Technology / Semiconductors\n市值：54,245.4 亿 USD\n市盈率（TTM）：34.24 | 市盈率（预期）：17.37\n每股收益（TTM）：6.54 | 股息率：45.00%\nBeta：2.21\n52周区间：164.07 - 236.54 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:312] [bool] failed to parse field [should]', [1:312] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        1,
+        2
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        1,
+        2
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "sop-dual-04",
+      "question": "TSLA 的财务基本面怎么样，有没有什么值得担心的风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "baseline_texts": [
+        "TSLA fundamentals\nTSLA latest 10-K risk factors",
+        "TSLA fundamentals\nTSLA latest 10-K risk factors"
+      ],
+      "injected_texts": [
+        "TSLA fundamentals\nTSLA latest 10-K risk factors",
+        "TSLA fundamentals\nTSLA latest 10-K risk factors"
+      ],
+      "baseline_obtained": [
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]",
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+      ],
+      "injected_obtained": [
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]",
+        "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Tesla, Inc.（TSLA）基本面】\n行业：Consumer Cyclical / Auto Manufacturers\n市值：12,977.4 亿 USD\n市盈率（TTM）：304.24 | 市盈率（预期）：148.06\n每股收益（TTM）：1.08 | 股息率：无\nBeta：1.83\n52周区间：297.38 - 498.83 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        2,
+        2
+      ],
+      "injected_calls": [
+        2,
+        2
+      ],
+      "baseline_distinct": [
+        2,
+        2
+      ],
+      "injected_distinct": [
+        2,
+        2
+      ]
+    },
+    {
+      "id": "sop-dual-05",
+      "question": "GOOGL 和同行相比，盈利能力和财务健康状况如何？",
+      "expect_skill_hits": [
+        "industry_comparison",
+        "financial_statement"
+      ],
+      "classified_hits": [
+        "industry_comparison",
+        "financial_statement"
+      ],
+      "baseline_texts": [
+        "GOOGL fundamentals\nMETA fundamentals\nMSFT fundamentals\nAMZN fundamentals\n财务健康状况的评估指标有哪些",
+        "GOOGL fundamentals\nMETA fundamentals\nMSFT fundamentals\nAAPL fundamentals\nAMZN fundamentals"
+      ],
+      "injected_texts": [
+        "GOOGL fundamentals\nMETA fundamentals\nMSFT fundamentals\nGoogle Alphabet market share digital advertising 2025\nAlphabet vs Meta vs Microsoft competitive moat analysis",
+        "GOOGL fundamentals\nMETA fundamentals\nMSFT fundamentals\nGoogle Alphabet market share search advertising 2025\nAlphabet vs Meta vs Microsoft competitive moat analysis"
+      ],
+      "baseline_obtained": [
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:311] [bool] failed to parse field [should]', [1:311] [bool] failed to parse field [should])\"}]",
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+      ],
+      "injected_obtained": [
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]",
+        "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:327] [bool] failed to parse field [should]', [1:327] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:311] [bool] failed to parse field [should]', [1:311] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:328] [bool] failed to parse field [should]', [1:328] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:327] [bool] failed to parse field [should]', [1:327] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:330] [bool] failed to parse field [should]', [1:330] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        5,
+        5
+      ],
+      "injected_calls": [
+        5,
+        5
+      ],
+      "baseline_distinct": [
+        5,
+        5
+      ],
+      "injected_distinct": [
+        5,
+        5
+      ]
+    },
+    {
+      "id": "sop-dual-06",
+      "question": "AMZN 现在估值合理吗？和它的主要竞争对手比又怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "classified_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "baseline_texts": [
+        "AMZN fundamentals\nWMT fundamentals\nTGT fundamentals\nBABA fundamentals\nSHOP fundamentals\n电商行业公司估值比较方法与常用指标",
+        "AMZN fundamentals\nWMT fundamentals\nTGT fundamentals\nEBAY fundamentals"
+      ],
+      "injected_texts": [
+        "AMZN fundamentals\nMSFT fundamentals\nGOOGL fundamentals\nWMT fundamentals\nAmazon AMZN P/E historical percentile 3-year and 5-year\nAmazon competitors market share e-commerce cloud computing",
+        "AMZN fundamentals\nAAPL fundamentals\nMSFT fundamentals\nGOOGL fundamentals"
+      ],
+      "baseline_obtained": [
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD\n【Target Corporation（TGT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：679.9 亿 USD\n市盈率（TTM）：19.78 | 市盈率（预期）：16.65\n每股收益（TTM）：7.57 | 股息率：3.10%\nBeta：0.97\n52周区间：83.44 - 150.07 USD\n【Alibaba Group Holding Limited（BABA）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：3,077.8 亿 USD\n市盈率（TTM）：19.69 | 市盈率（预期）：14.16\n每股收益（TTM）：6.52 | 股息率：82.00%\nBeta：0.51\n52周区间：91.99 - 192.67 USD\n【Shopify Inc.（SHOP）基本面】\n行业：Technology / Software - Application\n市值：1,966.9 亿 USD\n市盈率（TTM）：101.72 | 市盈率（预期）：62.28\n每股收益（TTM）：1.49 | 股息率：无\nBeta：2.59\n52周区间：94.00 - 182.19 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]",
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD\n【Target Corporation（TGT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：679.9 亿 USD\n市盈率（TTM）：19.78 | 市盈率（预期）：16.65\n每股收益（TTM）：7.57 | 股息率：3.10%\nBeta：0.97\n52周区间：83.44 - 150.07 USD\n【eBay Inc.（EBAY）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：498.3 亿 USD\n市盈率（TTM）：23.53 | 市盈率（预期）：16.70\n每股收益（TTM）：4.76 | 股息率：1.11%\nBeta：1.35\n52周区间：78.03 - 119.31 USD"
+      ],
+      "injected_obtained": [
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD\n【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:333] [bool] failed to parse field [should]', [1:333] [bool] failed to parse field [should])\"}]",
+        "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD\n【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD\n【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD\n【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+      ],
+      "baseline_results": [
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD",
+          "【Target Corporation（TGT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：679.9 亿 USD\n市盈率（TTM）：19.78 | 市盈率（预期）：16.65\n每股收益（TTM）：7.57 | 股息率：3.10%\nBeta：0.97\n52周区间：83.44 - 150.07 USD",
+          "【Alibaba Group Holding Limited（BABA）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：3,077.8 亿 USD\n市盈率（TTM）：19.69 | 市盈率（预期）：14.16\n每股收益（TTM）：6.52 | 股息率：82.00%\nBeta：0.51\n52周区间：91.99 - 192.67 USD",
+          "【Shopify Inc.（SHOP）基本面】\n行业：Technology / Software - Application\n市值：1,966.9 亿 USD\n市盈率（TTM）：101.72 | 市盈率（预期）：62.28\n每股收益（TTM）：1.49 | 股息率：无\nBeta：2.59\n52周区间：94.00 - 182.19 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD",
+          "【Target Corporation（TGT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：679.9 亿 USD\n市盈率（TTM）：19.78 | 市盈率（预期）：16.65\n每股收益（TTM）：7.57 | 股息率：3.10%\nBeta：0.97\n52周区间：83.44 - 150.07 USD",
+          "【eBay Inc.（EBAY）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：498.3 亿 USD\n市盈率（TTM）：23.53 | 市盈率（预期）：16.70\n每股收益（TTM）：4.76 | 股息率：1.11%\nBeta：1.35\n52周区间：78.03 - 119.31 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD",
+          "【Walmart Inc.（WMT）基本面】\n行业：Consumer Defensive / Discount Stores\n市值：8,901.1 亿 USD\n市盈率（TTM）：39.38 | 市盈率（预期）：34.10\n每股收益（TTM）：2.84 | 股息率：89.00%\nBeta：0.60\n52周区间：95.42 - 135.16 USD",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:326] [bool] failed to parse field [should]', [1:326] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:333] [bool] failed to parse field [should]', [1:333] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Amazon.com, Inc.（AMZN）基本面】\n行业：Consumer Cyclical / Internet Retail\n市值：29,606.3 亿 USD\n市盈率（TTM）：22.08 | 市盈率（预期）：26.57\n每股收益（TTM）：12.43 | 股息率：无\nBeta：1.45\n52周区间：196.00 - 287.20 USD",
+          "【Apple Inc.（AAPL）基本面】\n行业：Technology / Consumer Electronics\n市值：45,727.9 亿 USD\n市盈率（TTM）：35.97 | 市盈率（预期）：32.94\n每股收益（TTM）：8.71 | 股息率：34.00%\nBeta：1.09\n52周区间：223.78 - 344.57 USD",
+          "【Microsoft Corporation（MSFT）基本面】\n行业：Technology / Software - Infrastructure\n市值：37,127.0 亿 USD\n市盈率（TTM）：27.85 | 市盈率（预期）：21.30\n每股收益（TTM）：17.95 | 股息率：73.00%\nBeta：1.10\n52周区间：349.20 - 553.72 USD",
+          "【Alphabet Inc.（GOOGL）基本面】\n行业：Communication Services / Internet Content & Information\n市值：43,330.7 亿 USD\n市盈率（TTM）：17.76 | 市盈率（预期）：24.05\n每股收益（TTM）：19.95 | 股息率：25.00%\nBeta：1.24\n52周区间：196.60 - 408.61 USD"
+        ]
+      ],
+      "baseline_calls": [
+        6,
+        4
+      ],
+      "injected_calls": [
+        6,
+        4
+      ],
+      "baseline_distinct": [
+        6,
+        4
+      ],
+      "injected_distinct": [
+        6,
+        4
+      ]
+    },
+    {
+      "id": "sop-dual-07",
+      "question": "META 的财报和估值分别怎么看，现在这个价位有没有下行风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "valuation"
+      ],
+      "classified_hits": [
+        "financial_statement",
+        "valuation"
+      ],
+      "baseline_texts": [
+        "META latest 10-K risk factors\nMETA fundamentals",
+        "META latest 10-K financial highlights and risk factors\nMETA fundamentals"
+      ],
+      "injected_texts": [
+        "META fundamentals\nMETA valuation\nMETA latest 10-K financial statements analysis\nMETA risk factors in recent filings",
+        "META fundamentals\nMETA valuation\nMETA latest 10-K financial statements analysis\nMETA latest 10-Q management discussion and analysis"
+      ],
+      "baseline_obtained": [
+        "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+        "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]\n【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD"
+      ],
+      "injected_obtained": [
+        "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:307] [bool] failed to parse field [should]', [1:307] [bool] failed to parse field [should])\"}]",
+        "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD\n【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]\n[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]"
+      ],
+      "baseline_results": [
+        [
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:304] [bool] failed to parse field [should]', [1:304] [bool] failed to parse field [should])\"}]",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD"
+        ],
+        [
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:325] [bool] failed to parse field [should]', [1:325] [bool] failed to parse field [should])\"}]",
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD"
+        ]
+      ],
+      "injected_results": [
+        [
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:307] [bool] failed to parse field [should]', [1:307] [bool] failed to parse field [should])\"}]"
+        ],
+        [
+          "【Meta Platforms, Inc.（META）基本面】\n行业：Communication Services / Internet Content & Information\n市值：15,083.8 亿 USD\n市盈率（TTM）：22.32 | 市盈率（预期）：16.85\n每股收益（TTM）：26.53 | 股息率：35.00%\nBeta：1.24\n52周区间：520.26 - 796.25 USD",
+          "【Meta Platforms, Inc.（META）】\n最新价：592.10 USD\n涨跌：+3.00 （+0.51%）\n昨收：589.10 | 最高：598.74 | 最低：585.62\n成交量：11,226,700",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:321] [bool] failed to parse field [should]', [1:321] [bool] failed to parse field [should])\"}]",
+          "[{'error': True, 'error_message': \"rag_search failed: BadRequestError(400, 'x_content_parse_exception', '[1:322] [bool] failed to parse field [should]', [1:322] [bool] failed to parse field [should])\"}]"
+        ]
+      ],
+      "baseline_calls": [
+        2,
+        2
+      ],
+      "injected_calls": [
+        4,
+        4
+      ],
+      "baseline_distinct": [
+        2,
+        2
+      ],
+      "injected_distinct": [
+        4,
+        4
+      ]
+    }
+  ]
+}

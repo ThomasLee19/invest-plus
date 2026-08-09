@@ -13,10 +13,8 @@
     agent.py:1335  第一条 yield（受理回执）← 首次反馈发生在这里，不等任何 LLM
     agent.py:1337  _get_llm_client()
     agent.py:1345  recall_all_conclusions(query)
-    agent.py:1352  classify_skill(query)            LLM 调用 #1
-    agent.py:1355  load_skill(name)                 每个命中的 SOP 一次
-    agent.py:1365  build_trajectory(...)            纯字符串拼装，不含 LLM
-    agent.py:1382  _llm_decide(messages)            LLM 调用 #2（第 1 轮决策）
+    agent.py:1430  build_trajectory(...)            纯字符串拼装，不含 LLM
+    agent.py:1447  _llm_decide(messages)            LLM 调用 #1（第 1 轮决策）
     agent.py:1421  「正在调用 …」yield ← 首个实质判断发生在这里
 
 本脚本量的是**首个实质判断**这一刻，不是首次反馈。自 `448b831` 起第一条 SSE 是受理
@@ -24,8 +22,10 @@
 
 增量二把 agent_plan 与 should_continue 合并成了一个决策操作，但**这不会缩短这条路径**：
 两者从来不是都在首个判断之前，should_continue 跑在工具执行之后。合并省下的是多轮请求
-里的第二份 system prompt 与第二套工具描述，不是这里的往返次数。这条路径上仍然是两次
-LLM 调用（classify_skill + 第 1 轮决策），要减少只能砍掉 classify_skill（增量三评估）。
+里的第二份 system prompt 与第二套工具描述，不是这里的往返次数。增量三已砍掉 classify_skill：SOP 元数据目录改为常驻 system 前缀，正文经 load_sop
+激活工具按需载入（教材 2.5.2），路由由主模型顺带完成。因此这条路径上现在**只剩一次
+LLM 调用**。注意省下的不是「需要 SOP 的题的那次往返」——那些题会多一轮 load_sop，
+是打平；省的是**不需要 SOP 的题彻底不付这笔钱**，而 classify_skill 此前无条件跑。
 
 外加 `chat_rt.py` 在进入 `final_answer()` 之前做的：
 
@@ -117,22 +117,12 @@ def time_one(question: str, fns: dict) -> dict:
         conclusions, err = [], f"{err or ''} recall_all_conclusions: {e}"
     sw.lap("recall_all_conclusions")
 
-    hits = fns["classify_skill"](question)
-    sw.lap("classify_skill (LLM #1)")
-
-    sops = []
-    for name in hits:
-        sop = fns["load_skill"](name)
-        if sop and sop.get("body"):
-            sops.append(sop)
-    sw.lap("load_skill")
-
-    messages = fns["build_trajectory"](question, user_profile=None, skill_sops=sops,
+    messages = fns["build_trajectory"](question, user_profile=None,
                                        recalled_conclusions=conclusions)
     sw.lap("build_trajectory")
 
     msg = fns["llm_decide"](messages, stage="plan")
-    sw.lap("decide round 1 (LLM #2)")
+    sw.lap("decide round 1 (LLM #1)")
 
     actions = [f for f in (fns["tool_call_fields"](tc) for tc in (msg.tool_calls or []))
                if f is not None]
@@ -142,7 +132,7 @@ def time_one(question: str, fns: dict) -> dict:
         "question": question,
         "stages": dict(sw.marks),
         "total": sum(v for _, v in sw.marks),
-        "skill_hits": hits,
+        "skill_hits": [],
         "n_actions": len(actions),
         "tools": sorted({name for name, _ in actions}) if actions else [],
         "error": err,
@@ -193,8 +183,8 @@ def main():
             records.append(r)
             done += 1
             print(f"[{done}/{total}] {item['id']:<10} 合计 {r['total']:.3f}s  "
-                  f"classify {r['stages']['classify_skill (LLM #1)']:.3f}s  "
-                  f"decide {r['stages']['decide round 1 (LLM #2)']:.3f}s  "
+                  
+                  f"decide {r['stages']['decide round 1 (LLM #1)']:.3f}s  "
                   f"工具={','.join(r['tools']) or '-'}")
 
     # 阶段名与顺序取自实际记录，保证与 time_one() 里的打点顺序一致

@@ -31,10 +31,25 @@ def main() -> int:
 
     from app.service.agent import agent  # noqa: E402
 
+    def route(question: str) -> list[str]:
+        """量生产路由：主模型在带 SOP 目录的 system 前缀下，自己发起哪些 load_sop。
+
+        不再走 classify_skill——增量三之后它已不在生产路径上（元数据目录常驻 system，
+        正文经激活工具按需载入，教材 2.5.2）。直接读第 1 轮决策的原生 tool_calls，
+        才是生产实际发生的事。
+        """
+        msg = agent._llm_decide(agent.build_trajectory(question), stage="plan")
+        out = []
+        for tc in (msg.tool_calls or []):
+            fields = agent._tool_call_fields(tc)
+            if fields and fields[0] == "load_sop":
+                out.append(fields[1])
+        return out
+
     print("== 反例（应命中 0 个 SOP）==")
     neg_rows, fp = [], 0
     for it in NEGATIVE:
-        runs = [agent.classify_skill(it["question"]) for _ in range(args.samples)]
+        runs = [route(it["question"]) for _ in range(args.samples)]
         misfired = [h for h in runs if h]
         fp += len(misfired)
         neg_rows.append({**it, "runs": runs})
@@ -46,7 +61,7 @@ def main() -> int:
     pos_rows, hit = [], 0
     positives = list(SINGLE_HIT_VALUATION) + list(DUAL_HIT)
     for it in positives:
-        got = agent.classify_skill(it["question"])
+        got = route(it["question"])
         exp, gotset = set(it["expect_skill_hits"]), set(got)
         ok = exp == gotset
         hit += ok

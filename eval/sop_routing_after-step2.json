@@ -1,0 +1,322 @@
+{
+  "label": "after-step2",
+  "samples": 2,
+  "false_positive": 0,
+  "negative_total": 16,
+  "positive_hit": 16,
+  "positive_total": 19,
+  "negative": [
+    {
+      "id": "sop-neg-01",
+      "question": "什么是市盈率？",
+      "expect_skill_hits": [],
+      "trap": "valuation（市盈率）",
+      "why": "概念解释，不是对某只股票的估值判断",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-02",
+      "question": "现金流量表分为哪三个部分？",
+      "expect_skill_hits": [],
+      "trap": "financial_statement（现金流量表）",
+      "why": "概念解释，没有具体公司",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-03",
+      "question": "AAPL 现在股价多少？",
+      "expect_skill_hits": [],
+      "trap": "valuation（股价）",
+      "why": "单点取数，不需要估值拆解",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-04",
+      "question": "苹果公司最新的每股收益是多少？",
+      "expect_skill_hits": [],
+      "trap": "financial_statement（每股收益）",
+      "why": "单点取数，不需要三表拆解",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-05",
+      "question": "苹果最近和 American Express 有什么合作新闻？",
+      "expect_skill_hits": [],
+      "trap": "industry_comparison（公司间关系）",
+      "why": "新闻查询，不是跨公司指标横向对比",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-06",
+      "question": "今天美股大盘的整体走势如何？",
+      "expect_skill_hits": [],
+      "trap": "risk_scan / industry_comparison（大盘、行业）",
+      "why": "宏观行情，不是个股分析",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-07",
+      "question": "最近有什么关于美联储利率决议的最新消息？",
+      "expect_skill_hits": [],
+      "trap": "risk_scan（政策、监管）",
+      "why": "宏观政策新闻，不是个股排雷",
+      "runs": [
+        [],
+        []
+      ]
+    },
+    {
+      "id": "sop-neg-08",
+      "question": "你好，你能做什么？",
+      "expect_skill_hits": [],
+      "trap": "无",
+      "why": "对照组：与投研完全无关，任何 SOP 都不该触发",
+      "runs": [
+        [],
+        []
+      ]
+    }
+  ],
+  "positive": [
+    {
+      "id": "sop-val-01",
+      "question": "AAPL 现在市盈率贵不贵？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-02",
+      "question": "MSFT 目前的估值水平合理吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-03",
+      "question": "英伟达 NVDA 现在是不是被高估了？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-04",
+      "question": "从估值角度看，TSLA 现在这个价位值不值？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-05",
+      "question": "AMZN 现在便宜吗，估值处于什么水平？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-06",
+      "question": "GOOGL 的市盈率和 PEG 现在处于高位还是低位？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-07",
+      "question": "META 现在这个价位是高估还是低估？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-08",
+      "question": "AAPL 的市净率和市销率现在算贵吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-09",
+      "question": "NFLX 现在的估值贵不贵，值不值得关注？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-10",
+      "question": "KO 可口可乐的股息率和市盈率现在有吸引力吗？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-11",
+      "question": "AMD 当前的估值分位处于历史什么位置？",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-val-12",
+      "question": "分析一下MSFT现在估值高不高",
+      "expect_skill_hits": [
+        "valuation"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-dual-01",
+      "question": "AAPL 现在估值贵不贵，和同行业比怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "got": [
+        "valuation"
+      ],
+      "ok": false
+    },
+    {
+      "id": "sop-dual-02",
+      "question": "MSFT 最新财报解读一下，顺便看看它在行业里的地位？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "industry_comparison"
+      ],
+      "got": [
+        "industry_comparison"
+      ],
+      "ok": false
+    },
+    {
+      "id": "sop-dual-03",
+      "question": "NVDA 现在估值是不是太高了，有什么下行风险？",
+      "expect_skill_hits": [
+        "valuation",
+        "risk_scan"
+      ],
+      "got": [
+        "valuation",
+        "risk_scan"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-dual-04",
+      "question": "TSLA 的财务基本面怎么样，有没有什么值得担心的风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "got": [
+        "financial_statement",
+        "risk_scan"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-dual-05",
+      "question": "GOOGL 和同行相比，盈利能力和财务健康状况如何？",
+      "expect_skill_hits": [
+        "industry_comparison",
+        "financial_statement"
+      ],
+      "got": [
+        "industry_comparison",
+        "financial_statement"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-dual-06",
+      "question": "AMZN 现在估值合理吗？和它的主要竞争对手比又怎么样？",
+      "expect_skill_hits": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "got": [
+        "valuation",
+        "industry_comparison"
+      ],
+      "ok": true
+    },
+    {
+      "id": "sop-dual-07",
+      "question": "META 的财报和估值分别怎么看，现在这个价位有没有下行风险？",
+      "expect_skill_hits": [
+        "financial_statement",
+        "valuation"
+      ],
+      "got": [
+        "financial_statement",
+        "valuation",
+        "risk_scan"
+      ],
+      "ok": false
+    }
+  ]
+}

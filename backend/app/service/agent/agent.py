@@ -241,6 +241,30 @@ _TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_sop",
+            "description": (
+                "载入一份分析 SOP 的完整检查清单。system 提示词里常驻的只是各 SOP 的名字与"
+                "适用边界（元数据目录），正文要用本工具按需取回。\n"
+                "适用：判定某份 SOP 的 Use when 条件成立、需要按它的检查清单系统展开时。\n"
+                "不适用：单点取数、概念解释、新闻查询、宏观话题——这些不需要 SOP，"
+                "直接用数据工具即可。各 SOP 的 Don't use when 已写在目录里，先对照再决定。\n"
+                "一次最多载入 2 份；载入后请按清单规划取数，不要再重复载入同一份。\n"
+                "它不访问外部数据，只返回指导性文本，因此很快。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {
+                    "type": "string",
+                    "description": "SOP 名称",
+                    "enum": ["valuation", "financial_statement", "industry_comparison", "risk_scan"],
+                }},
+                "required": ["name"],
+            },
+        },
+    },
 ]
 
 
@@ -327,10 +351,11 @@ def _tool_call_fields(tc) -> tuple[str, str] | None:
         args = json.loads(tc.function.arguments or "{}")
     except (json.JSONDecodeError, AttributeError):
         return None
-    query = args.get("query")
-    if not isinstance(query, str) or not query.strip():
+    # 数据工具用 query，激活工具 load_sop 用 name；两者取其一，取不到即判为畸形。
+    arg = args.get("query") or args.get("name")
+    if not isinstance(arg, str) or not arg.strip():
         return None
-    return name, query.strip()
+    return name, arg.strip()
 
 
 def _llm_json(prompt: str, system: str | None = None, stage: str = "unknown") -> str:
@@ -925,9 +950,49 @@ def build_trajectory(
         query=query, today=_current_date_str(), context_block=context_block
     )
     return [
-        {"role": "system", "content": _DECIDE_SYSTEM},
+        {"role": "system", "content": _decide_system()},
         {"role": "user", "content": user_content},
     ]
+
+
+_skill_catalog_cache: str | None = None
+_decide_system_cache: str | None = None
+
+
+def _skill_catalog() -> str:
+    """四份 SOP 的 name + description 目录。只含元数据，不含正文。
+
+    教材 2.5.2：目录常驻 system prompt，正文按需加载，两层分开才能兼顾可发现性与
+    上下文开销。目录随 skills/ 目录决定，同一进程内逐字节稳定，因此可以和角色定义
+    一起归入静态前缀持续复用 Prompt Cache。
+    """
+    global _skill_catalog_cache
+    if _skill_catalog_cache is None:
+        lines = []
+        for name in _SKILL_NAMES:
+            sk = load_skill(name)
+            if sk and sk.get("name"):
+                lines.append(f"- **{sk['name']}**：{sk.get('description', '')}")
+        _skill_catalog_cache = "\n".join(lines)
+    return _skill_catalog_cache
+
+
+def _decide_system() -> str:
+    """决策模块的完整 system 文本 = 固定正文 + SOP 元数据目录。
+
+    目录追加在末尾而不是插在中间，是为了让固定正文那一段在目录变动时仍是稳定前缀。
+    """
+    global _decide_system_cache
+    if _decide_system_cache is None:
+        catalog = _skill_catalog()
+        _decide_system_cache = _DECIDE_SYSTEM + (
+            "\n## 可用的分析 SOP\n\n"
+            "下面是本系统内置的分析检查清单目录。**这里只有名字和适用边界，没有正文。**\n"
+            "判定某份的 Use when 成立时，用 `load_sop` 取回它的完整清单再规划取数；\n"
+            "命中 Don't use when、或问题只是单点取数/概念解释/新闻/宏观时，不要载入。\n\n"
+            f"{catalog}\n"
+        ) if catalog else _DECIDE_SYSTEM
+    return _decide_system_cache
 
 
 def agent_plan(
@@ -1346,16 +1411,11 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     except Exception as e:
         print(f"[final_answer] 调研结论召回失败，降级为无结论：{e}")
         recalled_conclusions = []
-    # classify_skill 命中 0-2 个（其内部已吞掉全部异常、失败返回空列表）；读取命中的 SOP
-    # 正文，读取失败的按未命中处理（load_skill 返回 None 即跳过），全部失败时 matched_sops
-    # 为空列表，不阻断主流程。
-    skill_hits = classify_skill(query)
-    matched_sops = []
-    for _name in skill_hits:
-        _sop = load_skill(_name)
-        if _sop and _sop.get("body"):
-            matched_sops.append(_sop)
-
+    # SOP 不再由独立的 classify_skill 往返来选。教材 2.5.2：元数据目录常驻 system 前缀，
+    # 正文按需经激活工具载入。目录已在 _decide_system() 里，主模型看得见四份 SOP 的名字与
+    # 适用边界，自己判断要不要 load_sop。省下的不是「需要 SOP 的题的那次往返」——那是打平；
+    # 省的是**不需要 SOP 的题彻底不付这笔钱**，而 classify_skill 此前是无条件跑的，
+    # 连「你好」都要花 0.7s。
     # ── 决策循环（Plan 与 Reflect 合一）──
     # 教材 2.2.3 的核心循环：同一个决策操作在一条持续增长的轨迹上反复执行。轨迹自己
     # 携带「已经查过什么、拿到了什么」，因此不存在「首轮规划」与「后续反思」两个模块，
@@ -1365,7 +1425,6 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
     messages = build_trajectory(
         query,
         user_profile=user_profile,
-        skill_sops=matched_sops,
         recalled_conclusions=recalled_conclusions,
     )
     memory = []
@@ -1411,6 +1470,23 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                 })
                 continue
             action_name, prompt = fields
+
+            # 激活工具：不访问外部数据，把 SOP 正文作为 tool 结果送回轨迹即可。
+            # 正文**不进 memory**——它是给模型看的指导，不是关于世界的事实，混进
+            # memory 会被当成参考信息喂给最终回答，也会污染 documents 事件。
+            if action_name == "load_sop":
+                sop = load_skill(prompt)
+                body = (sop or {}).get("body") or ""
+                ok = bool(body)
+                yield (f"event: message\ndata: "
+                       f"{json.dumps({'role': 'agent', 'content': f'正在载入 SOP：{prompt}'}, ensure_ascii=False)}\n\n")
+                messages.append({
+                    "role": "tool", "tool_call_id": tc.id,
+                    "content": body if ok else f"[未找到 SOP：{prompt}]",
+                })
+                print(f"[execute] load_sop: {prompt} ({'ok' if ok else '未找到'})")
+                executed_any = executed_any or ok
+                continue
 
             if decision_round == 1:
                 content = f'正在调用 {action_name}: "{prompt}"'

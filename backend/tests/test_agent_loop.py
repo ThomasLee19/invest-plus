@@ -168,6 +168,21 @@ def _decision(*calls, content: str = ""):
     return types.SimpleNamespace(content=content, tool_calls=tool_calls)
 
 
+def _load_sop_decision(*names, content: str = ""):
+    """构造一次「载入 SOP」的决策。load_sop 的参数名是 name（不是 query），
+    因为它不是取数工具，取的是指导文本。"""
+    tool_calls = [
+        types.SimpleNamespace(
+            id=f"call_{i}",
+            function=types.SimpleNamespace(
+                name="load_sop", arguments=json.dumps({"name": n}, ensure_ascii=False)
+            ),
+        )
+        for i, n in enumerate(names)
+    ]
+    return types.SimpleNamespace(content=content, tool_calls=tool_calls)
+
+
 def _drive_loop(test, decisions, process_actions_result=None, query="test query",
                 language="en", **final_answer_kwargs):
     """Run final_answer() with _llm_decide mocked to return `decisions` in order.
@@ -1607,50 +1622,39 @@ class MergeStepFinalAnswerInjectionTests(unittest.TestCase):
             list(agent.final_answer("你好", language="zh"))
         self.assertNotIn("## 已知历史结论", captured["final_prompt"])
 
-    def test_sop_read_failure_degrades_to_empty_list_without_crashing(self):
-        # classify_skill hits two SOPs, but every load_skill() read fails (returns
-        # None). matched_sops must end up empty and the request must not crash.
+    def test_sop_body_comes_back_as_a_tool_message(self):
+        """增量三：SOP 正文不再由 classify_skill 选中后拼进 user message，而是模型
+        自己发起 load_sop、正文以 tool 消息进轨迹（教材 2.5.2 的「专用激活工具」）。"""
+        with patch.object(agent, "load_skill",
+                          return_value={"name": "valuation", "body": "估值SOP正文"}):
+            _, traj = _drive_loop(self, [
+                _load_sop_decision("valuation"),
+                _decision(content="够了"),
+            ])
+        tool_msgs = [m for m in traj[-1] if m["role"] == "tool"]
+        self.assertEqual(len(tool_msgs), 1)
+        self.assertIn("估值SOP正文", tool_msgs[0]["content"])
+
+    def test_sop_read_failure_still_answers_the_tool_call(self):
+        """读取失败也必须回一条 tool 消息：缺了配对的 tool_call_id，下一轮请求整体非法。"""
+        with patch.object(agent, "load_skill", return_value=None):
+            _, traj = _drive_loop(self, [_load_sop_decision("valuation")])
+        tool_msgs = [m for m in traj[-1] if m["role"] == "tool"] if len(traj) > 1 else []
+        # 全部载入失败 -> executed_any 为假 -> 循环停止，只发生了 1 轮决策
+        self.assertEqual(len(traj), 1)
+
+    def test_sop_body_never_enters_memory(self):
+        """正文是给模型看的指导，不是关于世界的事实。混进 memory 会被当成参考信息
+        喂给最终回答，也会污染 documents 事件。"""
         captured = {}
-        plan_seen = {}
-
-        def _capture_plan(query, user_profile=None, skill_sops=None, recalled_conclusions=None):
-            # final_answer() 不再调用 agent_plan()——同一组上下文参数现在交给
-            # build_trajectory() 去拼装轨迹的首条 user 消息，捕获点随之前移。
-            plan_seen["skill_sops"] = skill_sops
-            return [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}]
-
-        with patch.object(agent, "recall_all_conclusions", return_value=[]), \
-             patch.object(agent, "classify_skill", return_value=["valuation", "risk_scan"]), \
-             patch.object(agent, "load_skill", return_value=None), \
-             patch.object(agent, "build_trajectory", side_effect=_capture_plan), \
+        with patch.object(agent, "load_skill",
+                          return_value={"name": "valuation", "body": "SOP正文哨兵"}), \
+             patch.object(agent, "recall_all_conclusions", return_value=[]), \
+             patch.object(agent, "_llm_decide", side_effect=[
+                 _load_sop_decision("valuation"), _decision(content="够了")]), \
              patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
-            events = list(agent.final_answer("AAPL 有什么风险", language="zh"))
-
-        self.assertEqual(plan_seen["skill_sops"], [])
-        self.assertTrue(any("event: end" in e for e in events))
-
-    def test_partial_sop_read_failure_keeps_the_readable_one(self):
-        # One SOP reads fine, the other fails -> only the readable one is passed.
-        captured = {}
-        plan_seen = {}
-
-        def _load(name):
-            return {"name": name, "body": "估值SOP正文"} if name == "valuation" else None
-
-        def _capture_plan(query, user_profile=None, skill_sops=None, recalled_conclusions=None):
-            # final_answer() 不再调用 agent_plan()——同一组上下文参数现在交给
-            # build_trajectory() 去拼装轨迹的首条 user 消息，捕获点随之前移。
-            plan_seen["skill_sops"] = skill_sops
-            return [{"role": "system", "content": "S"}, {"role": "user", "content": "U"}]
-
-        with patch.object(agent, "recall_all_conclusions", return_value=[]), \
-             patch.object(agent, "classify_skill", return_value=["valuation", "risk_scan"]), \
-             patch.object(agent, "load_skill", side_effect=_load), \
-             patch.object(agent, "build_trajectory", side_effect=_capture_plan), \
-             patch.object(agent, "_get_llm_client", return_value=_fake_stream_client(captured)):
-            list(agent.final_answer("AAPL 估值和风险", language="zh"))
-
-        self.assertEqual([s["name"] for s in plan_seen["skill_sops"]], ["valuation"])
+            list(agent.final_answer("AAPL 估值贵不贵", language="zh"))
+        self.assertNotIn("SOP正文哨兵", captured["final_prompt"])
 
     def test_conclusion_recall_db_failure_degrades_without_crashing(self):
         # recall_all_conclusions raising (e.g. DB down) must not break the answer.

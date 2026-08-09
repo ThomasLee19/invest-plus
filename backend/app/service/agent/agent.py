@@ -327,6 +327,28 @@ def _assistant_message_dict(msg) -> dict:
     return out
 
 
+def _tool_event(kind: str, tool: str, query: str, round_no: int, reason: str = "") -> str:
+    r"""构造一条工具事件的 SSE。
+
+    `content` 是给前端展示的中文文案，保持原样不动；同时带上结构化字段供评测消费。
+    评测此前靠正则匹配 `content` 里的中文来抽工具名（`(?:正在调用|补充调用) (\w+):`），
+    那是把 UI 文案当成了机器接口——文案一改评测就瞎，而且正则丢掉了 query 与轮次，
+    导致承重论断验证不得不另写一个探针从 SSE 里重抽一遍。
+    """
+    label = "正在调用" if kind == "call" else ("补充调用" if kind == "followup" else "正在载入 SOP：")
+    if kind == "load_sop":
+        content = f"{label}{query}"
+    else:
+        content = f'{label} {tool}: "{query}"'
+        if reason:
+            content += f"（原因：{reason}）"
+    payload = {
+        "role": "agent", "content": content,
+        "event_type": "tool_call", "tool": tool, "query": query, "round": round_no,
+    }
+    return f"event: message\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 def _tool_message_content(entry: dict) -> str:
     """把一条工具结果渲染成 tool 消息的正文。
 
@@ -1478,8 +1500,7 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                 sop = load_skill(prompt)
                 body = (sop or {}).get("body") or ""
                 ok = bool(body)
-                yield (f"event: message\ndata: "
-                       f"{json.dumps({'role': 'agent', 'content': f'正在载入 SOP：{prompt}'}, ensure_ascii=False)}\n\n")
+                yield _tool_event("load_sop", "load_sop", prompt, decision_round)
                 messages.append({
                     "role": "tool", "tool_call_id": tc.id,
                     "content": body if ok else f"[未找到 SOP：{prompt}]",
@@ -1488,13 +1509,11 @@ def final_answer(query: str, language: str = "auto", history: list[dict] | None 
                 executed_any = executed_any or ok
                 continue
 
-            if decision_round == 1:
-                content = f'正在调用 {action_name}: "{prompt}"'
-            else:
-                content = f'补充调用 {action_name}: "{prompt}"'
-                if rationale:
-                    content += f'（原因：{rationale}）'
-            yield f"event: message\ndata: {json.dumps({'role': 'agent', 'content': content}, ensure_ascii=False)}\n\n"
+            yield _tool_event(
+                "call" if decision_round == 1 else "followup",
+                action_name, prompt, decision_round,
+                reason=rationale if decision_round > 1 else "",
+            )
 
             # 逐个执行而不是整批：tool 消息要和 tool_call_id 一一配对。不再传共享的 seen——
             # 去重两层已随本次改造删除，见下方说明。

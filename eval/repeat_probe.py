@@ -58,14 +58,11 @@ import requests
 
 # 会把决策循环压深的问题。挑选标准是"一次取数答不完"：需要多个面向、或需要跨主体对比。
 # 前两道沿用 cache_probe.py 的 X 题及其同族，实测能驱动出 5 轮 reflect、十余次工具调用。
-DEFAULT_QUESTIONS = [
-    "苹果公司最近的财报里有哪些值得关注的风险因素？",
-    "对比一下苹果和微软的估值水平，哪个更贵，为什么？",
-    "微软最近有什么重要的业务变动，对它的估值有什么影响？",
-    "分析一下 AAPL 现在的基本面，从盈利能力、估值和风险三个方面说",
-    "谷歌的云业务和微软云相比表现如何，各自的增长动能在哪里？",
-]
+# 题集集中放在 skill_coverage_dataset.DEEP_LOOP，避免同一批题在两个脚本里各存一份而漂移。
+sys.path.insert(0, str(Path(__file__).parent))
+from skill_coverage_dataset import DEEP_LOOP as DEFAULT_QUESTIONS  # noqa: E402
 
+# 旧格式兜底：后端未升级到结构化工具事件时仍能跑。新路径读 event_type/tool/query/round。
 _CALL_RE = re.compile(r'(正在调用|补充调用) (\w+): "(.*?)"')
 
 
@@ -99,7 +96,11 @@ def fire(base: str, question: str, read_timeout: int) -> dict:
         except json.JSONDecodeError:
             continue
         content = data.get("content", "") or ""
-        if data.get("role") == "agent":
+        if data.get("event_type") == "tool_call":
+            # 结构化字段：轮次直接读，不用再靠「正在/补充」两个中文词去猜第几轮。
+            kind = "正在调用" if data.get("round") == 1 else "补充调用"
+            calls.append((kind, data.get("tool"), data.get("query")))
+        elif data.get("role") == "agent":
             m = _CALL_RE.search(content)
             if m:
                 calls.append((m.group(1), m.group(2), m.group(3)))

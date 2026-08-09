@@ -14,6 +14,7 @@ Invest+ 量化指标评测脚本（手动运行，非 CI 自动化用例，与 t
     eval/results.json  —— 每一题的原始请求/响应记录
     eval/report.md      —— 聚合后的量化指标报告（README/简历素材）
 """
+import argparse
 import json
 import re
 import statistics
@@ -52,9 +53,13 @@ def chat_stream(session_id: str, message: str, per_chunk_timeout: int = 150, wal
     后续题目。
     """
     t0 = time.monotonic()
-    t_first = None
-    tool_calls = []
+    t_first = None            # 第一条 SSE：受理回执，恒为常数，不度量 agent 行为
+    t_first_tool = None       # 第一条工具事件：首个实质判断
+    t_first_answer = None     # 回答的第一个 token
+    tool_calls = []           # 仅工具名，保持既有下游契约
+    tool_events = []          # 结构化：{tool, query, round}
     answer_parts = []
+    thinking_chars = 0        # reasoning_content 的字符量（token 的代理量）
     ended_cleanly = False
 
     try:
@@ -92,19 +97,42 @@ def chat_stream(session_id: str, message: str, per_chunk_timeout: int = 150, wal
                 data = json.loads(payload)
             except json.JSONDecodeError:
                 continue
-            if data.get("role") == "agent":
+            if data.get("event_type") == "tool_call":
+                # 结构化字段，不再正则匹配中文 UI 文案
+                if t_first_tool is None:
+                    t_first_tool = time.monotonic()
+                tool_events.append({"tool": data.get("tool"), "query": data.get("query"),
+                                    "round": data.get("round")})
+                if data.get("tool") != "load_sop":
+                    tool_calls.append(data.get("tool"))
+            elif data.get("role") == "agent":
+                # 兼容旧格式（后端未升级时仍能跑）
                 m = _TOOL_CALL_RE.search(data.get("content", ""))
                 if m:
+                    if t_first_tool is None:
+                        t_first_tool = time.monotonic()
                     tool_calls.append(m.group(1))
-            elif data.get("role") == "assistant" and data.get("thinking") is False:
-                answer_parts.append(data.get("content", ""))
+            elif data.get("role") == "assistant":
+                if data.get("thinking") is True:
+                    thinking_chars += len(data.get("content", "") or "")
+                elif data.get("thinking") is False:
+                    if t_first_answer is None:
+                        t_first_answer = time.monotonic()
+                    answer_parts.append(data.get("content", ""))
 
         t_end = time.monotonic()
         return {
             "status_code": status_code,
+            # ack_latency 取代旧的 ttft：它量的就是受理回执，命名如实。旧名保留一轮
+            # 供对照脚本过渡。
+            "ack_latency": (t_first - t0) if t_first else None,
             "ttft": (t_first - t0) if t_first else None,
+            "first_judgement_latency": (t_first_tool - t0) if t_first_tool else None,
+            "first_answer_token_latency": (t_first_answer - t0) if t_first_answer else None,
             "total_latency": t_end - t0,
             "tool_calls": tool_calls,
+            "tool_events": tool_events,
+            "thinking_chars": thinking_chars,
             "answer": "".join(answer_parts),
             "ended_cleanly": ended_cleanly,
         }
@@ -140,22 +168,36 @@ def run_rag_qa():
     return results
 
 
-def run_tool_routing():
-    print(f"\n=== Agent 工具路由准确率（{len(TOOL_ROUTING)} 题）===")
+def run_tool_routing(samples: int = 1):
+    """每题跑 `samples` 次。
+
+    为什么需要重复采样：n=17、每题一次时，1-3 道题的翻转就能让准确率动 6-18 个百分点，
+    而模型本身是随机的。实测同一份代码前后两轮之间有 6 道题在两个方向上翻转，净变化
+    却只有 2 道——那是噪声地板，不是信号。单次采样下"提升了两道题"这句话没有意义。
+    多次采样后每题给出命中率而非布尔值，才能把稳定失败与偶发翻转分开。
+    """
+    print(f"\n=== Agent 工具路由准确率（{len(TOOL_ROUTING)} 题 × {samples} 次）===")
     results = []
     for item in TOOL_ROUTING:
-        session_id = create_session()
-        record = chat_stream(session_id, item["question"])
-        actual_tools = set(record["tool_calls"])
         expected = item["expect_tools"]
-        if item["category"] == "compound":
-            correct = expected.issubset(actual_tools)
-        else:
-            correct = actual_tools == expected
-        results.append({**item, **record, "actual_tools": sorted(actual_tools), "correct": correct})
-        mark = "✓" if correct else "✗"
-        print(f"[{item['id']}] {mark} ({item['category']}) 期望={sorted(expected)} 实际={sorted(actual_tools)}")
-        time.sleep(2)
+        runs = []
+        for _ in range(samples):
+            record = chat_stream(create_session(), item["question"])
+            actual = set(record["tool_calls"])
+            ok = expected.issubset(actual) if item["category"] == "compound" else actual == expected
+            runs.append({**record, "actual_tools": sorted(actual), "correct": ok})
+            time.sleep(2)
+        n_ok = sum(1 for r in runs if r["correct"])
+        rate = n_ok / len(runs)
+        # 代表性样本取第一次，保持既有下游字段（answer/latency 等）可用
+        first = runs[0]
+        results.append({**item, **first, "runs": runs,
+                        "hit_rate": rate, "n_samples": len(runs),
+                        "stable": n_ok in (0, len(runs))})
+        mark = "✓" if rate == 1 else ("✗" if rate == 0 else "~")
+        extra = "" if samples == 1 else f"  命中 {n_ok}/{samples}"
+        print(f"[{item['id']}] {mark} ({item['category']}) 期望={sorted(expected)}"
+              f" 实际={first['actual_tools']}{extra}")
     return results
 
 
@@ -282,8 +324,14 @@ def write_report(rag_results, routing_results, robustness_results, latency_stats
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--routing-samples", type=int, default=1,
+                    help="路由每题重复采样次数（默认 1）。n=17 单次采样分辨不了个位数"
+                         "题目的差异，做前后对照时建议 ≥3。")
+    args = ap.parse_args()
+
     rag_results = run_rag_qa()
-    routing_results = run_tool_routing()
+    routing_results = run_tool_routing(samples=args.routing_samples)
     robustness_results = run_robustness()
     latency_stats = compute_latency_stats(rag_results, routing_results)
 

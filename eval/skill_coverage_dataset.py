@@ -161,3 +161,32 @@ SUPPLEMENTARY_SINGLE_HIT = [
 # 便捷聚合：验收脚本可直接 import 这几个列表
 ALL_SINGLE_HIT = SINGLE_HIT_VALUATION
 ALL_DUAL_HIT = DUAL_HIT
+
+
+# ── 反例集：应当命中 0 个 SOP 的查询 ────────────────────────────────────────────
+# 为什么需要它：原题库全是正例（每题都奔着命中某个 SOP 设计），实测 classify_skill
+# 在其上是 19/19 = 100%，指标饱和、无从判优。而教材 2.5.1 指出 Don't-use-when 治的是
+# 反向的病——"宽泛的描述会在不相关的任务上频繁误触发"。误触发在只有正例的集合上
+# 结构性地测不出来。
+#
+# 每条都刻意踩中某个 SOP 的 trigger_keywords，但按业务语义不该激活该 SOP：
+# 概念解释、单点取数、新闻查询、宏观话题——这四类都不需要分析 SOP 的多维拆解流程。
+NEGATIVE = [
+    {"id": "sop-neg-01", "question": "什么是市盈率？", "expect_skill_hits": [],
+     "trap": "valuation（市盈率）", "why": "概念解释，不是对某只股票的估值判断"},
+    {"id": "sop-neg-02", "question": "现金流量表分为哪三个部分？", "expect_skill_hits": [],
+     "trap": "financial_statement（现金流量表）", "why": "概念解释，没有具体公司"},
+    {"id": "sop-neg-03", "question": "AAPL 现在股价多少？", "expect_skill_hits": [],
+     "trap": "valuation（股价）", "why": "单点取数，不需要估值拆解"},
+    {"id": "sop-neg-04", "question": "苹果公司最新的每股收益是多少？", "expect_skill_hits": [],
+     "trap": "financial_statement（每股收益）", "why": "单点取数，不需要三表拆解"},
+    {"id": "sop-neg-05", "question": "苹果最近和 American Express 有什么合作新闻？",
+     "expect_skill_hits": [], "trap": "industry_comparison（公司间关系）",
+     "why": "新闻查询，不是跨公司指标横向对比"},
+    {"id": "sop-neg-06", "question": "今天美股大盘的整体走势如何？", "expect_skill_hits": [],
+     "trap": "risk_scan / industry_comparison（大盘、行业）", "why": "宏观行情，不是个股分析"},
+    {"id": "sop-neg-07", "question": "最近有什么关于美联储利率决议的最新消息？",
+     "expect_skill_hits": [], "trap": "risk_scan（政策、监管）", "why": "宏观政策新闻，不是个股排雷"},
+    {"id": "sop-neg-08", "question": "你好，你能做什么？", "expect_skill_hits": [],
+     "trap": "无", "why": "对照组：与投研完全无关，任何 SOP 都不该触发"},
+]

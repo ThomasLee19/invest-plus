@@ -7,7 +7,7 @@
 
 ## 1. RAG 检索准确率
 
-**13/15 = 86.7%**
+**12/15 = 80.0%**
 
 | 题目 | 来源 | 结果 |
 | --- | --- | --- |
@@ -22,42 +22,42 @@
 | 微软的 AI 业务年化运行速率（annual run rate）大约是多少？ | news/AAPL (Microsoft AI run-rate) | ✓ |
 | 微软云（Microsoft Cloud）最近一个季度的营收超过多少？ | news/AAPL (Microsoft Cloud revenue) | ✓ |
 | Alphabet（GOOGL）最近一个交易日的收盘价是多少？ | news/GOOGL (closing price) | ✗ |
-| Waymo 和 Uber 在哪个城市结束了机器人出租车试点合作？ | news/GOOGL (Waymo/Uber Phoenix) | ✓ |
+| Waymo 和 Uber 在哪个城市结束了机器人出租车试点合作？ | news/GOOGL (Waymo/Uber Phoenix) | ✗ |
 | 微软 Xbox 部门终止了与哪家公司的合作？ | news/MSFT (Xbox/IO Interactive) | ✗ |
 | 根据最近的 8-K 文件，苹果公司的首席财务官（CFO）是谁？ | filings/AAPL 8-K | ✓ |
 | 哪位董事会成员决定不再连任微软的董事？ | filings/MSFT 8-K | ✓ |
 
 ## 2. Agent 工具路由准确率
 
-**13/17 = 76.5%**
+**15/17 = 88.2%**
 
 | 类别 | 准确率 |
 | --- | --- |
-| finance_query | 3/4 = 75% |
+| finance_query | 4/4 = 100% |
 | rag_search | 3/4 = 75% |
 | web_search | 2/3 = 67% |
 | no_tool | 4/4 = 100% |
-| compound | 1/2 = 50% |
+| compound | 2/2 = 100% |
 
 | 题目 | 类别 | 期望工具 | 实际工具 | 结果 |
 | --- | --- | --- | --- | --- |
 | AAPL 现在的股价是多少？ | finance_query | ['finance_query'] | ['finance_query'] | ✓ |
-| MSFT 现在的市盈率是多少？ | finance_query | ['finance_query'] | ['finance_query', 'rag_search', 'web_search'] | ✗ |
+| MSFT 现在的市盈率是多少？ | finance_query | ['finance_query'] | ['finance_query'] | ✓ |
 | GOOGL 目前的市值是多少？ | finance_query | ['finance_query'] | ['finance_query'] | ✓ |
 | 苹果公司最新的每股收益是多少？ | finance_query | ['finance_query'] | ['finance_query'] | ✓ |
-| 什么是自由现金流？ | rag_search | ['rag_search'] | ['rag_search'] | ✓ |
-| 谷歌最近的 8-K 文件里披露了哪些优先股相关信息？ | rag_search | ['rag_search'] | ['finance_query', 'rag_search'] | ✗ |
+| 什么是自由现金流？ | rag_search | ['rag_search'] | ['rag_search', 'web_search'] | ✗ |
+| 谷歌最近的 8-K 文件里披露了哪些优先股相关信息？ | rag_search | ['rag_search'] | ['rag_search'] | ✓ |
 | 微软最近的 8-K 文件里有什么人事变动？ | rag_search | ['rag_search'] | ['rag_search'] | ✓ |
 | 苹果最近和 American Express 有什么合作新闻？ | rag_search | ['rag_search'] | ['rag_search'] | ✓ |
-| 今天美股大盘的整体走势如何？ | web_search | ['web_search'] | ['finance_query', 'web_search'] | ✗ |
+| 今天美股大盘的整体走势如何？ | web_search | ['web_search'] | ['web_search'] | ✓ |
 | 最近有什么关于美联储利率决议的最新消息？ | web_search | ['web_search'] | ['web_search'] | ✓ |
-| 今天全球有什么重要的财经新闻？ | web_search | ['web_search'] | ['web_search'] | ✓ |
+| 今天全球有什么重要的财经新闻？ | web_search | ['web_search'] | [] | ✗ |
 | 你好 | no_tool | [] | [] | ✓ |
 | 你是谁？你能做什么？ | no_tool | [] | [] | ✓ |
 | 1+1等于几？ | no_tool | [] | [] | ✓ |
 | 帮我讲个笑话吧 | no_tool | [] | [] | ✓ |
 | 对比一下苹果和微软现在的股价和市盈率 | compound | ['finance_query'] | ['finance_query'] | ✓ |
-| 苹果现在股价多少？另外它最近有没有什么值得关注的新闻？ | compound | ['finance_query', 'web_search'] | ['finance_query', 'rag_search'] | ✗ |
+| 苹果现在股价多少？另外它最近有没有什么值得关注的新闻？ | compound | ['finance_query', 'web_search'] | ['finance_query', 'web_search'] | ✓ |
 
 ## 3. 响应延迟
 
@@ -65,8 +65,8 @@
 
 | 指标 | 均值 | p50 | p90 |
 | --- | --- | --- | --- |
-| 首字延迟 (TTFT) | 0.00s | 0.00s | 0.01s |
-| 完整响应延迟 | 29.99s | 28.12s | 55.51s |
+| 首字延迟 (TTFT) | 0.00s | 0.00s | 0.00s |
+| 完整响应延迟 | 32.84s | 31.54s | 46.99s |
 
 ## 4. 边界输入鲁棒性
 

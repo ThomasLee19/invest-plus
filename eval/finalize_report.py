@@ -71,7 +71,11 @@ def main():
     scored_robust = [r for r in robustness_final if r["graceful"] is not None]
     robust_hits = sum(1 for r in scored_robust if r["graceful"])
 
-    latency_stats = data["latency_stats"]
+    # 从原始记录重算，不信任采集时存下的聚合值：口径改过若干次，旧产物里的
+    # latency_stats 可能是任意一个历史版本。重算保证报告与逐条记录始终一致。
+    sys.path.insert(0, str(Path(__file__).parent))
+    from run_eval import compute_latency_stats  # noqa: E402
+    latency_stats = compute_latency_stats(data["rag_qa"], data["tool_routing"])
 
     # ── 写报告 ──
     lines = []
@@ -104,6 +108,33 @@ def main():
             lines.append(f"- `{r['id']}` {r['question']} —— {r['known_limitation']}")
 
     lines.append("\n## 2. Agent 工具路由准确率\n")
+    n_samples = routing_results[0].get("n_samples", 1) if routing_results else 1
+    if n_samples > 1:
+        stable_ok = [r for r in routing_results if r.get("hit_rate") == 1]
+        stable_bad = [r for r in routing_results if r.get("hit_rate") == 0]
+        flaky = [r for r in routing_results if 0 < (r.get("hit_rate") or 0) < 1]
+        avg = sum(r["hit_rate"] for r in routing_results) / len(routing_results)
+        swing = len(flaky) / len(routing_results) * 100
+        lines.append(
+            f"**每题采样 {n_samples} 次，平均命中率 {avg:.1%}**"
+            f"（稳定命中 {len(stable_ok)} 题｜稳定失败 {len(stable_bad)} 题｜"
+            f"**翻转 {len(flaky)} 题**）\n"
+        )
+        lines.append(
+            f"翻转的题是同一份代码上时对时错的。它们让单次采样的严格准确率有约 "
+            f"**±{swing:.0f} 个百分点**的摆动区间——所以**任何基于单次采样的前后对照，"
+            f"只要差异小于这个幅度就读不出结论**。下表的严格/宽松沿用首次采样，"
+            f"仅供逐题查看；要做版本间对照请用上面的平均命中率。\n"
+        )
+        if flaky:
+            lines.append("**翻转的题**：" + "、".join(
+                f"`{r['id']}`（{r['hit_rate'] * n_samples:.0f}/{n_samples}）" for r in flaky) + "\n")
+        if stable_bad:
+            lines.append("\n**稳定失败的题**（真问题，与抖动无关）：\n")
+            for r in stable_bad:
+                lines.append(f"- `{r['id']}` {r['question']}　期望 {sorted(r['expect_tools'])}，"
+                             f"实际 {r['actual_tools']}")
+            lines.append("")
     lines.append(
         f"- **严格匹配**（实际调用工具集合与预期完全一致）：**{strict_hits}/{len(routing_results)} "
         f"= {strict_hits/len(routing_results)*100:.1f}%**\n"
@@ -149,43 +180,44 @@ def main():
     def fmt(v):
         return f"{v:.2f}s" if v is not None else "N/A"
 
-    lines.append("\n## 3. 响应延迟（不可引用，仅作运行记录）\n")
-    if latency_stats:
-        lines.append(f"基于 {latency_stats['n']} 次真实流式请求（RAG QA + 工具路由两批次合计）：\n")
-        lines.append("| 指标 | 均值 | p50 | p90 |")
-        lines.append("| --- | --- | --- | --- |")
+    lines.append("\n## 3. 响应延迟\n")
+    if latency_stats and latency_stats.get("first_judgement"):
+        def row(label, d, note=""):
+            if not d:
+                return f"| {label} | N/A | N/A | N/A | {note} |"
+            return (f"| {label} | {d['mean']:.2f}s | {d['p50']:.2f}s | {d['p90']:.2f}s | {note} |")
+
+        lines.append(f"基于 {latency_stats['n']} 次真实流式请求：\n")
+        lines.append("| 时刻 | 均值 | p50 | p90 | 含义 |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        lines.append(row("受理回执", latency_stats["ack"], "后端在任何 LLM 调用前直接发出，常数"))
+        lines.append(row("**首个实质判断**", latency_stats["first_judgement"],
+                         "到第一条工具调用事件为止，**这是衡量响应性的那个数**"))
+        lines.append(row("回答首 token", latency_stats["first_answer_token"],
+                         "含回答阶段的思考时间"))
+        lines.append(row("全程", latency_stats["total"], "Answer 流式输出结束"))
+
+        th, vis = latency_stats.get("thinking_chars"), latency_stats.get("visible_chars")
+        if th and vis:
+            ratio = th["mean"] / vis["mean"] if vis["mean"] else 0
+            lines.append(
+                f"\n**延迟的主体是思考，不是可见输出。**思考内容均值 {th['mean']:.0f} 字符，"
+                f"可见回答均值 {vis['mean']:.0f} 字符，前者是后者的 **{ratio:.1f} 倍**。"
+                f"全程 {latency_stats['total']['mean']:.1f}s 里，回答开始流式输出之后只剩 "
+                f"{latency_stats['total']['mean'] - latency_stats['first_answer_token']['mean']:.1f}s。"
+                f"因此压缩可见回答长度几乎动不了总延迟——真正的杠杆是回答调用的 "
+                f"`enable_thinking`。\n"
+            )
         lines.append(
-            f"| 首次反馈延迟 | {fmt(latency_stats['ttft_mean'])} "
-            f"| {fmt(latency_stats['ttft_p50'])} | {fmt(latency_stats['ttft_p90'])} |"
+            "\n**口径**：受理回执自 `448b831` 起恒为第一条 SSE 事件，与模型、检索、工具"
+            "全都无关，只证明连接已建立，**不要引用它**。要引用响应性就用「首个实质判断」。\n"
         )
         lines.append(
-            f"| 完整响应延迟 | {fmt(latency_stats['total_mean'])} "
-            f"| {fmt(latency_stats['total_p50'])} | {fmt(latency_stats['total_p90'])} |"
-        )
-        lines.append(
-            "\n**口径**：本列量的是从 POST /chat 发出，到收到第一条 SSE 事件的时间。"
-            "自 `448b831` 起，第一条事件恒为后端在任何 LLM 调用之前直接发出的**受理回执**"
-            "（「已收到，正在分析…」），因此这个数字是一个与模型、检索、工具全部无关的常数，"
-            "它只证明连接已建立。它**不是 TTFT**——TTFT 的作用域是单次推理调用。\n"
-        )
-        lines.append(
-            "\n**为什么不可引用**，四条独立的理由：\n"
-            "1. **它已经不再度量 agent 的任何行为**。两级反馈改造后第一条事件是常数级的"
-            "受理回执，真正有意义的「首个实质判断延迟」——即到第一条 `正在调用 …` 为止的"
-            "时间——当前评测脚本并未采集。这一项待评测体系重建时补上。\n"
-            "2. 同一批样本内口径不统一：走工具的题量的是 Plan 阶段完成，"
-            "不走工具的题量的是回答首 token，两者被平均在了一起。\n"
-            "3. p50/p90 由题库构成决定而非系统性能决定。样本是「不同题目各跑一次」，"
-            "尾部取决于最慢的是哪几道题；实测增删几道无工具的送分题，p90 会大幅漂移，"
-            "而代码一行未改。\n"
-            "4. 每题只跑一次，无重复采样，分不清差异来自代码还是来自网络与上游负载的抖动。\n"
-        )
-        lines.append(
-            "\n完整响应延迟包含 Plan → Act → Reflect（最多 5 轮）→ Answer 全流程，"
-            "命中多轮 Reflect 的问题会显著更长，长尾主要由 Reflect 轮数驱动。\n"
+            "\n**仍存在的局限**：延迟只取每题首次采样（路由题虽跑了多次，本表未按多次平均），"
+            "所以它带有与路由同量级的抖动；思考量以字符数为代理，不是精确 token 数。\n"
         )
     else:
-        lines.append("无有效延迟样本。\n")
+        lines.append("无有效延迟样本，或本轮由旧版脚本采集（缺少分时刻字段）。\n")
 
     lines.append("\n## 4. 边界输入鲁棒性\n")
     # 「另有 N 项未能验证」必须按本轮实际的未判定项数生成。写死成 1 会在该项通过后

@@ -224,31 +224,43 @@ def run_robustness():
 
 
 def compute_latency_stats(rag_results, routing_results):
-    latencies = [
-        r["total_latency"] for r in (rag_results + routing_results)
-        if r.get("total_latency") is not None
-    ]
-    ttfts = [
-        r["ttft"] for r in (rag_results + routing_results)
-        if r.get("ttft") is not None
-    ]
-    if not latencies:
+    """把延迟拆成四个各自有明确含义的时刻，外加思考量。
+
+    旧版只有一个 ttft，且它量的是第一条 SSE 事件——自 `448b831` 起那恒为受理回执，
+    一个与模型、检索、工具全都无关的常数。真正有意义的「首个实质判断」（到第一条
+    工具事件为止）此前从未被采集。
+    """
+    rows = [r for r in (rag_results + routing_results) if r.get("total_latency") is not None]
+    if not rows:
         return None
-    latencies.sort()
-    ttfts.sort()
 
-    def pct(sorted_vals, p):
-        idx = min(len(sorted_vals) - 1, int(len(sorted_vals) * p))
-        return sorted_vals[idx]
+    def pct(vals, p):
+        vals = sorted(vals)
+        return vals[min(len(vals) - 1, int(len(vals) * p))]
 
+    def summarize(key):
+        v = [r[key] for r in rows if r.get(key) is not None]
+        if not v:
+            return None
+        return {"n": len(v), "mean": statistics.mean(v), "p50": pct(v, 0.5), "p90": pct(v, 0.9)}
+
+    think = [r["thinking_chars"] for r in rows if r.get("thinking_chars") is not None]
+    visible = [len(r["answer"]) for r in rows if r.get("answer")]
     return {
-        "n": len(latencies),
-        "ttft_mean": statistics.mean(ttfts) if ttfts else None,
-        "ttft_p50": pct(ttfts, 0.5) if ttfts else None,
-        "ttft_p90": pct(ttfts, 0.9) if ttfts else None,
-        "total_mean": statistics.mean(latencies),
-        "total_p50": pct(latencies, 0.5),
-        "total_p90": pct(latencies, 0.9),
+        "n": len(rows),
+        "ack": summarize("ack_latency"),
+        "first_judgement": summarize("first_judgement_latency"),
+        "first_answer_token": summarize("first_answer_token_latency"),
+        "total": summarize("total_latency"),
+        "thinking_chars": {"mean": statistics.mean(think), "p50": pct(think, 0.5),
+                           "p90": pct(think, 0.9)} if think else None,
+        "visible_chars": {"mean": statistics.mean(visible), "p50": pct(visible, 0.5),
+                          "p90": pct(visible, 0.9)} if visible else None,
+        # 旧字段保留一轮，供尚未迁移的对照脚本读取
+        "ttft_mean": statistics.mean([r["ttft"] for r in rows if r.get("ttft") is not None] or [0]),
+        "total_mean": statistics.mean([r["total_latency"] for r in rows]),
+        "total_p50": pct([r["total_latency"] for r in rows], 0.5),
+        "total_p90": pct([r["total_latency"] for r in rows], 0.9),
     }
 
 

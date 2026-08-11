@@ -21,14 +21,14 @@ automated traffic, not as a real access-control layer — see
 
 ## Features
 
-- **Autonomous agent pipeline** — Plan → Act → Reflect → Answer. The agent
-  decides which tools to call, breaks questions into sub-queries, and keeps
-  reflecting/gathering more information until it judges the answer complete
-  (bounded by a safety cap so it can't loop forever — if the cap is hit
-  before the LLM signals completion, the final answer discloses that
+- **Autonomous agent loop** — a single decision operation iterating over an
+  append-only trajectory. The agent decides which tools to call, breaks
+  questions into sub-queries, and keeps gathering until it judges the answer
+  complete (bounded by a safety cap so it can't loop forever — if the cap is
+  hit before the model signals completion, the final answer discloses that
   information may be incomplete rather than presenting a partial result as
   exhaustive). No hardcoded decision tree — every continue/stop/retry choice
-  comes from the LLM's own judgment.
+  comes from the model's own native `tool_calls` output.
 - **Three research tools**:
   - `rag_search` — a hybrid (BM25 + vector) search over a knowledge base of
     SEC filings (10-K/10-Q/8-K), news, and educational reference articles
@@ -160,17 +160,23 @@ worked example, not a drop-in.
 ```
 User question
       ↓
-  agent_plan()         ── LLM decides which tools to call, breaks into sub-questions
-      ↓
-  process_actions()    ── calls rag_search / finance_query / web_search; tool errors
-      ↓                    are surfaced to the LLM, not swallowed
-  should_continue()     ── LOOPS: LLM judges if info is sufficient; if not, decides what
-      ↓  (bounded loop)    to call next — the loop body, not the LLM, only caps runaway
-      ↓                    iterations as a safety net
-  final_answer()        ── streams reasoning + answer via SSE
+  static prefix        ── system prompt + tool definitions + SOP metadata catalogue;
+      ↓                    byte-stable across requests, so it is cacheable
+  decision operation   ── LOOPS: one LLM call answering both "keep gathering?" and
+      ↓  (bounded loop)    "which tool, which arguments", emitted as native tool_calls
+  process_actions()    ── calls rag_search / finance_query / web_search / load_sop;
+      ↓                    tool errors are surfaced to the LLM, not swallowed
+      ↓                  results append to the trajectory as tool-role messages
+      ↓                    paired with their tool_call_id; the list only grows
+  final_answer()       ── separate call on a stronger model; streams via SSE
       ↓
   Frontend renders thinking chain + final answer
 ```
+
+The loop exits on any of three conditions: the model issues no further tool
+calls, the round cap is hit, or a call errors out. `final_answer()`
+deliberately sits off the trajectory — it buys a better-quality answer at the
+cost of an extra round trip and a model that shares no cache with the loop.
 
 **Tool selection rules:**
 - Real-time quote / market cap / P/E ratio / fundamentals / news headlines → `finance_query`
@@ -179,13 +185,25 @@ User question
 - Off-topic (non-finance) questions → rejected
 
 **Why the loop is a genuine agent loop, not a scripted pipeline:** every
-continue/stop/retry decision is read from the LLM's own structured judgment
-(`{sufficient, rationale, actions}`), not from hardcoded branching. A safety
-cap (5 iterations) bounds runaway loops without being mistaken for genuine
-LLM judgment — cap-stops are logged distinctly from LLM-signaled stops. Tool
-failures land in the conversation memory the LLM itself sees, so it can
-retry, fall back, or flag an incomplete answer instead of the backend
-silently swallowing the failure.
+continue/stop/retry decision comes from the model's own native `tool_calls`
+output, not from hardcoded branching — a round with no tool calls *is* the
+stop signal. A safety cap (5 iterations) bounds runaway loops without being
+mistaken for genuine LLM judgment; cap-stops are logged distinctly from
+model-signaled stops. Tool failures are appended to the trajectory the model
+itself reads, so it can retry, fall back, or flag an incomplete answer
+instead of the backend silently swallowing the failure.
+
+This shape is the result of a rewrite, not the original design. The first
+version put tool descriptions in the prompt body, had the model emit JSON
+text that the backend parsed, and re-serialized accumulated tool results into
+a fresh user message each round. That last part is the failure mode the
+current design exists to avoid: the model never saw its own call history, only
+text reformatted by the application, so it re-issued calls it had already
+made. Two layers of deduplication were added to suppress the symptom, and
+both were deleted once the trajectory was made real. Measured on five
+questions deep enough to need multiple rounds: at comparable follow-up depth,
+repeat attempts went from 3 to 0, total tool calls from 77 to 34, and average
+wall time from 108.7s to 75.3s.
 
 **Cross-lingual hybrid retrieval:** `rag_search` combines two signals over
 the same Elasticsearch index (native ES 8.11 `knn` + `query`, hand-rolled —
@@ -206,7 +224,7 @@ English-only corpus (SEC filings, news, educational docs), BM25-only
 recall was **0%** (0/10), while hybrid (BM25 + vector) recall was **100%**
 (10/10) — see the script for the exact queries and hit counts.
 
-**Cross-session memory:** before calling `agent_plan()`, `final_answer()`
+**Cross-session memory:** before entering the decision loop, `final_answer()`
 recalls the user's profile (`recall_user_profile`, `service/memory/profile.py`)
 and, by extracting tickers from the raw question with a CJK-tolerant regex
 (`_extract_tickers_loose`, `agent.py:416`) that catches tickers glued to
@@ -233,22 +251,35 @@ can't write an out-of-schema value or escape the sandboxed prompt string.
 **Skill SOP library:** four playbooks live as plain Markdown files under
 `service/agent/skills/` (`valuation.md`, `financial_statement.md`,
 `industry_comparison.md`, `risk_scan.md`), each with YAML frontmatter and an
-indicator checklist. `classify_skill()` (`agent.py:782`) is an independent
-LLM call — deliberately *not* folded into `agent_plan()`'s own call, because
-by the time you know which skill to load it's too late to inject its body
-into that same call — that returns zero, one, or (capped in code,
-regardless of what the LLM returns) two matching skills; their bodies are
-loaded (`load_skill()`, `agent.py:757`) and injected into the planning
-prompt as their own labeled sections. This is verified to actually change
-tool planning, not just decorate the prompt — see
-[Quantitative Evaluation](#quantitative-evaluation).
+indicator checklist. Only their `name` + `description` pairs are resident,
+appended to the decision system prompt as a metadata catalogue; the bodies
+enter context solely when the model calls the `load_sop` tool, which returns
+the body as a tool message. Measured cost of that split: 813 characters
+resident against 3082 characters of bodies, so 26%.
+
+This replaced an independent `classify_skill()` round-trip that ran
+unconditionally before planning. The saving is not on questions that need a
+playbook — those break even, one classification call becoming one `load_sop`
+call — it is that questions needing no playbook stop paying at all. Stated
+honestly, the switch cost some routing recall: positives fell 19/19 → 16/19
+while false positives held at 0/16, and only one of those three is a clean
+regression (one is a self-contradicting dataset label, and one is a scoring
+mismatch, since the old call hard-capped its output at two skills and
+`load_sop` has no such cap). Timing is unresolved: the path structurally
+loses a whole LLM round trip, but the measurements disagree with each other
+inside the sampling noise, so no claim is made either way.
+
+SOP bodies deliberately never enter the memory channel — they are
+instructions to the model, not facts about the world, and letting them in
+would feed the user's own methodology checklist back to them as cited
+reference material. A test pins that.
 
 ## Tech Stack
 
 | Layer | Technology | Role |
 |---|---|---|
-| LLM | Qwen — qwen3.7-max (final answer), qwen-plus (plan/reflection), via the `openai` SDK against DashScope's OpenAI-compatible endpoint | Reasoning + tool decisions |
-| Agent Framework | Custom Plan→Act→Reflect→Answer pipeline (no LangChain) | Tool orchestration + self-correction |
+| LLM | Qwen — qwen3.7-max (final answer), qwen-plus (decision operation), via the `openai` SDK against DashScope's OpenAI-compatible endpoint | Reasoning + tool decisions |
+| Agent Framework | Hand-rolled loop: static prefix + append-only trajectory + native tool calling (no LangChain) | Tool orchestration + self-correction |
 | Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads); text-embedding-v3 for vector embeddings, qwen3-vl-rerank (native `dashscope` SDK) for reranking | Hybrid retrieval (BM25 + vector) + rerank |
 | Real-time Data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
 | Document Parsing | DeepDoc (layout/table-transformer/OCR, onnxruntime) | PDF filing uploads → table-aware chunks |
@@ -272,7 +303,7 @@ InvestPlus/
 │       │   └── history_rt.py        # /sessions, /messages
 │       ├── service/
 │       │   ├── agent/
-│       │   │   ├── agent.py         # Agent pipeline (Plan→Act→Reflect→Answer) + memory/skill recall & injection
+│       │   │   ├── agent.py         # Agent loop (decision operation over a trajectory) + memory/skill recall & injection
 │       │   │   └── skills/          # SOP playbooks: valuation/financial_statement/industry_comparison/risk_scan.md
 │       │   ├── memory/
 │       │   │   ├── profile.py       # recall_user_profile / upsert_user_profile

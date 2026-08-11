@@ -33,9 +33,22 @@ RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 ENV NLTK_DATA=/srv/investplus/.nltk_data
 RUN python -c "import nltk; nltk.download('punkt_tab', download_dir='${NLTK_DATA}'); nltk.download('wordnet', download_dir='${NLTK_DATA}')"
 
-COPY backend/ ./backend/
+# 静态资源单独先 COPY 成一层，再 COPY 整个 backend/。res/ 是 382MB（deepdoc 模型
+# 322MB + huqie.txt.trie 53MB），而 backend/ 总共才 387MB——也就是说业务源码只占
+# 5MB，却和这 382MB 挤在同一层里。后果是改一行 agent.py 就让整层失效，382MB 要重新
+# 导出并推去 GHCR：2026-08-11 那次部署卡在 backend 镜像推送 40 分钟没跑完，而上一次
+# 只改 frontend/ 的部署全程 2 分钟，差距就来自这里。
+#
+# 拆开之后为什么第二个 COPY 不会把这 382MB 再算一遍：BuildKit 按快照求差，对内容
+# 逐字节相同的文件不产生任何 layer 条目。已实测验证（100MB 夹具）：先 COPY 子目录
+# 再 COPY 父目录，父目录那层只有 16.4kB；之后只改源码重建，子目录那层显示 CACHED。
+COPY backend/app/service/core/rag/res/ ./backend/app/service/core/rag/res/
 
+# LFS 校验跟着模型层走：它检查的就是这一层的内容，放这里能在改源码时命中缓存、
+# 而在模型真的变了（或退化成 LFS 指针）时重新执行。
 RUN test $(stat -c%s backend/app/service/core/rag/res/deepdoc/det.onnx) -gt 1000000 || (echo "DeepDoc模型是LFS指针,不是真实文件,构建失败" && exit 1)
+
+COPY backend/ ./backend/
 
 EXPOSE 8000
 

@@ -236,8 +236,27 @@ def main():
     lines.append("\n## 5. 简历/README 摘录建议\n")
     lines.append(f"- RAG 检索准确率：{rag_hits}/{len(scored_rag)}（{rag_hits/len(scored_rag)*100:.0f}%），"
                  f"基于 {len(scored_rag)} 道人工核实的财报/新闻/教育知识问答题")
-    lines.append(f"- Agent 多工具路由准确率：宽松匹配 {lenient_hits/len(routing_results)*100:.0f}%"
-                 f"（{lenient_hits}/{len(routing_results)}），严格匹配 {strict_hits/len(routing_results)*100:.0f}%")
+    # 这一节是给简历/README 直接抄的，所以只能给多次采样的平均命中率。第 2 节已经算出
+    # 单次采样的严格/宽松带着 ±(翻转题占比) 的摆动，把它们摆进「摘录建议」等于请读者
+    # 去引用一个本报告自己判定读不出结论的数字。
+    if n_samples > 1:
+        lines.append(f"- Agent 多工具路由平均命中率：{avg:.1%}"
+                     f"（{len(routing_results)} 题 × {n_samples} 次采样；稳定命中 {len(stable_ok)} 题、"
+                     f"稳定失败 {len(stable_bad)} 题、翻转 {len(flaky)} 题）")
+        lines.append(f"- 路由的严格/宽松单次数字：**不建议引用**。翻转题使它带约 "
+                     f"±{swing:.0f} 个百分点的摆动，理由见第 2 节")
+    else:
+        lines.append(f"- Agent 多工具路由准确率：**不建议引用**。本轮每题只采样 1 次"
+                     f"（宽松 {lenient_hits}/{len(routing_results)}、严格 "
+                     f"{strict_hits}/{len(routing_results)}），单次采样不足以支撑对外口径，"
+                     f"请用 --routing-samples 3 重跑后引用平均命中率")
+    # 延迟里唯一可对外引用的是「首个实质判断」。它必须出现在摘录建议里，否则读者只看到
+    # 一条「延迟不建议引用」，会误以为响应性整个没数可讲，转头去第 3 节自己挑一个。
+    fj = (latency_stats or {}).get("first_judgement") or {}
+    if fj.get("mean") is not None:
+        lines.append(f"- 首个实质判断延迟：均值 {fj['mean']:.2f}s"
+                     f"（p50 {fj['p50']:.2f}s / p90 {fj['p90']:.2f}s，n={fj['n']}）"
+                     f"，即到第一条工具调用事件为止。**要谈响应性就用这个数**")
     if latency_stats and latency_stats.get("ttft_mean") is not None:
         # 延迟不进摘录建议：这一节是给简历/README 抄的，而第 3 节列出的三条理由说明
         # 这批数字不具备被引用的资格。保留一句显式的「不要引用」比省略更安全，否则

@@ -61,11 +61,12 @@ automated traffic, not as a real access-control layer — see
   standing between whatever the extraction LLM outputs and what actually
   gets persisted.
 - **Skill SOP library** — four research playbooks (valuation, financial
-  statement, industry comparison, risk scan) that a classification step can
-  load one or two of at once, injected into the planning prompt so they
-  actually change which sub-questions get asked — verified with a live
-  before/after eval, not just a prompt-assembly test (see
-  [Quantitative Evaluation](#quantitative-evaluation)).
+  statement, industry comparison, risk scan). Their metadata catalogue sits in
+  the static system prefix, and the model pulls a playbook's full body via a
+  `load_sop` tool call when it judges one applies, rather than a separate
+  classification round-trip loading it up front. How much this changes the
+  sub-questions actually asked is currently **unquantified** — see the SOP note
+  under [Quantitative Evaluation](#quantitative-evaluation).
 - **Disclaimer, guaranteed** — every answer ends with a fixed disclaimer
   appended by code after generation, not requested via prompt instruction,
   so it can't be dropped by the model.
@@ -333,24 +334,44 @@ dataset built from the actual indexed corpus:
 
 | Metric | Result | Basis |
 |---|---|---|
-| RAG retrieval/answer accuracy | 14/14 = 100% | fact-based QA pairs checked against the actual filings/news/educational corpus (1 additional question excluded as a flawed test design — see `eval/report.md`) |
-| Tool-routing accuracy (lenient — required tool present) | 17/17 = 100% | questions spanning finance_query / rag_search / web_search / no-tool / compound intents |
-| Tool-routing accuracy (strict — exact tool set match) | 10/17 = 58.8% | same dataset; the gap reflects a real, documented over-triggering tendency in the Reflect loop, not a routing bug — the required tool is always called, but `web_search` is often additionally (and unnecessarily) triggered as a fallback |
-| Response latency | TTFT 2.1s avg; full response p50 29.9s / p90 85.6s | 32 real streaming requests; multi-round Reflect cases drive the long tail |
-| Edge-case robustness | 4/4 = 100% (1 case inconclusive — see report) | empty input, oversized input, invalid ticker, non-existent session — all handled gracefully with no 5xx/uncaught exceptions |
-| SOP injection lift (single-hit valuation) | baseline 34.3% → injected 69.4% = **+35.2pp** (threshold ≥30pp) → PASS | 12 valuation-only questions, 3 samples/condition averaged, real `qwen-plus` calls through the actual `agent_plan()` |
-| SOP injection lift (dual-hit, both SOPs must improve) | 6/7 PASS on the committed run (see `eval/skill_coverage_run.txt`) | 7 compound questions expecting 2 simultaneous SOP hits; the 1 miss (`sop-dual-02`) is a flat 6%→0% on a dimension both conditions phrased identically generically ("MSFT fundamentals") — diagnosed as scorer blind-spot + single-condition sampling noise, not a functional regression (the *other* SOP dimension on that same question jumped 17%→100%). An independent re-run during review, with a fresh 3-sample draw, cleared 7/7 — consistent with the noise diagnosis, not a "fixed" result overwriting this one |
+| Tool-routing average hit rate | **74.5%** | 17 questions × **3 samples each**. 10 stable hits, 3 stable failures, **4 questions that flip** (right on one run and wrong on the next, on identical code) |
+| First substantive judgement latency | **2.93s avg** (p50 2.63s / p90 4.86s) | `POST /chat` to the first tool-call event. This is the number that measures responsiveness |
+| Full response latency | 32.6s avg (p50 31.9s / p90 55.0s) | 32 real streaming requests, start to end of the streamed answer |
+| RAG retrieval/answer accuracy | 13/15 | fact-based QA pairs checked against the actual filings/news/educational corpus |
+| Edge-case robustness | 5/5 | empty input, oversized input, invalid ticker, off-topic question, non-existent session |
+
+**The numbers below are not citable. The reasons are recorded here rather than
+quietly dropped:**
+
+- **"Time to first token" / "first-feedback latency"** — since [`448b831`](.),
+  the first SSE event is an acknowledgment the backend emits *before* any LLM
+  call, and it measures a constant 0.00s. It proves the connection is open; it
+  measures nothing about the model, retrieval, or tools. For responsiveness,
+  quote "first substantive judgement" from the table above.
+- **Single-sample strict routing accuracy** — 4 of the 17 questions flip on
+  identical code, which puts roughly **±24 percentage points** of swing on any
+  single-sample figure. Any before/after comparison smaller than that band is
+  unreadable, so this README reports only the multi-sample average hit rate.
+- **SOP injection coverage lift** — both rulers are known broken. The old one
+  counted keywords in the generated sub-questions, but `finance_tool` does not
+  parse specific metrics: `"AAPL PE ratio"` and `"AAPL fundamentals"` return
+  byte-identical results, so it was rewarding verbosity rather than
+  information. Rescoring the same data on what the tools actually returned
+  dropped the lift from +52.8pp to +11.1pp — but the new ruler saturates too
+  (the fundamentals card always carries exactly 2 of the 5 valuation concepts,
+  giving the score two settings). Redesigning the scoring dimensions is
+  outstanding work.
+
+**Where the latency actually goes** is worth stating separately. Thinking
+content averages 1810 characters against 486 for the visible answer — **3.7x** —
+and correlates with total latency at r=0.90. Of the full 32.6s, only 3.7s
+happens after the answer starts streaming. Compressing the visible answer
+therefore barely moves total latency; the real lever is `enable_thinking` on
+the answer call.
 
 Methodology, full dataset, and raw transcripts: [`eval/report.md`](eval/report.md),
-[`eval/dataset.py`](eval/dataset.py), [`eval/results_final.json`](eval/results_final.json).
-Re-run against a live backend with `python eval/run_eval.py`.
-
-SOP-coverage methodology, dataset, and raw per-question transcripts:
-[`eval/skill_coverage_eval.py`](eval/skill_coverage_eval.py),
-[`eval/skill_coverage_dataset.py`](eval/skill_coverage_dataset.py),
-[`eval/skill_coverage_raw.json`](eval/skill_coverage_raw.json). Re-run with
-`python eval/skill_coverage_eval.py` (needs a live DashScope key; ~170 real
-`qwen-plus` calls at 3 samples/condition).
+[`eval/dataset.py`](eval/dataset.py), [`eval/results.json`](eval/results.json).
+Re-run against a live backend with `python eval/run_eval.py --routing-samples 3`.
 
 **Honesty notes:** the corpus is the project's own bundled test data (some
 AI-generated, dated in the future) — RAG accuracy measures faithfulness to
@@ -358,7 +379,7 @@ the indexed corpus, not validation against real-world financial data.
 
 ## Known Limitations
 
-- **Tool over-triggering in the Reflect loop** — as measured above, the agent's strict tool-routing accuracy (58.8%) trails its lenient accuracy (100%): it reliably calls the *required* tool but often calls `web_search` as an extra, unneeded fallback, adding latency/cost without changing correctness. A real efficiency target, not a routing bug.
+- **Three stable routing failures** — the ones that fail on all 3 samples, so they are real rather than sampling noise. `route-05` ("what is free cash flow?") adds an unnecessary `web_search` to a concept question the knowledge base already answers; `route-11` ("any important global financial news today?") calls no tool at all; `route-17` sends the news half of a compound question to `rag_search` instead of `web_search`. One fix attempt was reverted: routing by time words ("recent", "latest", "today") repaired `route-11` and `route-17` but broke a control question asking about a *recent* 8-K, which is an archived filing rather than live news. The boundary has to be drawn by where the answer lives — archived documents to `rag_search`, live real-world state to `web_search` — not by whether the question sounds recent.
 - **File upload PDF parsing** — the DeepDoc PDF pipeline is wired for user-uploaded filings via `/upload_files`, but the bulk corpus indexer (`scripts/index_finance.py`) parses SEC EDGAR filings from their native HTML (iXBRL) form directly rather than through the PDF pipeline, since EDGAR doesn't serve modern filings as PDF (see the module docstring in `index_finance.py`).
 - **Extraction only triggers on a turn count, not session end** — there's no reliable "session ended" signal in this request-response architecture (no persistent connection to hook), so memory extraction fires every 5 turns rather than on the OR'd "session end or N turns" condition an earlier design sketch assumed. A conversation that ends on turn *N*-1 within a window never gets that tail extracted.
 - **`BackgroundTasks` extraction isn't persisted or retried** — if the process restarts between scheduling and running an extraction, that batch of facts is lost; the next 5-turn boundary in the same session is unaffected (windows don't overlap), so this bounds to "some memory not captured," not corruption.

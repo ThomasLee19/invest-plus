@@ -36,3 +36,9 @@ storage/.claude/settings.local.json
 # Local codegraph tool cache symlink, points outside the repo (not portable,
 # shouldn't have been committed).
 .codegraph
+
+/深挖
+.claude/
+.agents/skills/
+diagrams/*.visual-check.json
+

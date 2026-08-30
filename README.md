@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-<!-- ROUND 2 PLACEHOLDER: assets/readme/hero.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/hero.svg
      Split composition — left: category line "AI AGENT · US EQUITIES RESEARCH",
      Invest+ wordmark (reuse logo.svg rising polyline + "+", blue→green gradient
      #3B82F6→#10B981 used ONLY here), one-line value.
@@ -21,7 +21,7 @@ the measurements that turned out not to be trustworthy are published as such.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
 
-<!-- ROUND 2 PLACEHOLDER: remaining badges (CI status, live demo, Python/React),
+<!-- ROUND2-PLACEHOLDER: remaining badges (CI status, live demo, Python/React),
      styled as one row. The MIT badge above already uses the project accent
      #35322e from frontend/src/styles/tokens.css rather than shields' default
      blue, so the row stays inside the neutral palette. -->
@@ -37,7 +37,7 @@ automated traffic — not a real access-control layer.
 Running it locally needs Docker, Elasticsearch, PostgreSQL, two API keys and a
 corpus indexing pass. [Quick Start](#quick-start) has the short path.
 
-<!-- ROUND 2 PLACEHOLDER: assets/readme/showcase.png
+<!-- ROUND2-PLACEHOLDER: assets/readme/showcase.png
      Real screenshot from the live site: thinking chain + final answer + sources
      in one frame. Needs user approval to capture. Nothing in the repo today. -->
 
@@ -125,7 +125,7 @@ prompt, so the model cannot drop it.
 
 ### 1. A real agent loop, not a scripted pipeline
 
-<!-- ROUND 2 PLACEHOLDER: assets/readme/agent-loop.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/agent-loop.svg
      Re-render from diagrams/invest-plus-agent-loop.workflow.json —
      English labels via meta.locale + label fields, project palette, static export.
      Do NOT extract SVG from the built HTML. -->
@@ -363,7 +363,7 @@ Open [http://localhost:5181](http://localhost:5181).
 
 ## Production Deployment
 
-<!-- ROUND 2 PLACEHOLDER: assets/readme/deployment.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/deployment.svg
      Re-render from diagrams/invest-plus-deployment.architecture.json —
      English labels, project palette, static export. Not first-screen material. -->
 
@@ -389,7 +389,7 @@ config are written against this project's specific service layout, and the
 `mem_limit` values are calibrated for one particular VM size. Treat them as a
 worked example, not a drop-in.
 
-<!-- ROUND 2 PLACEHOLDER: assets/readme/chat-sequence.svg (optional, collapsed)
+<!-- ROUND2-PLACEHOLDER: assets/readme/chat-sequence.svg (optional, collapsed)
      From diagrams/invest-plus-chat-sequence.json. Dense — 6 participants,
      5 timed segments. Verify legibility at 900px / 360px before embedding;
      if it fails, keep it out rather than shrinking labels. -->

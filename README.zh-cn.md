@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-<!-- ROUND 2 占位：assets/readme/hero.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/hero.svg
      左右分栏 —— 左：类目行 "AI AGENT · US EQUITIES RESEARCH"、
      Invest+ 字标（复用 logo.svg 的上升折线 + 加号，蓝绿渐变 #3B82F6→#10B981 只用在这里）、
      一句话价值。
@@ -15,7 +15,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
 
-<!-- ROUND 2 占位：其余 badge（CI 状态、在线体验、Python/React），排成一行。
+<!-- ROUND2-PLACEHOLDER: 其余 badge（CI 状态、在线体验、Python/React），排成一行。
      上面的 MIT badge 已改用项目强调色 #35322e（取自 frontend/src/styles/tokens.css）
      而非 shields 默认蓝，整行保持在中性色板内。 -->
 
@@ -27,7 +27,7 @@
 
 本地跑起来需要 Docker、Elasticsearch、PostgreSQL、两个 API key，外加一次语料索引。[快速开始](#快速开始)给的是最短路径。
 
-<!-- ROUND 2 占位：assets/readme/showcase.png
+<!-- ROUND2-PLACEHOLDER: assets/readme/showcase.png
      线上站的真实截图：思考链 + 最终答案 + 来源三段同框。
      需要你授权采集，仓库里目前一张都没有。 -->
 
@@ -79,7 +79,7 @@ python eval/run_eval.py --routing-samples 3
 
 ### 1. 真正的 Agent 循环，不是写死的流水线
 
-<!-- ROUND 2 占位：assets/readme/agent-loop.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/agent-loop.svg
      从 diagrams/invest-plus-agent-loop.workflow.json 重新渲染 ——
      改 meta.locale 与各 label 字段做英文化、套项目配色、导出静态图。
      不要从已构建的 HTML 里抠 SVG。 -->
@@ -237,7 +237,7 @@ npm run dev
 
 ## 生产部署
 
-<!-- ROUND 2 占位：assets/readme/deployment.svg
+<!-- ROUND2-PLACEHOLDER: assets/readme/deployment.svg
      从 diagrams/invest-plus-deployment.architecture.json 重新渲染 ——
      英文化 label、套项目配色、导出静态图。不适合放首屏。 -->
 
@@ -249,7 +249,7 @@ npm run dev
 
 这不是一套通用的"到哪都能部署"模板。compose 文件和网关配置是针对本项目特定的服务布局写的，`mem_limit` 的取值也是对着某一个特定规格的虚拟机标定的。请把它们当作一个做完了的样例，而不是可以直接套用的现成件。
 
-<!-- ROUND 2 占位：assets/readme/chat-sequence.svg（可选，折叠放置）
+<!-- ROUND2-PLACEHOLDER: assets/readme/chat-sequence.svg（可选，折叠放置）
      来自 diagrams/invest-plus-chat-sequence.json。信息密度高 —— 6 个参与者、
      5 个耗时区段。嵌入前须在 900px / 360px 两档验证可读性；
      不达标就不要放，别靠缩小标签硬塞。 -->

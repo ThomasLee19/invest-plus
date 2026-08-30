@@ -7,12 +7,40 @@ name: Build and Deploy
 # into another repo), so nothing here can touch the server until the branch
 # has been merged after local verification.
 on:
+  # paths-ignore 两处必须逐字一致地写两遍：GitHub Actions 的 workflow 解析器
+  # 不支持 YAML 锚点/别名（&x / *x），抽公共列表出去会直接解析失败。
+  # 列表里都是纯文档/仓库元数据，服务器上跑的代码碰不到它们，改这些不该触发
+  # 一轮完整的 build + deploy。backend/Dockerfile 的构建上下文虽然是仓库根
+  # 目录，但只 COPY requirements.txt 和 backend/，这些路径进不了任何镜像。
   push:
     paths-ignore:
       - '**/*.md'
+      - 'diagrams/**'
+      - 'docs/**'
+      - 'eval/**'
+      - 'prd.json'
+      - 'test_agent.py'
+      - 'skills-lock.json'
+      - '.gitignore'
+      - '.gitattributes'
   pull_request:
     paths-ignore:
       - '**/*.md'
+      - 'diagrams/**'
+      - 'docs/**'
+      - 'eval/**'
+      - 'prd.json'
+      - 'test_agent.py'
+      - 'skills-lock.json'
+      - '.gitignore'
+      - '.gitattributes'
+
+# 一个分支上后推的 commit 直接取消同分支还在排队/运行的旧流水线：三连推的
+# 场景下原先是三条完整 build + deploy 串行跑完，现在只有最后一条会跑到底。
+# group 里带上 workflow，避免和别的 workflow 互相取消。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

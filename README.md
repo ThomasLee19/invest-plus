@@ -1,163 +1,136 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
+<!-- ROUND 2 PLACEHOLDER: assets/readme/hero.svg
+     Split composition — left: category line "AI AGENT · US EQUITIES RESEARCH",
+     Invest+ wordmark (reuse logo.svg rising polyline + "+", blue→green gradient
+     #3B82F6→#10B981 used ONLY here), one-line value.
+     Right: append-only trajectory motif — rows accruing one per round, last row
+     reads "no tool_calls → stop".
+     Palette from frontend/src/styles/tokens.css. Self-contained #fafaf9 ground, rx 26. -->
+
 # Invest+ — AI Finance Research Assistant
 
-Invest+ is an autonomous research agent for US equities. Ask it about a stock
-in plain English or Chinese, and it plans its own research, pulls live
-market data, searches SEC filings and news, and streams back a sourced
-answer — deciding for itself which tools to use and when it has enough
-information to stop.
+Ask it about a US-listed stock in plain English or Chinese. It plans its own
+research, pulls live market data, searches SEC filings and news, and streams
+back a sourced answer — deciding for itself which tools to call and when it
+has enough to stop.
 
-## Live Demo
+The loop, the hybrid retrieval, and the cross-session memory are all
+hand-rolled — no agent framework. Every effect claimed below is measured, and
+the measurements that turned out not to be trustworthy are published as such.
 
-**[https://investplus-agent.com](https://investplus-agent.com)**
+[![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
 
-Hosted on a single Docker Compose stack (Elasticsearch + PostgreSQL + backend
-+ frontend, behind an nginx gateway with Let's Encrypt TLS) on a non-mainland
--China cloud node, deployed via GitHub Actions CI/CD on every push to
-`master`. Rate-limited (20 req/min) as light friction against casual/
-automated traffic, not as a real access-control layer — see
-[Production Deployment](#production-deployment).
+<!-- ROUND 2 PLACEHOLDER: remaining badges (CI status, live demo, Python/React),
+     styled as one row. The MIT badge above already uses the project accent
+     #35322e from frontend/src/styles/tokens.css rather than shields' default
+     blue, so the row stays inside the neutral palette. -->
 
-## Features
+## Try it live
 
-- **Autonomous agent loop** — a single decision operation iterating over an
-  append-only trajectory. The agent decides which tools to call, breaks
-  questions into sub-queries, and keeps gathering until it judges the answer
-  complete (bounded by a safety cap so it can't loop forever — if the cap is
-  hit before the model signals completion, the final answer discloses that
-  information may be incomplete rather than presenting a partial result as
-  exhaustive). No hardcoded decision tree — every continue/stop/retry choice
-  comes from the model's own native `tool_calls` output.
-- **Three research tools**:
-  - `rag_search` — a hybrid (BM25 + vector) search over a knowledge base of
-    SEC filings (10-K/10-Q/8-K), news, and educational reference articles
-  - `finance_query` — live market data via yfinance (quote, fundamentals,
-    recent news)
-  - `web_search` — general web search for the latest market moves or gaps
-    in the knowledge base
-- **Streaming, visible reasoning** — SSE streaming with the agent's live
-  thinking/reasoning chain shown alongside the final answer, not just the
-  end result.
-- **Bilingual** — auto-detects Chinese or English input and responds in
-  kind; UI has a 中/EN toggle.
-- **Multi-turn conversations** — session-scoped chat history.
-- **File uploads** — upload your own `.txt` / `.md` / `.pdf` filings (PDFs
-  parsed with a table-aware layout/OCR pipeline); manage them from the Docs
-  page.
-- **Cross-lingual retrieval that actually works** — the hybrid BM25+vector
-  search recovers relevant results for conversational-language queries that
-  keyword search alone misses entirely (see [How It Works](#how-it-works)).
-- **Cross-session memory** — the agent remembers who you are across
-  conversations, not just within one: a user profile (risk preference,
-  investment style, watched tickers) and a tiered-TTL research-conclusion
-  store (fundamentals/filing facts ~90 days, news ~30 days; real-time quotes
-  are never persisted as "memory" — they're recalled live every time). Both
-  are recalled on every request and actually reach the answer, not just the
-  planning step (see [How It Works](#how-it-works)).
-- **LLM memory extraction** — every 5 turns, a background pass (no request
-  latency added) reads the recent conversation and extracts structured
-  facts, with deterministic schema validation and untrusted-content fencing
-  standing between whatever the extraction LLM outputs and what actually
-  gets persisted.
-- **Skill SOP library** — four research playbooks (valuation, financial
-  statement, industry comparison, risk scan). Their metadata catalogue sits in
-  the static system prefix, and the model pulls a playbook's full body via a
-  `load_sop` tool call when it judges one applies, rather than a separate
-  classification round-trip loading it up front. How much this changes the
-  sub-questions actually asked is currently **unquantified** — see the SOP note
-  under [Quantitative Evaluation](#quantitative-evaluation).
-- **Disclaimer, guaranteed** — every answer ends with a fixed disclaimer
-  appended by code after generation, not requested via prompt instruction,
-  so it can't be dropped by the model.
+### [investplus-agent.com](https://investplus-agent.com)
 
-## Quick Start
+No signup. Ask it something from the examples on the landing page, or paste
+your own question. Rate-limited to 20 req/min as light friction against
+automated traffic — not a real access-control layer.
 
-### Prerequisites
-- Docker Desktop (with WSL integration enabled, if on WSL2)
-- Python 3.11+ (a conda env is recommended)
-- Node.js 18+
-- A DashScope API key (Alibaba Cloud) and a Serper API key
+Running it locally needs Docker, Elasticsearch, PostgreSQL, two API keys and a
+corpus indexing pass. [Quick Start](#quick-start) has the short path.
 
-### 1. Set up environment variables
-Copy `.env.example` to `.env` and fill in your keys:
-```env
-DASHSCOPE_API_KEY=your_dashscope_key
-DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-SERPER_API_KEY=your_serper_key
-ES_URL=http://localhost:1200
-ELASTIC_PASSWORD=your_elastic_password
-TIMEZONE=Asia/Shanghai
-MEM_LIMIT=4294967296
-PG_MEM_LIMIT=1073741824
-POSTGRES_PASSWORD=your_postgres_password
-DATABASE_URL=postgresql://postgres:your_postgres_password@localhost:5432/investplus
-```
+<!-- ROUND 2 PLACEHOLDER: assets/readme/showcase.png
+     Real screenshot from the live site: thinking chain + final answer + sources
+     in one frame. Needs user approval to capture. Nothing in the repo today. -->
 
-### 2. Start infrastructure
+## What the measurements say
+
+Every number below comes from a reproducible harness in [`eval/`](eval/) that
+drives the live backend end-to-end — real agent, real retrieval, real
+Elasticsearch, no mocks.
+
+| What was measured | Result | Measurement conditions | Source |
+|---|---|---|---|
+| Cross-lingual retrieval recall | BM25-only **0/10** → hybrid **10/10** | 10 Chinese conversational finance questions against this project's English-only corpus; same query-construction code path `rag_search` uses in production | [`eval/recall_validation.py`](eval/recall_validation.py) |
+| Tool-routing hit rate | **74.5%** average | 17 questions × 3 samples. 10 stable hits, 3 stable failures, **4 questions that flip** on identical code. Single-sample figures carry ~±24pp of swing and are not reported | [`eval/report.md`](eval/report.md) |
+| First substantive judgement | **2.93s** avg (p50 2.63s / p90 4.86s) | `POST /chat` → first tool-call event, n=24. This is the responsiveness number | [`eval/report.md`](eval/report.md) |
+| Full response latency | **32.6s** avg (p50 31.9s / p90 55.0s) | 32 real streaming requests, start to end of streamed answer | [`eval/results.json`](eval/results.json) |
+| RAG answer accuracy | **13/15** | Fact-based QA pairs checked against the indexed corpus. Reported on all 15 asked. One of them (`rag-11`) was judged mis-designed — its ground truth is a time snapshot while the question asks a floating relative concept — and excluding it gives 13/14; the conservative figure is the one quoted here | [`eval/report.md`](eval/report.md) |
+| Edge-case robustness | **5/5** | Empty input, oversized input, invalid ticker, off-topic question, non-existent session | [`eval/report.md`](eval/report.md) |
+| Loop rewrite, before → after | Tool calls **77 → 34**, average wall time **108.7s → 75.3s** | Same 5 questions, one run each, both deep enough to reach follow-up rounds (23 vs 19 follow-up calls). Strict and near-duplicate tool calls measured **0 in both** — see [the rewrite note](#1-a-real-agent-loop-not-a-scripted-pipeline) | [`repeat_probe_master-original.md`](eval/repeat_probe_master-original.md), [`repeat_probe_increment-2.md`](eval/repeat_probe_increment-2.md) |
+
+Re-run it yourself against a live backend:
+
 ```bash
-docker compose up -d
+python eval/run_eval.py --routing-samples 3
 ```
 
-### 3. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
+### Where the latency actually goes
 
-### 4. Fetch and index the finance corpus
-```bash
-python scripts/fetch_filings.py       # SEC EDGAR filings (10-K/10-Q/8-K) -> data/filings/
-python scripts/fetch_news.py          # recent news per ticker -> data/news/
-python scripts/fetch_educational.py   # curated reference articles -> data/educational/
-python scripts/index_finance.py       # chunk + embed + index all three into ES `finance_kb`
-```
+The two latency rows above say how long it takes; this says what to do about
+it. Across the same 32 requests, thinking content averages **1810 characters**
+against **486** for the visible answer — a 3.7x gap. The visible answer is not
+where the clock goes either: only **11%** of the total 32.6s elapses after the
+answer has started streaming.
 
-### 5. Start the backend
-```bash
-cd backend/app
-uvicorn app_main:app --reload --port 8000
-```
+The two lengths do not carry latency equally. Thinking length correlates with
+total latency at **r = 0.90**; visible answer length correlates at only
+**r = 0.68**. So shortening the answer — the obvious first move — buys almost
+nothing. The lever that matters is `enable_thinking` on the answer call.
 
-### 6. Start the frontend
-Copy `frontend/.env.example` to `frontend/.env`:
-```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
-```
+Both correlations are computed from the per-request `thinking_chars`, `answer`
+and `total_latency` fields in [`eval/results.json`](eval/results.json), so the
+figures can be recomputed rather than taken on trust.
 
-Open [http://localhost:5181](http://localhost:5181).
+### Numbers this project does not claim
 
-## Production Deployment
+Three measurements were built, run, and then disqualified. They are recorded
+here rather than quietly dropped, because each one would have flattered the
+project.
 
-The [live demo](#live-demo) runs from the same repo via a second Compose
-file layered on top of the dev one:
+- **"Time to first token."** Since `448b831` the first SSE event is an
+  acknowledgment emitted *before* any LLM call, so it measures a constant
+  0.00s. It proves the connection opened; it says nothing about the model,
+  retrieval, or tools. Quote "first substantive judgement" instead.
+- **Single-sample routing accuracy.** 4 of 17 questions flip run-to-run on
+  identical code, putting roughly **±24 percentage points** of swing on any
+  single-sample figure. Any before/after comparison narrower than that band is
+  unreadable, so only the multi-sample average is reported.
+- **SOP injection coverage lift.** Both rulers are known broken. The original
+  counted keywords in generated sub-questions — but `finance_query` does not
+  parse specific metrics, so `"AAPL PE ratio"` and `"AAPL fundamentals"` return
+  byte-identical results; it was rewarding verbosity, not information.
+  Rescoring on what the tools actually returned dropped the lift from +52.8pp
+  to +11.1pp — but the new ruler saturates too, since the fundamentals card
+  always carries exactly 2 of the 5 valuation concepts. Redesigning the scoring
+  dimensions is outstanding work.
 
-- `docker-compose.prod.yml` — adds `backend`/`frontend`/`gateway` services
-  (built from `backend/Dockerfile`, `frontend/Dockerfile`, `gateway/Dockerfile`),
-  pins a `mem_limit` per service (calibrated against measured container
-  memory under real load, not guessed), and drops the dev-only host port
-  publishing for `es01`/`pg`.
-- `gateway/` — a single nginx container is the only public entry point:
-  TLS (Let's Encrypt via `certbot`, two-stage bootstrap to break the
-  chicken-and-egg cert/nginx startup order), `/ai-search/*` reverse-proxied
-  to the backend with SSE passthrough (buffering off), and request rate
-  limiting.
-- `.github/workflows/deploy.yml` — on push to `master`: builds and pushes
-  `backend`/`frontend`/`gateway` images to GHCR, then SSHes into the server
-  to `pull` + `up -d`. The deploy SSH key only ever runs those two commands;
-  business secrets (`.env`) are placed on the server by hand once, never
-  transmitted through CI.
+**Corpus honesty note:** `data/` is the project's own bundled test corpus, some
+of it AI-generated and dated in the future. RAG accuracy measures faithfulness
+to the indexed corpus — not validation against real-world financial data.
 
-Not a generic "deploy anywhere" template — the compose files and gateway
-config are written against this project's specific service layout, and the
-mem_limit values are calibrated for one particular VM size. Treat them as a
-worked example, not a drop-in.
+## What it is
 
-## How It Works
+A research agent over three tools and one knowledge base. `rag_search` does
+hybrid retrieval over SEC filings (10-K/10-Q/8-K), news, and educational
+reference articles; `finance_query` pulls live quotes, fundamentals and news
+from yfinance; `web_search` covers market-wide events the corpus doesn't hold.
+A fourth tool, `load_sop`, loads a research playbook rather than fetching data.
 
-```
+It detects Chinese or English input and answers in kind, streams its reasoning
+chain alongside the answer over SSE, remembers you across sessions, and accepts
+your own `.txt` / `.md` / `.pdf` filings as additional context. Every answer
+ends with a disclaimer appended by code after generation — not requested in a
+prompt, so the model cannot drop it.
+
+## Why it's different
+
+### 1. A real agent loop, not a scripted pipeline
+
+<!-- ROUND 2 PLACEHOLDER: assets/readme/agent-loop.svg
+     Re-render from diagrams/invest-plus-agent-loop.workflow.json —
+     English labels via meta.locale + label fields, project palette, static export.
+     Do NOT extract SVG from the built HTML. -->
+
+```text
 User question
       ↓
   static prefix        ── system prompt + tool definitions + SOP metadata catalogue;
@@ -173,151 +146,355 @@ User question
   Frontend renders thinking chain + final answer
 ```
 
-The loop exits on any of three conditions: the model issues no further tool
-calls, the round cap is hit, or a call errors out. `final_answer()`
-deliberately sits off the trajectory — it buys a better-quality answer at the
-cost of an extra round trip and a model that shares no cache with the loop.
+Every continue/stop/retry decision comes from the model's own native
+`tool_calls` output, not from hardcoded branching — a round with no tool calls
+*is* the stop signal. The loop exits on exactly three conditions: no further
+tool calls, the round cap, or a call erroring out. A safety cap of 6 decision
+rounds (`MAX_DECISION_ROUNDS`, `agent.py:894`) bounds runaway loops — one
+planning round plus at most five follow-up rounds. Cap-stops are logged
+distinctly from model-signaled stops so the two are never confused, and when
+the cap fires first the final answer discloses that information may be
+incomplete rather than presenting a partial result as exhaustive. Tool failures
+are appended to the trajectory the model itself reads, so it can retry, fall
+back, or flag the gap.
+
+`final_answer()` deliberately sits off the trajectory — it buys a
+better-quality answer at the cost of an extra round trip and a model that
+shares no cache with the loop.
 
 **Tool selection rules:**
-- Real-time quote / market cap / P/E ratio / fundamentals / news headlines → `finance_query`
-- Filing content / risk factors / news analysis / concept explanations → `rag_search`
-- Latest market-wide events not covered by the knowledge base → `web_search`
-- Off-topic (non-finance) questions → rejected
 
-**Why the loop is a genuine agent loop, not a scripted pipeline:** every
-continue/stop/retry decision comes from the model's own native `tool_calls`
-output, not from hardcoded branching — a round with no tool calls *is* the
-stop signal. A safety cap (5 iterations) bounds runaway loops without being
-mistaken for genuine LLM judgment; cap-stops are logged distinctly from
-model-signaled stops. Tool failures are appended to the trajectory the model
-itself reads, so it can retry, fall back, or flag an incomplete answer
-instead of the backend silently swallowing the failure.
+| Question shape | Tool |
+|---|---|
+| Real-time quote / market cap / P/E / fundamentals / news headlines | `finance_query` |
+| Filing content / risk factors / news analysis / concept explanations | `rag_search` |
+| Latest market-wide events not covered by the knowledge base | `web_search` |
+| Off-topic (non-finance) | rejected |
 
-This shape is the result of a rewrite, not the original design. The first
-version put tool descriptions in the prompt body, had the model emit JSON
-text that the backend parsed, and re-serialized accumulated tool results into
-a fresh user message each round. That last part is the failure mode the
-current design exists to avoid: the model never saw its own call history, only
-text reformatted by the application, so it re-issued calls it had already
-made. Two layers of deduplication were added to suppress the symptom, and
-both were deleted once the trajectory was made real. Measured on five
-questions deep enough to need multiple rounds: at comparable follow-up depth,
-repeat attempts went from 3 to 0, total tool calls from 77 to 34, and average
-wall time from 108.7s to 75.3s.
+<details>
+<summary><b>This shape is a rewrite. What the first version got wrong.</b></summary>
 
-**Cross-lingual hybrid retrieval:** `rag_search` combines two signals over
-the same Elasticsearch index (native ES 8.11 `knn` + `query`, hand-rolled —
-no RAGFlow dependency):
+The first version put tool descriptions in the prompt body, had the model emit
+JSON text that the backend parsed, and re-serialized accumulated tool results
+into a fresh user message each round.
+
+That last part is the failure mode the current design exists to avoid: the
+model never saw its own call history, only text reformatted by the application,
+so it re-issued calls it had already made. Two layers of deduplication were
+added to suppress the symptom. Both were deleted once the trajectory was made
+real.
+
+The claim that the trajectory — not the dedup code — was doing the work is
+falsifiable, so it was tested by deleting the dedup layers and probing whether
+repeats came back. They did not: across 23 follow-up calls on the old shape and
+19 on the new one, strict and near-duplicate tool calls both measured 0. What
+did move is volume and time — total tool calls 77 → 34, average wall time
+108.7s → 75.3s over the same five questions, one run each.
+
+None of that counts until the run is shown capable of detecting a repeat at
+all. A batch where no request ever reaches a follow-up round cannot produce a
+duplicate call, so "zero repeats" measured on it is not a weak result — it is
+no result, supporting and refuting the claim equally. An earlier run was
+exactly that case: 0 of 5 requests entered a follow-up round, and its verdict
+is filed as *not measured*, not as *not reproduced*. Both runs quoted above
+clear that check first, at 5 of 5.
+
+Sample size is still five questions, and this is model behaviour rather than a
+deterministic property, so even the passing verdict is recorded as "not
+reproduced in this sample", not as proof.
+
+</details>
+
+### 2. Hybrid retrieval that survives a language switch
+
+`rag_search` combines two signals over the same Elasticsearch index — native ES
+8.11 `knn` + `query`, hand-rolled, no RAGFlow dependency:
+
 - **BM25** (`content_ltks` full-text) — precise keyword matches.
 - **Vector kNN** (`q_1024_vec`, text-embedding-v3, cosine) — semantic and
   cross-lingual matches.
 
-Scores from both branches are summed (vector branch boosted to balance
-magnitudes); if query embedding fails, it degrades gracefully to BM25-only.
-Combined candidates are then reranked with qwen3-vl-rerank before an
-upload-recency boost narrows the final set to the top 5.
-This mechanism is validated directly against the `finance_kb` corpus by
-[`eval/recall_validation.py`](eval/recall_validation.py), which calls the
-same query-construction code `rag_search` uses in production: across 10
-Chinese conversational finance questions against this project's
-English-only corpus (SEC filings, news, educational docs), BM25-only
-recall was **0%** (0/10), while hybrid (BM25 + vector) recall was **100%**
-(10/10) — see the script for the exact queries and hit counts.
+Scores from both branches are summed, with the vector branch boosted to balance
+magnitudes; if query embedding fails it degrades gracefully to BM25-only.
+Combined candidates are reranked with qwen3-vl-rerank, then an upload-recency
+boost narrows the final set to the top 5.
 
-**Cross-session memory:** before entering the decision loop, `final_answer()`
-recalls the user's profile (`recall_user_profile`, `service/memory/profile.py`)
-and, by extracting tickers from the raw question with a CJK-tolerant regex
-(`_extract_tickers_loose`, `agent.py:416`) that catches tickers glued to
-Chinese text (`_TICKER_RE`'s `\b` word boundaries miss e.g. "AAPL的股价"),
-any relevant unexpired research conclusions
-(`recall_all_conclusions`, `agent.py:429`). Both are woven into the planning
-prompt (so the agent can skip redundant fetches), and the same recalled
-conclusions are **also** spliced into the final answer prompt — a fact
-recalled from a prior session can actually show up in this turn's answer,
-not just influence which tools get called. Recalled content is wrapped in
-`<untrusted_context>` with an explicit "treat live data as authoritative if
-they conflict" instruction, same convention as tool results.
+This is the mechanism behind the 0/10 → 10/10 row in the table above: against
+an English-only corpus, Chinese conversational questions are invisible to
+keyword search and fully recoverable with the vector branch added.
 
-Every 5 turns, a `BackgroundTasks`-scheduled pass
-(`service/memory/extraction.py`) reads the recent conversation and asks the
-LLM to extract structured facts (updated preferences, timestamped
-conclusions). Real-time quote data is dropped by code before it ever reaches
-validation — it has no business being cached as long-term "memory." What
-survives is schema-validated deterministically (enums, ticker/metric-name
-regexes, length caps) before being written, so a successful prompt
-injection against the extraction LLM can produce confusing *content* but
-can't write an out-of-schema value or escape the sandboxed prompt string.
+### 3. Memory that reaches the answer, not just the plan
 
-**Skill SOP library:** four playbooks live as plain Markdown files under
-`service/agent/skills/` (`valuation.md`, `financial_statement.md`,
-`industry_comparison.md`, `risk_scan.md`), each with YAML frontmatter and an
-indicator checklist. Only their `name` + `description` pairs are resident,
-appended to the decision system prompt as a metadata catalogue; the bodies
-enter context solely when the model calls the `load_sop` tool, which returns
-the body as a tool message. Measured cost of that split: 813 characters
-resident against 3082 characters of bodies, so 26%.
+Before entering the decision loop, `final_answer()` recalls the user's profile
+(`recall_user_profile`, `service/memory/profile.py`) and any unexpired research
+conclusions for tickers mentioned in the question. Ticker extraction uses a
+CJK-tolerant regex (`_extract_tickers_loose`, `agent.py:416`) because
+`_TICKER_RE`'s `\b` word boundaries miss tickers glued to Chinese text — e.g.
+`AAPL的股价`.
 
-This replaced an independent `classify_skill()` round-trip that ran
-unconditionally before planning. The saving is not on questions that need a
-playbook — those break even, one classification call becoming one `load_sop`
-call — it is that questions needing no playbook stop paying at all. Stated
-honestly, the switch cost some routing recall: positives fell 19/19 → 16/19
-while false positives held at 0/16, and only one of those three is a clean
-regression (one is a self-contradicting dataset label, and one is a scoring
-mismatch, since the old call hard-capped its output at two skills and
-`load_sop` has no such cap). Timing is unresolved: the path structurally
-loses a whole LLM round trip, but the measurements disagree with each other
-inside the sampling noise, so no claim is made either way.
+Both are woven into the planning prompt so the agent can skip redundant
+fetches, and the recalled conclusions are **also** spliced into the final
+answer prompt — so a fact recalled from a prior session can actually appear in
+this turn's answer, not merely influence which tools get called. Recalled
+content is wrapped in `<untrusted_context>` with an explicit "treat live data
+as authoritative if they conflict" instruction, the same convention used for
+tool results.
 
-SOP bodies deliberately never enter the memory channel — they are
-instructions to the model, not facts about the world, and letting them in
-would feed the user's own methodology checklist back to them as cited
-reference material. A test pins that.
+Conclusions carry tiered TTLs — fundamentals and filing facts ~90 days, news
+~30 days. Real-time quotes are never persisted as memory; they are recalled
+live every time.
+
+<details>
+<summary><b>How facts get written, and what stands between the extraction LLM and the database</b></summary>
+
+Every 5 turns a `BackgroundTasks`-scheduled pass
+(`service/memory/extraction.py`) reads the recent conversation and asks the LLM
+to extract structured facts — updated preferences, timestamped conclusions. It
+adds no request latency.
+
+Real-time quote data is dropped by code before it ever reaches validation; it
+has no business being cached as long-term memory. What survives is
+schema-validated deterministically — enums, ticker and metric-name regexes,
+length caps — before being written. A successful prompt injection against the
+extraction LLM can therefore produce confusing *content*, but cannot write an
+out-of-schema value or escape the sandboxed prompt string.
+
+</details>
+
+### 4. A skill library the model pulls, rather than one the backend pushes
+
+Four research playbooks live as plain Markdown under
+`service/agent/skills/` — `valuation.md`, `financial_statement.md`,
+`industry_comparison.md`, `risk_scan.md` — each with YAML frontmatter and an
+indicator checklist. Only their `name` + `description` pairs are resident in
+the decision system prompt as a metadata catalogue; a body enters context only
+when the model calls `load_sop`. Measured cost of that split: 813 resident
+characters against 3082 characters of bodies, so 26%.
+
+This replaced an unconditional `classify_skill()` round-trip that ran before
+every plan. The saving is not on questions that need a playbook — those break
+even, one classification call becoming one `load_sop` call — it is that
+questions needing no playbook stop paying at all.
+
+Stated honestly, the switch cost some routing recall: positives fell 19/19 →
+16/19 while false positives held at 0/16, and only one of those three is a
+clean regression — one is a self-contradicting dataset label, and one is a
+scoring mismatch, since the old call hard-capped its output at two skills and
+`load_sop` has no such cap. Timing is unresolved: the path structurally loses a
+whole LLM round trip, but the measurements disagree with each other inside the
+sampling noise, so no claim is made either way.
+
+SOP bodies deliberately never enter the memory channel — they are instructions
+to the model, not facts about the world, and letting them in would feed the
+user's own methodology checklist back to them as cited reference material. A
+test pins that.
+
+## Quick Start
+
+**Prerequisites:** Docker Desktop (with WSL integration, if on WSL2),
+Python 3.11+, Node.js 18+, a DashScope API key (Alibaba Cloud), a Serper API key.
+
+**1. Environment.** Copy `.env.example` to `.env` and fill in your keys:
+
+```env
+DASHSCOPE_API_KEY=your_dashscope_key
+DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+SERPER_API_KEY=your_serper_key
+ES_URL=http://localhost:1200
+ELASTIC_PASSWORD=your_elastic_password
+TIMEZONE=Asia/Shanghai
+MEM_LIMIT=4294967296
+PG_MEM_LIMIT=1073741824
+POSTGRES_PASSWORD=your_postgres_password
+DATABASE_URL=postgresql://postgres:your_postgres_password@localhost:5432/investplus
+```
+
+**2. Infrastructure and dependencies.**
+
+```bash
+docker compose up -d
+pip install -r requirements.txt
+```
+
+**3. Build the knowledge base.** Fetches the corpus and indexes it into the
+Elasticsearch index `finance_kb`. One-time, and the slowest step.
+
+```bash
+python scripts/fetch_filings.py       # SEC EDGAR 10-K/10-Q/8-K  -> data/filings/
+python scripts/fetch_news.py          # recent news per ticker   -> data/news/
+python scripts/fetch_educational.py   # reference articles       -> data/educational/
+python scripts/index_finance.py       # chunk + embed + index all three
+```
+
+**4. Backend.** Note the working directory — imports are flat, so it must run
+from `backend/app`, not `backend/`.
+
+```bash
+cd backend/app
+uvicorn app_main:app --reload --port 8000
+```
+
+**5. Frontend.**
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Open [http://localhost:5181](http://localhost:5181).
 
 ## Tech Stack
 
 | Layer | Technology | Role |
 |---|---|---|
 | LLM | Qwen — qwen3.7-max (final answer), qwen-plus (decision operation), via the `openai` SDK against DashScope's OpenAI-compatible endpoint | Reasoning + tool decisions |
-| Agent Framework | Hand-rolled loop: static prefix + append-only trajectory + native tool calling (no LangChain) | Tool orchestration + self-correction |
-| Knowledge Base | Elasticsearch `finance_kb` (SEC filings + news + educational + user uploads); text-embedding-v3 for vector embeddings, qwen3-vl-rerank (native `dashscope` SDK) for reranking | Hybrid retrieval (BM25 + vector) + rerank |
-| Real-time Data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
-| Document Parsing | DeepDoc (layout/table-transformer/OCR, onnxruntime) | PDF filing uploads → table-aware chunks |
-| Web Search | Serper API | Latest market moves / fallback |
-| Backend | FastAPI + PostgreSQL | API, SSE, sessions & messages; `user_profiles`/`conclusion_memory` for cross-session memory |
-| Memory & Skills | `service/memory/{profile,conclusion,extraction}.py`, `service/agent/skills/*.md` | Cross-session recall, LLM extraction pipeline, SOP-driven planning |
-| Frontend | React + TypeScript + Vite + Ant Design + Valtio | Chat UI, streaming render, doc mgmt |
-| Infrastructure | Docker Compose (ES + PG for local dev; full stack + nginx gateway + Let's Encrypt for prod) | Local dependencies / production hosting |
-| CI/CD | GitHub Actions + GHCR | Build/push images on every push; SSH deploy (`pull` + `up -d`) on `master` |
+| Agent | Hand-rolled loop: static prefix + append-only trajectory + native tool calling (no LangChain) | Tool orchestration + self-correction |
+| Knowledge base | Elasticsearch `finance_kb` (filings + news + educational + user uploads); text-embedding-v3 for vectors, qwen3-vl-rerank (native `dashscope` SDK) for reranking | Hybrid retrieval (BM25 + vector) + rerank |
+| Real-time data | yfinance (`service/finance/finance_tool.py`) | Quote / fundamentals / news |
+| Document parsing | DeepDoc (layout / table-transformer / OCR, onnxruntime) | PDF filing uploads → table-aware chunks |
+| Web search | Serper API | Latest market moves / fallback |
+| Backend | FastAPI + PostgreSQL | API, SSE, sessions & messages; `user_profiles` / `conclusion_memory` |
+| Memory & skills | `service/memory/{profile,conclusion,extraction}.py`, `service/agent/skills/*.md` | Cross-session recall, extraction pipeline, SOP-driven planning |
+| Frontend | React + TypeScript + Vite + Ant Design + Valtio | Chat UI, streaming render, doc management |
+| Infrastructure | Docker Compose (ES + PG for dev; full stack + nginx gateway + Let's Encrypt for prod) | Local dependencies / production hosting |
+| CI/CD | GitHub Actions + GHCR | Build/push images on every push; SSH deploy on `master` |
+
+## Production Deployment
+
+<!-- ROUND 2 PLACEHOLDER: assets/readme/deployment.svg
+     Re-render from diagrams/invest-plus-deployment.architecture.json —
+     English labels, project palette, static export. Not first-screen material. -->
+
+The [live demo](#try-it-live) runs from this repo via a second Compose file
+layered on the dev one:
+
+- **`docker-compose.prod.yml`** — adds `backend` / `frontend` / `gateway`
+  services, pins a `mem_limit` per service (calibrated against measured
+  container memory under real load, not guessed), and drops the dev-only host
+  port publishing for `es01` / `pg`.
+- **`gateway/`** — one nginx container is the only public entry point: TLS
+  (Let's Encrypt via `certbot`, two-stage bootstrap to break the
+  chicken-and-egg cert/nginx startup order), `/ai-search/*` reverse-proxied to
+  the backend with SSE passthrough (buffering off), and request rate limiting.
+- **`.github/workflows/deploy.yml`** — on push to `master`: build and push
+  `backend` / `frontend` / `gateway` images to GHCR, then SSH in to `pull` +
+  `up -d`. The deploy SSH key only ever runs those two commands; business
+  secrets (`.env`) are placed on the server by hand once, never transmitted
+  through CI.
+
+This is not a generic "deploy anywhere" template. The compose files and gateway
+config are written against this project's specific service layout, and the
+`mem_limit` values are calibrated for one particular VM size. Treat them as a
+worked example, not a drop-in.
+
+<!-- ROUND 2 PLACEHOLDER: assets/readme/chat-sequence.svg (optional, collapsed)
+     From diagrams/invest-plus-chat-sequence.json. Dense — 6 participants,
+     5 timed segments. Verify legibility at 900px / 360px before embedding;
+     if it fails, keep it out rather than shrinking labels. -->
+
+## Known Limitations
+
+### Routing and retrieval
+
+- **Three stable routing failures** — the ones that fail on all 3 samples, so
+  they are real rather than sampling noise.
+- **Ticker-vs-acronym ambiguity in the recall path** — the CJK-tolerant
+  extractor can't distinguish a finance acronym from a same-spelled ticker
+  (`AI` is both "artificial intelligence" and C3.ai).
+
+<details>
+<summary>Detail on both</summary>
+
+`route-05` ("what is free cash flow?") adds an unnecessary `web_search` to a
+concept question the knowledge base already answers. `route-11` ("any important
+global financial news today?") calls no tool at all. `route-17` sends the news
+half of a compound question to `rag_search` instead of `web_search`.
+
+One fix attempt was reverted: routing by time words ("recent", "latest",
+"today") repaired `route-11` and `route-17` but broke a control question asking
+about a *recent* 8-K — an archived filing, not live news. The boundary has to be
+drawn by where the answer lives — archived documents to `rag_search`, live
+real-world state to `web_search` — not by whether the question sounds recent.
+
+On the acronym collision: the loose extractor is used only for conclusion
+recall, not by `finance_tool()`, which uses a stricter one on already-decomposed
+sub-questions. Worst case is an irrelevant old conclusion surfacing as
+background context, which the recall prompt already treats as possibly-stale.
+
+</details>
+
+### Memory
+
+- **Extraction triggers on a turn count, not session end** — there is no
+  reliable "session ended" signal in a request-response architecture, so it
+  fires every 5 turns. A conversation ending on turn *N*-1 never gets its tail
+  extracted.
+- **`BackgroundTasks` extraction is not persisted or retried** — a process
+  restart between scheduling and running loses that batch. Windows don't
+  overlap, so this bounds to "some memory not captured", not corruption.
+- **Single-user assumption** — `chat_rt.py` hardcodes `USER_ID` for profile
+  recall while extraction derives the writing user from the session row. These
+  coincide today but would need reconciling before real multi-user support.
+
+### Ingestion
+
+- **PDF parsing covers uploads, not the bulk corpus** — the DeepDoc pipeline is
+  wired for user uploads via `/upload_files`, but `scripts/index_finance.py`
+  parses SEC filings from their native HTML (iXBRL) instead, because EDGAR
+  doesn't serve modern filings as PDF. See the module docstring.
+
+### Frontend
+
+- **The chat UI is desktop-only** — `components/page-layout` has a hard
+  `min-width: 600px` plus a fixed `408px` side panel, and `layout/base` wraps
+  every route in a fixed `100px` sidebar. No `@media` breakpoints cover the chat
+  page; on a phone viewport it overflows rather than reflowing. The landing page
+  is responsive on its own.
+- **No conversation-history UI** — `session_id` lives only in the URL
+  (`/chat/:id`), never in `localStorage`. A `DELETE /sessions` endpoint exists
+  server-side but nothing calls it. Every visit starts a fresh session; old ones
+  persist in Postgres indefinitely with no TTL.
+
+## Roadmap
+
+The current MVP covers single-ticker stock and market analysis
+(AAPL / MSFT / GOOGL). Architecturally that is a foundation for a broader
+investing research copilot — portfolio-level reasoning and multi-asset
+comparison — reusing the same tool and retrieval layer.
 
 ## Project Structure
+
+<details>
+<summary><b>Full tree, with per-file notes</b></summary>
 
 ```
 InvestPlus/
 ├── backend/
-│   ├── Dockerfile                   # Prod image: deps → tiktoken/nltk pre-bake → app code (in that layer order, for cache hits on code-only changes)
-│   └── app/
-│       ├── app_main.py              # FastAPI entry point
-│       ├── router/
-│       │   ├── chat_rt.py           # /chat SSE, /upload_files (.txt/.md/.pdf), /get_files, /delete_file
-│       │   └── history_rt.py        # /sessions, /messages
-│       ├── service/
-│       │   ├── agent/
-│       │   │   ├── agent.py         # Agent loop (decision operation over a trajectory) + memory/skill recall & injection
-│       │   │   └── skills/          # SOP playbooks: valuation/financial_statement/industry_comparison/risk_scan.md
-│       │   ├── memory/
-│       │   │   ├── profile.py       # recall_user_profile / upsert_user_profile
-│       │   │   ├── conclusion.py    # recall_conclusion_facts / upsert_conclusion_fact (tiered TTL)
-│       │   │   └── extraction.py    # extract_memory() — every-5-turn LLM extraction pipeline
-│       │   ├── finance/              # finance_tool.py — live yfinance quote/fundamentals/news
-│       │   ├── web_search/          # Serper web search tool
-│       │   └── core/
-│       │       ├── file_parse.py    # .txt/.md chunker + .pdf DeepDoc pipeline -> ES indexer
-│       │       ├── deepdoc/         # PDF parser (layout/table/OCR)
-│       │       └── rag/             # Tokenizer/nlp utils + res/deepdoc model weights
-│       ├── models/memory.py         # SQLAlchemy models: UserProfile, ConclusionMemory
-│       ├── schemas/chat.py
-│       └── utils/database.py
+│   ├── Dockerfile                   # Prod image: deps → tiktoken/nltk pre-bake → app code (that layer order gives cache hits on code-only changes)
+│   ├── app/
+│   │   ├── app_main.py              # FastAPI entry point
+│   │   ├── router/
+│   │   │   ├── chat_rt.py           # /chat SSE, /upload_files (.txt/.md/.pdf), /get_files, /delete_file
+│   │   │   └── history_rt.py        # /sessions, /messages
+│   │   ├── service/
+│   │   │   ├── agent/
+│   │   │   │   ├── agent.py         # Agent loop (decision operation over a trajectory) + memory/skill recall & injection
+│   │   │   │   └── skills/          # SOP playbooks: valuation/financial_statement/industry_comparison/risk_scan.md
+│   │   │   ├── memory/
+│   │   │   │   ├── profile.py       # recall_user_profile / upsert_user_profile
+│   │   │   │   ├── conclusion.py    # recall_conclusion_facts / upsert_conclusion_fact (tiered TTL)
+│   │   │   │   └── extraction.py    # extract_memory() — every-5-turn LLM extraction pipeline
+│   │   │   ├── finance/             # finance_tool.py — live yfinance quote/fundamentals/news
+│   │   │   ├── web_search/          # Serper web search tool
+│   │   │   └── core/
+│   │   │       ├── file_parse.py    # .txt/.md chunker + .pdf DeepDoc pipeline -> ES indexer
+│   │   │       ├── deepdoc/         # PDF parser (layout/table/OCR)
+│   │   │       └── rag/             # Tokenizer/nlp utils + res/deepdoc model weights
+│   │   ├── models/memory.py         # SQLAlchemy models: UserProfile, ConclusionMemory
+│   │   ├── schemas/chat.py
+│   │   └── utils/database.py
 │   └── tests/
 │       ├── test_agent_loop.py       # Loop-mechanism unit tests (should_continue, error propagation) + merge-step tests
 │       ├── test_chat_router.py      # /chat SSE + related router endpoints
@@ -333,107 +510,52 @@ InvestPlus/
 │       ├── test_memory_recall.py    # CJK-tolerant ticker extraction + recall wiring
 │       ├── test_memory_scheduling.py # Discriminative BackgroundTasks trigger tests
 │       └── test_skill_sop_and_disclaimer.py
-├── eval/                             # Quantitative agent/RAG evaluation harness (see below)
+├── eval/                            # Quantitative agent/RAG evaluation harness
 ├── frontend/
 │   ├── Dockerfile                   # Multi-stage: npm build -> static assets served by nginx
 │   └── src/
 │       ├── i18n.tsx                 # Bilingual text (zh/en)
+│       ├── styles/tokens.css        # Design tokens — single source of truth, mirrored in tokens.ts
 │       ├── components/
 │       │   ├── header-bar/          # Header with 中/EN toggle
 │       │   └── sender/              # Input box + file attachment
 │       └── pages/
 │           ├── chat/                # Chat page with SSE streaming
 │           └── repository/          # Document management
-├── gateway/                          # Prod entry point: nginx TLS/reverse-proxy/rate-limit/Basic Auth
-│   ├── Dockerfile
+├── gateway/                         # Prod entry point: nginx TLS/reverse-proxy/rate-limit
 │   ├── nginx.conf                   # Production config (TLS, real domain)
 │   └── nginx.local.conf             # Local-stack equivalent (plain HTTP, no certbot)
-├── .github/workflows/deploy.yml     # CI: build all 3 images on every push; on master, also push to GHCR + SSH deploy
-├── scripts/                          # Finance corpus fetch/index scripts (fetch_filings/news/educational, index_finance)
-├── data/                             # Fetched finance corpus (filings/news/educational), indexed into `finance_kb`
-├── docker-compose.yml                # ES + PostgreSQL (shared base)
-├── docker-compose.local.yml          # + backend/frontend/gateway for local full-stack dev (plain HTTP)
-├── docker-compose.prod.yml           # + backend/frontend/gateway/certbot for production (TLS, mem_limit pins)
-└── .env                              # API keys and config
+├── diagrams/                        # Architecture / workflow / sequence diagram sources + rendered HTML
+├── .github/workflows/deploy.yml     # CI: build 3 images on every push; on master, push to GHCR + SSH deploy
+├── scripts/                         # Corpus fetch/index scripts
+├── data/                            # Fetched finance corpus, indexed into `finance_kb`
+├── docker-compose.yml               # ES + PostgreSQL (shared base)
+├── docker-compose.local.yml         # + backend/frontend/gateway for local full-stack dev (plain HTTP)
+├── docker-compose.prod.yml          # + backend/frontend/gateway/certbot for production (TLS, mem_limit pins)
+└── .env                             # API keys and config
 ```
 
-## Quantitative Evaluation
-
-A reproducible evaluation harness (`eval/`) drives the live backend
-end-to-end (real agent/RAG/Elasticsearch logic, no mocks) against a labeled
-dataset built from the actual indexed corpus:
-
-| Metric | Result | Basis |
-|---|---|---|
-| Tool-routing average hit rate | **74.5%** | 17 questions × **3 samples each**. 10 stable hits, 3 stable failures, **4 questions that flip** (right on one run and wrong on the next, on identical code) |
-| First substantive judgement latency | **2.93s avg** (p50 2.63s / p90 4.86s) | `POST /chat` to the first tool-call event. This is the number that measures responsiveness |
-| Full response latency | 32.6s avg (p50 31.9s / p90 55.0s) | 32 real streaming requests, start to end of the streamed answer |
-| RAG retrieval/answer accuracy | 13/15 | fact-based QA pairs checked against the actual filings/news/educational corpus |
-| Edge-case robustness | 5/5 | empty input, oversized input, invalid ticker, off-topic question, non-existent session |
-
-**The numbers below are not citable. The reasons are recorded here rather than
-quietly dropped:**
-
-- **"Time to first token" / "first-feedback latency"** — since [`448b831`](.),
-  the first SSE event is an acknowledgment the backend emits *before* any LLM
-  call, and it measures a constant 0.00s. It proves the connection is open; it
-  measures nothing about the model, retrieval, or tools. For responsiveness,
-  quote "first substantive judgement" from the table above.
-- **Single-sample strict routing accuracy** — 4 of the 17 questions flip on
-  identical code, which puts roughly **±24 percentage points** of swing on any
-  single-sample figure. Any before/after comparison smaller than that band is
-  unreadable, so this README reports only the multi-sample average hit rate.
-- **SOP injection coverage lift** — both rulers are known broken. The old one
-  counted keywords in the generated sub-questions, but `finance_tool` does not
-  parse specific metrics: `"AAPL PE ratio"` and `"AAPL fundamentals"` return
-  byte-identical results, so it was rewarding verbosity rather than
-  information. Rescoring the same data on what the tools actually returned
-  dropped the lift from +52.8pp to +11.1pp — but the new ruler saturates too
-  (the fundamentals card always carries exactly 2 of the 5 valuation concepts,
-  giving the score two settings). Redesigning the scoring dimensions is
-  outstanding work.
-
-**Where the latency actually goes** is worth stating separately. Thinking
-content averages 1810 characters against 486 for the visible answer — **3.7x** —
-and correlates with total latency at r=0.90. Of the full 32.6s, only 3.7s
-happens after the answer starts streaming. Compressing the visible answer
-therefore barely moves total latency; the real lever is `enable_thinking` on
-the answer call.
-
-Methodology, full dataset, and raw transcripts: [`eval/report.md`](eval/report.md),
-[`eval/dataset.py`](eval/dataset.py), [`eval/results.json`](eval/results.json).
-Re-run against a live backend with `python eval/run_eval.py --routing-samples 3`.
-
-**Honesty notes:** the corpus is the project's own bundled test data (some
-AI-generated, dated in the future) — RAG accuracy measures faithfulness to
-the indexed corpus, not validation against real-world financial data.
-
-## Known Limitations
-
-- **Three stable routing failures** — the ones that fail on all 3 samples, so they are real rather than sampling noise. `route-05` ("what is free cash flow?") adds an unnecessary `web_search` to a concept question the knowledge base already answers; `route-11` ("any important global financial news today?") calls no tool at all; `route-17` sends the news half of a compound question to `rag_search` instead of `web_search`. One fix attempt was reverted: routing by time words ("recent", "latest", "today") repaired `route-11` and `route-17` but broke a control question asking about a *recent* 8-K, which is an archived filing rather than live news. The boundary has to be drawn by where the answer lives — archived documents to `rag_search`, live real-world state to `web_search` — not by whether the question sounds recent.
-- **File upload PDF parsing** — the DeepDoc PDF pipeline is wired for user-uploaded filings via `/upload_files`, but the bulk corpus indexer (`scripts/index_finance.py`) parses SEC EDGAR filings from their native HTML (iXBRL) form directly rather than through the PDF pipeline, since EDGAR doesn't serve modern filings as PDF (see the module docstring in `index_finance.py`).
-- **Extraction only triggers on a turn count, not session end** — there's no reliable "session ended" signal in this request-response architecture (no persistent connection to hook), so memory extraction fires every 5 turns rather than on the OR'd "session end or N turns" condition an earlier design sketch assumed. A conversation that ends on turn *N*-1 within a window never gets that tail extracted.
-- **`BackgroundTasks` extraction isn't persisted or retried** — if the process restarts between scheduling and running an extraction, that batch of facts is lost; the next 5-turn boundary in the same session is unaffected (windows don't overlap), so this bounds to "some memory not captured," not corruption.
-- **Ticker-vs-acronym ambiguity in the recall path** — the CJK-tolerant ticker extractor used for conclusion recall (not the stricter one `finance_tool()` uses on already-decomposed sub-questions) can't distinguish a common finance acronym from a same-spelled real ticker (`AI` is both "artificial intelligence" and C3.ai); worst case is an irrelevant old conclusion surfacing as background context, which the recall prompt already treats as possibly-stale.
-- **Single-user assumption baked into memory recall** — `chat_rt.py`'s hardcoded `USER_ID` is used for profile recall, while extraction derives the writing user from the session's own row; these coincide today but would need reconciling before any real multi-user support.
-- **Chat UI is not mobile-adapted** — the core chat layout (`components/page-layout`) has a hard `min-width: 600px` on the main content area plus a fixed `408px` side panel; on a real phone viewport this overflows/squeezes rather than reflowing. The landing page is reasonably responsive on its own, but the global layout shell (`layout/base`) wraps every route in a fixed `100px` sidebar regardless of viewport width. No `@media` breakpoints cover the chat page today — desktop is the only fully supported target.
-- **No conversation-history UI** — `session_id` lives only in the URL (`/chat/:id`), not in `localStorage`; there's no way to browse or delete past sessions from the app itself (a `DELETE /sessions` endpoint exists server-side but nothing in the frontend calls it). Every visit starts a fresh session; old ones persist in Postgres indefinitely with no TTL/cleanup.
-
-## Roadmap
-
-The current MVP covers single-ticker stock/market analysis (AAPL/MSFT/GOOGL).
-That's architecturally a foundation for a broader investing research
-copilot — portfolio-level reasoning and multi-asset comparison — reusing the
-same tool/RAG layer.
+</details>
 
 ## License / Attribution
 
-Application and agent code is original; the hybrid retrieval (`rag_search`
-in `agent.py`) is hand-rolled directly on native Elasticsearch, with no
-RAGFlow dependency. The PDF parsing pipeline (`service/core/deepdoc`,
-`service/core/rag`), however, is ported from
-[RAGFlow](https://github.com/infiniflow/ragflow) (Apache License 2.0,
-Copyright The InfiniFlow Authors) — see the license headers in that
-directory. Finance filings via [SEC EDGAR](https://www.sec.gov/edgar),
-market data via [yfinance](https://github.com/ranaroussi/yfinance). LLMs via
-Alibaba Cloud DashScope.
+Released under the [MIT License](LICENSE) — Copyright (c) 2026 Thomas Lee.
+That covers the original application and agent code, including the hybrid
+retrieval (`rag_search` in `agent.py`), which is hand-rolled directly on native
+Elasticsearch with no RAGFlow dependency.
+
+One directory is not covered by it:
+
+The PDF parsing pipeline (`service/core/deepdoc`, `service/core/rag`) is ported
+from [RAGFlow](https://github.com/infiniflow/ragflow) and remains under the
+Apache License 2.0, Copyright The InfiniFlow Authors. Every file carrying
+code in those two trees has its original license header — the two empty
+`__init__.py` package markers do not — and a full copy of the licence sits
+alongside them at
+[`backend/app/service/core/LICENSE-APACHE-2.0`](backend/app/service/core/LICENSE-APACHE-2.0).
+The `.onnx` model weights shipped under those trees are not covered by this
+note; their licensing follows upstream RAGFlow and has not been verified here.
+
+Filings via [SEC EDGAR](https://www.sec.gov/edgar), market data via
+[yfinance](https://github.com/ranaroussi/yfinance), LLMs via Alibaba Cloud
+DashScope.

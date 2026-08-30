@@ -17,11 +17,7 @@ hand-rolled — no agent framework. Every effect claimed below is measured, and
 the measurements that turned out not to be trustworthy are published as such.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
-
-<!-- ROUND2-PLACEHOLDER: remaining badges (CI status, live demo, Python/React),
-     styled as one row. The MIT badge above already uses the project accent
-     #35322e from frontend/src/styles/tokens.css rather than shields' default
-     blue, so the row stays inside the neutral palette. -->
+[![Build and Deploy](https://github.com/ThomasLee19/invest-plus/actions/workflows/deploy.yml/badge.svg)](https://github.com/ThomasLee19/invest-plus/actions/workflows/deploy.yml)
 
 ## Try it live
 
@@ -31,12 +27,18 @@ No signup. Ask it something from the examples on the landing page, or paste
 your own question. Rate-limited to 20 req/min as light friction against
 automated traffic — not a real access-control layer.
 
+<p align="center">
+  <img src="./assets/readme/showcase.png" width="100%"
+       alt="The Invest+ landing page: a single input box under the prompt What are we researching today, five example questions about filings, quotes and news, and a 中/EN toggle in the header.">
+</p>
+
 Running it locally needs Docker, Elasticsearch, PostgreSQL, two API keys and a
 corpus indexing pass. [Quick Start](#quick-start) has the short path.
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/showcase.png
-     Real screenshot from the live site: thinking chain + final answer + sources
-     in one frame. Needs user approval to capture. Nothing in the repo today. -->
+<!-- ROUND2-PLACEHOLDER: assets/readme/answer.png — a real answer frame:
+     the thinking chain, the answer with its citation markers, and the sources
+     panel in one shot. The landing shot above shows the product exists; this
+     one would show the mechanism the section below measures. -->
 
 ## What the measurements say
 

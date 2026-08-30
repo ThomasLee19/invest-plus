@@ -12,10 +12,7 @@
 循环、混合检索、跨会话记忆全部手写，没有 Agent 框架。下面每一条效果都是实测的；那些测出来不可信的，也照原样写在这里。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
-
-<!-- ROUND2-PLACEHOLDER: 其余 badge（CI 状态、在线体验、Python/React），排成一行。
-     上面的 MIT badge 已改用项目强调色 #35322e（取自 frontend/src/styles/tokens.css）
-     而非 shields 默认蓝，整行保持在中性色板内。 -->
+[![Build and Deploy](https://github.com/ThomasLee19/invest-plus/actions/workflows/deploy.yml/badge.svg)](https://github.com/ThomasLee19/invest-plus/actions/workflows/deploy.yml)
 
 ## 在线体验
 
@@ -23,11 +20,16 @@
 
 无需注册。可以直接点首页的示例问题，也可以粘贴自己的问题。限流 20 次/分钟，只是挡自动化流量的轻量摩擦，不是真正的访问控制层。
 
+<p align="center">
+  <img src="./assets/readme/showcase.zh.png" width="100%"
+       alt="Invest+ 落地页：「今天想研究什么？」下面是一个输入框，再下面是五个关于财报、行情、新闻的示例问题，顶栏右侧有中/EN 切换。">
+</p>
+
 本地跑起来需要 Docker、Elasticsearch、PostgreSQL、两个 API key，外加一次语料索引。[快速开始](#快速开始)给的是最短路径。
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/showcase.png
-     线上站的真实截图：思考链 + 最终答案 + 来源三段同框。
-     需要你授权采集，仓库里目前一张都没有。 -->
+<!-- ROUND2-PLACEHOLDER: assets/readme/answer.zh.png —— 一帧真实的回答画面：
+     思考链、带引用角标的答案、来源面板三者同框。上面那张落地页证明产品存在，
+     这一张才证明下一节所测量的那套机制。 -->
 
 ## 实测数据
 

@@ -1,12 +1,9 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/hero.svg
-     Split composition — left: category line "AI AGENT · US EQUITIES RESEARCH",
-     Invest+ wordmark (reuse logo.svg rising polyline + "+", blue→green gradient
-     #3B82F6→#10B981 used ONLY here), one-line value.
-     Right: append-only trajectory motif — rows accruing one per round, last row
-     reads "no tool_calls → stop".
-     Palette from frontend/src/styles/tokens.css. Self-contained #fafaf9 ground, rx 26. -->
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%"
+       alt="Invest+ — ask it about a US-listed stock; it plans its own research and knows when to stop. Beside the name, the append-only trajectory: a static prefix, the user question, then one appended row per round, ending on a round with no tool calls.">
+</p>
 
 # Invest+ — AI Finance Research Assistant
 
@@ -125,10 +122,13 @@ prompt, so the model cannot drop it.
 
 ### 1. A real agent loop, not a scripted pipeline
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/agent-loop.svg
-     Re-render from diagrams/invest-plus-agent-loop.workflow.json —
-     English labels via meta.locale + label fields, project palette, static export.
-     Do NOT extract SVG from the built HTML. -->
+<p align="center">
+  <img src="./assets/readme/agent-loop.svg" width="100%"
+       alt="The decision loop: one LLM call decides each round; if it emits tool calls a tool runs and the result is appended to the trajectory, which returns to the same decision operation. A round with no tool calls is the only normal exit. A round cap forces a stop, and the answer discloses it.">
+</p>
+
+<details>
+<summary><b>The same loop as text, with the function names and the caching note</b></summary>
 
 ```text
 User question
@@ -145,6 +145,8 @@ User question
       ↓
   Frontend renders thinking chain + final answer
 ```
+
+</details>
 
 Every continue/stop/retry decision comes from the model's own native
 `tool_calls` output, not from hardcoded branching — a round with no tool calls
@@ -218,6 +220,11 @@ Scores from both branches are summed, with the vector branch boosted to balance
 magnitudes; if query embedding fails it degrades gracefully to BM25-only.
 Combined candidates are reranked with qwen3-vl-rerank, then an upload-recency
 boost narrows the final set to the top 5.
+
+<p align="center">
+  <img src="./assets/readme/retrieval.svg" width="100%"
+       alt="One query fans out to a BM25 branch and a vector kNN branch over the same index; their scores are summed with the vector branch boosted, reranked, then cut to the top 5. BM25 alone recalled 0 of 10 Chinese questions against the English-only corpus; the hybrid recalled 10 of 10.">
+</p>
 
 This is the mechanism behind the 0/10 → 10/10 row in the table above: against
 an English-only corpus, Chinese conversational questions are invisible to
@@ -363,9 +370,6 @@ Open [http://localhost:5181](http://localhost:5181).
 
 ## Production Deployment
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/deployment.svg
-     Re-render from diagrams/invest-plus-deployment.architecture.json —
-     English labels, project palette, static export. Not first-screen material. -->
 
 The [live demo](#try-it-live) runs from this repo via a second Compose file
 layered on the dev one:
@@ -389,10 +393,6 @@ config are written against this project's specific service layout, and the
 `mem_limit` values are calibrated for one particular VM size. Treat them as a
 worked example, not a drop-in.
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/chat-sequence.svg (optional, collapsed)
-     From diagrams/invest-plus-chat-sequence.json. Dense — 6 participants,
-     5 timed segments. Verify legibility at 900px / 360px before embedding;
-     if it fails, keep it out rather than shrinking labels. -->
 
 ## Known Limitations
 

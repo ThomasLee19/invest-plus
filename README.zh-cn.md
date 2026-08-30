@@ -1,11 +1,9 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/hero.svg
-     左右分栏 —— 左：类目行 "AI AGENT · US EQUITIES RESEARCH"、
-     Invest+ 字标（复用 logo.svg 的上升折线 + 加号，蓝绿渐变 #3B82F6→#10B981 只用在这里）、
-     一句话价值。
-     右：只增不改的轨迹 motif —— 每轮追加一行，末行写 "no tool_calls → stop"。
-     配色取自 frontend/src/styles/tokens.css。自带 #fafaf9 底，rx 26。 -->
+<p align="center">
+  <img src="./assets/readme/hero.zh.svg" width="100%"
+       alt="Invest+ —— 用中文或英文问它一支美股，查什么、什么时候算查够了由它自己判断。名字旁边是只增不改的轨迹：静态前缀、用户问题，之后每轮追加一行，直到某一轮不再发起工具调用。">
+</p>
 
 # Invest+ — AI 金融研究助手
 
@@ -79,10 +77,13 @@ python eval/run_eval.py --routing-samples 3
 
 ### 1. 真正的 Agent 循环，不是写死的流水线
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/agent-loop.svg
-     从 diagrams/invest-plus-agent-loop.workflow.json 重新渲染 ——
-     改 meta.locale 与各 label 字段做英文化、套项目配色、导出静态图。
-     不要从已构建的 HTML 里抠 SVG。 -->
+<p align="center">
+  <img src="./assets/readme/agent-loop.svg" width="100%"
+       alt="决策循环：每轮一次 LLM 调用做判断；若发起了工具调用就取数并把结果追加进轨迹，再回到同一个决策操作。某一轮没有工具调用是唯一的正常退出。轮次上限是被迫停止，最终答案会声明这一点。">
+</p>
+
+<details>
+<summary><b>同一个循环的文字版（含函数名与缓存注记）</b></summary>
 
 ```text
 用户问题
@@ -99,6 +100,8 @@ python eval/run_eval.py --routing-samples 3
       ↓
   前端渲染思考链 + 最终答案
 ```
+
+</details>
 
 每一次继续/停止/重试的决策都来自模型自己输出的原生 `tool_calls`，不是硬编码分支——某一轮没有工具调用**本身就是**停止信号。循环只在三种条件下退出：没有新的工具调用、触达轮次上限、或某次调用报错。安全上限是 6 轮决策（`MAX_DECISION_ROUNDS`，`agent.py:894`），给失控循环兜底——即 1 轮规划加最多 5 轮补充。触达上限而停止与模型主动发出停止信号，在日志里分开记录，两者不会被混淆；当上限先触发时，最终答案会明确声明信息可能不完整，而不是把部分结果当作详尽结果呈现。工具失败会追加进模型自己能读到的轨迹，所以它能重试、降级，或者把缺口标出来。
 
@@ -136,6 +139,11 @@ python eval/run_eval.py --routing-samples 3
 - **向量 kNN**（`q_1024_vec`，text-embedding-v3，余弦）—— 语义与跨语言命中。
 
 两路的分数相加，向量那一路做了 boost 以平衡量纲；如果查询 embedding 失败，会优雅降级为纯 BM25。合并后的候选交给 qwen3-vl-rerank 精排，再按用户最近上传做 boost，最终截断为 top 5。
+
+<p align="center">
+  <img src="./assets/readme/retrieval.svg" width="100%"
+       alt="一条查询在同一个索引上分出 BM25 与向量 kNN 两路，两路分数相加（向量路做 boost），再精排、截断为 top 5。纯 BM25 对 10 道中文问题在纯英文语料上召回 0/10，混合检索召回 10/10。">
+</p>
 
 这就是上表里 0/10 → 10/10 那一行背后的机制：面对纯英文语料，中文口语化问题对关键词检索是完全不可见的，加上向量那一路之后则全部可召回。
 
@@ -237,9 +245,6 @@ npm run dev
 
 ## 生产部署
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/deployment.svg
-     从 diagrams/invest-plus-deployment.architecture.json 重新渲染 ——
-     英文化 label、套项目配色、导出静态图。不适合放首屏。 -->
 
 [在线体验](#在线体验)就跑在这个仓库上，方式是在开发用的 Compose 之上再叠一层：
 
@@ -249,10 +254,6 @@ npm run dev
 
 这不是一套通用的"到哪都能部署"模板。compose 文件和网关配置是针对本项目特定的服务布局写的，`mem_limit` 的取值也是对着某一个特定规格的虚拟机标定的。请把它们当作一个做完了的样例，而不是可以直接套用的现成件。
 
-<!-- ROUND2-PLACEHOLDER: assets/readme/chat-sequence.svg（可选，折叠放置）
-     来自 diagrams/invest-plus-chat-sequence.json。信息密度高 —— 6 个参与者、
-     5 个耗时区段。嵌入前须在 900px / 360px 两档验证可读性；
-     不达标就不要放，别靠缩小标签硬塞。 -->
 
 ## 已知局限
 

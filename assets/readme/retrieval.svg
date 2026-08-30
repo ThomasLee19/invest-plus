@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380"
+     role="img" aria-labelledby="t d">
+  <title id="t">Hybrid retrieval: BM25 and vector kNN over one index</title>
+  <desc id="d">One query fans out to a BM25 branch and a vector kNN branch over the same Elasticsearch index. Their scores are summed with the vector branch boosted, reranked, then cut to the top 5. Measured on ten conversational Chinese questions against an English-only corpus, BM25 alone recalled 0 of 10 and the hybrid recalled 10 of 10.</desc>
+
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .box  { fill: #ffffff; stroke: #d6d3cc; stroke-width: 1.5; }
+    .ttl  { font-size: 24px; fill: #1c1b1a; }
+    .sub  { font-size: 19px; fill: #6b6862; }
+    .edge { stroke: #75726c; stroke-width: 2; fill: none; }
+  </style>
+
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="7" refX="8.5" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#75726c"/>
+    </marker>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1199" height="379" rx="26" fill="#fafaf9" stroke="#e8e6e1"/>
+  <text class="mono" x="56" y="52" font-size="18" letter-spacing="2.2" fill="#75726c">HYBRID RETRIEVAL · rag_search</text>
+
+  <!-- query -->
+  <rect class="box" x="56" y="146" width="230" height="68" rx="10"/>
+  <text class="sans ttl" x="78" y="178">query</text>
+  <text class="sans sub" x="78" y="201">AAPL 的风险因素</text>
+
+  <!-- two branches over the same index -->
+  <rect class="box" x="346" y="94" width="290" height="68" rx="10"/>
+  <text class="sans ttl" x="368" y="126">BM25</text>
+  <text class="mono sub" x="368" y="149">content_ltks</text>
+
+  <rect class="box" x="346" y="202" width="290" height="68" rx="10"/>
+  <text class="sans ttl" x="368" y="234">vector kNN</text>
+  <text class="mono sub" x="368" y="257">q_1024_vec · cosine</text>
+
+  <!-- merge -->
+  <rect class="box" x="696" y="146" width="210" height="68" rx="10"/>
+  <text class="sans ttl" x="718" y="178">score fusion</text>
+  <text class="sans sub" x="718" y="201">vector boosted</text>
+
+  <rect class="box" x="966" y="146" width="178" height="68" rx="10"/>
+  <text class="sans ttl" x="988" y="178">rerank</text>
+  <text class="sans sub" x="988" y="201">then top 5</text>
+
+  <!-- fan out, fan in -->
+  <path class="edge" d="M 286 180 H 316 V 128 H 338" marker-end="url(#a)"/>
+  <path class="edge" d="M 286 180 H 316 V 236 H 338" marker-end="url(#a)"/>
+  <path class="edge" d="M 636 128 H 666 V 180 H 688" marker-end="url(#a)"/>
+  <path class="edge" d="M 636 236 H 666 V 180 H 688" marker-end="url(#a)"/>
+  <path class="edge" d="M 906 180 H 958" marker-end="url(#a)"/>
+
+  <!-- what the second branch is worth -->
+  <line x1="56" y1="296" x2="1144" y2="296" stroke="#e8e6e1" stroke-width="1"/>
+
+  <rect x="56" y="312" width="290" height="48" rx="10" fill="#ffffff" stroke="#e8e6e1"/>
+  <text class="sans" x="76" y="343" font-size="20" fill="#6b6862">BM25 only</text>
+  <text class="mono" x="326" y="344" font-size="26" font-weight="700" fill="#b3261e" text-anchor="end">0 / 10</text>
+
+  <rect x="376" y="312" width="330" height="48" rx="10" fill="#ffffff" stroke="#e8e6e1"/>
+  <text class="sans" x="396" y="343" font-size="20" fill="#6b6862">BM25 + vector</text>
+  <text class="mono" x="686" y="344" font-size="26" font-weight="700" fill="#2a7047" text-anchor="end">10 / 10</text>
+
+  <text class="sans" x="736" y="343" font-size="19" fill="#75726c">10 Chinese questions, English corpus</text>
+</svg>

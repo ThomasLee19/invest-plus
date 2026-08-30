@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Invest+ 一次 /chat 请求的端到端时序",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1060,
+      820
+    ],
+    "output": "diagrams/invest-plus-chat-sequence.html"
+  },
+  "participants": [
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "对话界面",
+      "sublabel": "React 流式消费"
+    },
+    {
+      "id": "gw",
+      "type": "security",
+      "label": "安全网关",
+      "sublabel": "nginx"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "会话接口层",
+      "sublabel": "FastAPI · :8000"
+    },
+    {
+      "id": "loop",
+      "type": "backend",
+      "label": "决策循环",
+      "sublabel": "final_answer 生成器"
+    },
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "大模型服务",
+      "sublabel": "DashScope"
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "会话与记忆存储",
+      "sublabel": "PostgreSQL"
+    }
+  ],
+  "segments": [
+    {
+      "from": 168,
+      "to": 338,
+      "label": "受理 · 经一次本地 PG 读，不等 LLM"
+    },
+    {
+      "from": 344,
+      "to": 492,
+      "label": "一次完整 LLM 往返 · 中位数 2.2s（n=36）"
+    },
+    {
+      "from": 498,
+      "to": 560,
+      "label": "首个实质判断 · 随后进入循环"
+    },
+    {
+      "from": 568,
+      "to": 675,
+      "label": "回答流 · documents 先于正文"
+    },
+    {
+      "from": 682,
+      "to": 755,
+      "label": "响应体消费完之后"
+    }
+  ],
+  "messages": [
+    {
+      "id": "post-chat",
+      "from": "ui",
+      "to": "gw",
+      "y": 185,
+      "label": "POST /chat（Accept: text/event-stream）",
+      "variant": "emphasis"
+    },
+    {
+      "id": "proxy-pass",
+      "from": "gw",
+      "to": "api",
+      "y": 217,
+      "label": "剥前缀转发 · proxy_buffering off",
+      "variant": "security"
+    },
+    {
+      "id": "read-history",
+      "from": "api",
+      "to": "store",
+      "y": 249,
+      "label": "读最近 5 轮 + 轮次计数 + 跨会话画像",
+      "variant": "default"
+    },
+    {
+      "id": "enter-generator",
+      "from": "api",
+      "to": "loop",
+      "y": 281,
+      "label": "进入 final_answer 流式生成器",
+      "variant": "default"
+    },
+    {
+      "id": "sse-ack",
+      "from": "loop",
+      "to": "ui",
+      "y": 311,
+      "label": "SSE agent：已收到，正在分析…",
+      "variant": "emphasis",
+      "note": "任何 LLM 调用之前就发出"
+    },
+    {
+      "id": "decide-req",
+      "from": "loop",
+      "to": "llm",
+      "y": 355,
+      "label": "第 1 轮决策请求",
+      "variant": "default"
+    },
+    {
+      "id": "decide-resp",
+      "from": "llm",
+      "to": "loop",
+      "y": 475,
+      "label": "tool_calls",
+      "variant": "return"
+    },
+    {
+      "id": "sse-call",
+      "from": "loop",
+      "to": "ui",
+      "y": 509,
+      "label": "SSE agent：正在调用 rag_search…",
+      "variant": "emphasis"
+    },
+    {
+      "id": "loop-compressed",
+      "from": "loop",
+      "to": "llm",
+      "y": 547,
+      "label": "第 2–6 轮：决策 + 工具取数",
+      "variant": "dashed"
+    },
+    {
+      "id": "sse-documents",
+      "from": "loop",
+      "to": "ui",
+      "y": 591,
+      "label": "SSE documents：引用集",
+      "variant": "emphasis",
+      "note": "在正文第一个 token 之前"
+    },
+    {
+      "id": "sse-body",
+      "from": "loop",
+      "to": "ui",
+      "y": 625,
+      "label": "SSE thinking + assistant：思考链与正文流",
+      "variant": "default"
+    },
+    {
+      "id": "sse-end",
+      "from": "loop",
+      "to": "ui",
+      "y": 659,
+      "label": "SSE：免责声明 + event: end",
+      "variant": "default"
+    },
+    {
+      "id": "persist",
+      "from": "api",
+      "to": "store",
+      "y": 703,
+      "label": "finally：落库问答",
+      "variant": "security",
+      "note": "客户端断连也写；流失败且零内容则跳过"
+    },
+    {
+      "id": "extract",
+      "from": "api",
+      "to": "store",
+      "y": 737,
+      "label": "BackgroundTasks：extract_memory",
+      "variant": "dashed"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "gw",
+      "from": 180,
+      "to": 224,
+      "type": "security"
+    },
+    {
+      "participant": "api",
+      "from": 212,
+      "to": 745,
+      "type": "backend"
+    },
+    {
+      "participant": "loop",
+      "from": 276,
+      "to": 666,
+      "type": "backend"
+    },
+    {
+      "participant": "llm",
+      "from": 350,
+      "to": 482,
+      "type": "external"
+    },
+    {
+      "participant": "store",
+      "from": 244,
+      "to": 258,
+      "type": "database"
+    },
+    {
+      "participant": "store",
+      "from": 698,
+      "to": 744,
+      "type": "database"
+    },
+    {
+      "participant": "llm",
+      "from": 542,
+      "to": 664,
+      "type": "external"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "讲解主线",
+      "items": [
+        "先指「已收到，正在分析」和「正在调用 rag_search」这两条之间的空白：受理回执发出之后，用户盯着屏幕等的就是这一段",
+        "中间那条虚线压缩了第 2–6 轮：每轮一次模型决策 + 若干次工具执行（rag_search→ES、finance_query→yfinance、web_search→Serper），这三个参与者不在本图；循环细节见上一张图",
+        "回答流的顺序是 documents 先于正文，不是答完再补引用",
+        "最后两条都在响应体之后：落库在 finally 里，记忆抽取由 BackgroundTasks 触发",
+        "PG 只画了会话接口层这一条线：决策循环自己也读库（recall_all_conclusions 召回未过期结论），但与会话接口层同进程、共用同一个连接池，画出来只会多一条重复的生命线"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "反直觉的时刻",
+      "items": [
+        "受理回执不等任何 LLM，是毫秒级常数；第一条「正在调用」要等一次完整往返，实测中位数 2.2s、范围 1.1–5.2s（n=36）",
+        "那一次往返占首次实质判断之前全部耗时的 99.9%，其余阶段合计约 3ms——换模型或改提示词都消不掉",
+        "两级反馈不是让系统变快，是把「已受理」与「已决策」两件事分开告知",
+        "documents 先于正文发出，前端才能在流式过程中就把 ##N$$ 渲染成引用编号",
+        "落库写在 finally：关标签页或评测超时也照写；但流式失败且一个字都没收集到时跳过，不写空答案",
+        "耗时不经过 HTTP/SSE，未计网络栈与线程池调度；重跑打真实 LLM，能复现的是方法与量级，不是精确值"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "代码定位",
+      "items": [
+        "流式端点与落库：backend/app/router/chat_rt.py:72（chat / stream / _persist）",
+        "两级反馈与受理回执：agent.py:1394-1420",
+        "documents 事件：final_answer 中 yield docs_payload，位置在 completions.create 之前",
+        "SSE 不缓冲直通：gateway/nginx.conf（proxy_buffering off · proxy_read_timeout 3600s）",
+        "前端流式消费：frontend/src/pages/chat/index.tsx",
+        "耗时复现：cd backend/app && PYTHONPATH=. python ../../eval/stage_timing.py --repeats 3 → 产出 eval/stage_timing.json（两者均已提交，见 e874e4e）"
+      ]
+    }
+  ]
+}

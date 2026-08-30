@@ -1,0 +1,264 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Invest+ Agent 统一决策循环",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "diagrams/invest-plus-agent-loop.html"
+  },
+  "lanes": [
+    {
+      "id": "loop",
+      "label": "决策循环"
+    },
+    {
+      "id": "sopl",
+      "label": "激活工具"
+    },
+    {
+      "id": "exec",
+      "label": "工具执行"
+    },
+    {
+      "id": "halt",
+      "label": "被迫停止",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "seed",
+      "label": "起点",
+      "fromCol": 0,
+      "toCol": 0
+    },
+    {
+      "id": "body",
+      "label": "一轮循环体 · 反复执行",
+      "fromCol": 1,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "finish",
+      "label": "收尾",
+      "fromCol": 5,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "start",
+    "decide",
+    "gate",
+    "fetch",
+    "append"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "start"
+    ],
+    "allowedTerminals": [
+      "answer"
+    ],
+    "requiredEdges": [
+      {
+        "from": "append",
+        "to": "decide"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "lane": "loop",
+      "col": 0,
+      "type": "backend",
+      "label": "构造轨迹",
+      "sublabel": "静态前缀 + 一条用户消息",
+      "width": 150
+    },
+    {
+      "id": "decide",
+      "lane": "loop",
+      "col": 1,
+      "type": "backend",
+      "label": "决策一轮",
+      "sublabel": "第 1 轮与第 6 轮是同一个操作",
+      "width": 170
+    },
+    {
+      "id": "gate",
+      "lane": "loop",
+      "col": 2,
+      "type": "security",
+      "label": "发起工具调用了吗",
+      "width": 150
+    },
+    {
+      "id": "answer",
+      "lane": "loop",
+      "col": 5,
+      "type": "backend",
+      "label": "生成最终回答",
+      "sublabel": "带引用与免责声明",
+      "width": 150
+    },
+    {
+      "id": "fetch",
+      "lane": "exec",
+      "col": 3,
+      "type": "external",
+      "label": "调用取数工具",
+      "sublabel": "rag_search / finance_query / web_search",
+      "width": 215
+    },
+    {
+      "id": "sop",
+      "lane": "sopl",
+      "col": 3,
+      "type": "database",
+      "label": "载入 SOP 正文",
+      "sublabel": "load_sop · 激活工具，不取外部数据",
+      "width": 215
+    },
+    {
+      "id": "append",
+      "lane": "exec",
+      "col": 4,
+      "type": "backend",
+      "label": "追加为 tool 消息",
+      "sublabel": "轨迹只增不改",
+      "width": 160
+    },
+    {
+      "id": "capped",
+      "lane": "halt",
+      "col": 4,
+      "type": "security",
+      "label": "触达 6 轮上限",
+      "sublabel": "reflection_capped = True",
+      "width": 175
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-decide",
+      "from": "start",
+      "to": "decide",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "decide-gate",
+      "from": "decide",
+      "to": "gate",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gate-fetch",
+      "from": "gate",
+      "to": "fetch",
+      "label": "有调用",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gate-sop",
+      "from": "gate",
+      "to": "sop",
+      "label": "命中 SOP 目录",
+      "role": "branch"
+    },
+    {
+      "id": "gate-answer",
+      "from": "gate",
+      "to": "answer",
+      "label": "没有调用 · 唯一的正常退出",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "fetch-append",
+      "from": "fetch",
+      "to": "append",
+      "label": "写入 memory",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sop-append",
+      "from": "sop",
+      "to": "append",
+      "label": "不写 memory",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "id": "append-decide",
+      "from": "append",
+      "to": "decide",
+      "label": "回到同一个决策操作",
+      "role": "return",
+      "variant": "emphasis",
+      "width": 1.4,
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "labelSegment": 1
+    },
+    {
+      "id": "append-capped",
+      "from": "append",
+      "to": "capped",
+      "label": "已用满 6 轮",
+      "role": "error",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "capped-answer",
+      "from": "capped",
+      "to": "answer",
+      "label": "提示回答说明局限",
+      "role": "error",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "讲解主线",
+      "items": [
+        "先走循环体：构造轨迹 → 决策一轮 → 判定 → 取数 → 追加回轨迹，然后回到决策",
+        "回边指回的是同一个方块：第 1 轮和第 6 轮是同一个操作，没有独立的规划模块与反思模块",
+        "唯一的正常退出是模型不再发起工具调用，而不是跑完固定的几步",
+        "最下面那条异常道：用满 6 轮是被迫停止，不是模型判定信息已经够了",
+        "这张图就是部署拓扑里「决策循环」那个方块的展开"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "设计取舍",
+      "items": [
+        "轨迹只增不改：工具结果以标准 tool 角色追加，从不把已收集的信息重新序列化塞回 user 消息",
+        "于是第 N 轮的轨迹是第 N+1 轮的严格前缀，逐字节稳定，KV 缓存才可能连续命中",
+        "合并前 Plan 与 Reflect 各带一份工具描述、各自重写 memory，正是要避免的破坏性模式",
+        "load_sop 的正文是给模型的指导而非世界事实，混进 memory 会污染最终回答的参考信息与引用",
+        "两条不占节点的兜底：单次畸形调用只跳过该次但仍回一条 tool 消息保持配对；决策调用失败直接降级收尾"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "代码定位",
+      "items": [
+        "循环体：backend/app/service/agent/agent.py:1394（final_answer）",
+        "轨迹起点：agent.py:954（build_trajectory）",
+        "轮次上限：agent.py:894（MAX_DECISION_ROUNDS = 6）",
+        "三步判定提示词：agent.py:897（_DECIDE_SYSTEM）",
+        "畸形调用处理：agent.py:366（_tool_call_fields）"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Invest+ 生产部署拓扑",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "diagrams/invest-plus-deployment.html"
+  },
+  "components": [
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "大模型服务",
+      "sublabel": "DashScope",
+      "pos": [
+        830,
+        70
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "对话界面",
+      "sublabel": "React 静态站",
+      "pos": [
+        560,
+        250
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "visitor",
+      "type": "external",
+      "label": "访问者",
+      "sublabel": "浏览器 / 手机",
+      "pos": [
+        40,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "security",
+      "label": "安全网关",
+      "sublabel": "nginx · TLS · :443",
+      "pos": [
+        290,
+        420
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "会话接口层",
+      "sublabel": "FastAPI · :8000",
+      "pos": [
+        560,
+        420
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "决策循环",
+      "sublabel": "规划与反思合一",
+      "pos": [
+        830,
+        420
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "corpus",
+      "type": "database",
+      "label": "知识库检索",
+      "sublabel": "Elasticsearch · finance_kb",
+      "pos": [
+        1090,
+        420
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "会话与记忆存储",
+      "sublabel": "PostgreSQL",
+      "pos": [
+        560,
+        620
+      ],
+      "size": [
+        165,
+        64
+      ]
+    },
+    {
+      "id": "feeds",
+      "type": "external",
+      "label": "外部数据源",
+      "sublabel": "Serper · yfinance",
+      "pos": [
+        1090,
+        760
+      ],
+      "size": [
+        165,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "生产服务器 · Docker Compose",
+      "wraps": [
+        "gateway",
+        "web",
+        "api",
+        "store",
+        "agent",
+        "corpus"
+      ],
+      "pad": 30
+    },
+    {
+      "kind": "security-group",
+      "label": "backend 容器 · 同一进程的两个模块",
+      "wraps": [
+        "api",
+        "agent"
+      ],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "from": "visitor",
+      "to": "gateway",
+      "label": "HTTPS :443",
+      "variant": "security"
+    },
+    {
+      "from": "gateway",
+      "to": "web",
+      "label": "静态页面",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "from": "gateway",
+      "to": "api",
+      "label": "SSE 不缓冲直通",
+      "variant": "emphasis"
+    },
+    {
+      "from": "api",
+      "to": "agent",
+      "label": "启动一次问答",
+      "variant": "emphasis"
+    },
+    {
+      "from": "agent",
+      "to": "llm",
+      "label": "决策与生成",
+      "variant": "emphasis"
+    },
+    {
+      "from": "agent",
+      "to": "corpus",
+      "label": "混合检索语料"
+    },
+    {
+      "from": "agent",
+      "to": "feeds",
+      "label": "取实时行情与网页"
+    },
+    {
+      "from": "api",
+      "to": "store",
+      "label": "会话与记忆读写",
+      "labelAt": [
+        643,
+        552
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "讲解主线",
+      "items": [
+        "先顺着「访问者 → 安全网关 → 会话接口层 → 决策循环 → 大模型服务」走一遍",
+        "再回头补三条支线：知识库检索、外部数据源、会话与记忆存储",
+        "图上的方块按职责画，与 compose 服务不是一一对应——会话接口层与决策循环同属 backend 容器",
+        "真实的 compose 服务是 gateway / frontend / backend / es01 / pg 五个常驻，外加一个按需运行的 certbot",
+        "记忆的写入与召回时机不在这张图上，留给记忆子系统那张"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "信任边界",
+      "items": [
+        "入站只有一条：HTTPS :443 落在网关上，证书只装在网关，后端从不直接面对公网",
+        "出站有两条：决策循环主动外连 DashScope 与 Serper / yfinance，都穿出了服务器边界",
+        "正因为出站要带凭据，业务密钥才手工放在服务器的 .env，不进镜像、不过 CI 日志",
+        "Elasticsearch 与 PostgreSQL 用 ports: !reset [] 收掉宿主端口，只走 compose 网络"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "代码定位",
+      "items": [
+        "网关规则：gateway/nginx.conf（剥 /ai-search 前缀 + SSE 不缓冲直通）",
+        "会话接口层：backend/app/router/chat_rt.py:72（/chat 流式端点）",
+        "决策循环：backend/app/service/agent/agent.py:1394（final_answer）",
+        "PG 只画一条连线：决策循环自己也读库，但与会话接口层同进程、共用同一个连接池",
+        "编排与内存上限：docker-compose.yml + docker-compose.prod.yml"
+      ]
+    }
+  ]
+}

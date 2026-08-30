@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440"
+     role="img" aria-labelledby="t d">
+  <title id="t">The decision loop</title>
+  <desc id="d">One LLM call decides each round. If it emits tool calls, a tool runs and its result is appended to the trajectory, which returns to the same decision operation. A round with no tool calls is the only normal exit and goes to the final answer. A separate round cap forces a stop, and the answer discloses that.</desc>
+
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .box  { fill: #ffffff; stroke: #d6d3cc; stroke-width: 1.5; }
+    .hero { fill: #ffffff; stroke: #35322e; stroke-width: 2.5; }
+    .ttl  { font-size: 24px; fill: #1c1b1a; }
+    .sub  { font-size: 19px; fill: #6b6862; }
+    .edge { stroke: #75726c; stroke-width: 2; fill: none; }
+    .lbl  { font-size: 19px; fill: #6b6862; }
+  </style>
+
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="7" refX="8.5" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#75726c"/>
+    </marker>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1199" height="439" rx="26" fill="#fafaf9" stroke="#e8e6e1"/>
+  <text class="mono" x="56" y="58" font-size="18" letter-spacing="2.2" fill="#75726c">THE DECISION LOOP</text>
+
+  <!-- row 1 -->
+  <rect class="box"  x="56"  y="150" width="210" height="68" rx="10"/>
+  <text class="sans ttl" x="78"  y="182">trajectory</text>
+  <text class="mono sub" x="78"  y="205">static prefix</text>
+
+  <rect class="hero" x="302" y="150" width="250" height="68" rx="10"/>
+  <text class="sans ttl" x="324" y="182">decide one round</text>
+  <text class="sans sub" x="324" y="205">one LLM call</text>
+
+  <rect class="box"  x="588" y="150" width="200" height="68" rx="10"/>
+  <text class="mono ttl" x="610" y="192">tool_calls?</text>
+
+  <rect class="box"  x="840" y="124" width="270" height="120" rx="10"/>
+  <text class="sans ttl" x="862" y="158">call a tool</text>
+  <text class="mono sub" x="862" y="188">rag_search</text>
+  <text class="mono sub" x="862" y="212">finance_query</text>
+  <text class="mono sub" x="862" y="236">web_search</text>
+
+  <!-- row 2 -->
+  <rect class="box"  x="840" y="300" width="270" height="68" rx="10"/>
+  <text class="sans ttl" x="862" y="332">append result</text>
+  <text class="sans sub" x="862" y="355">as a tool message</text>
+
+  <rect class="box"  x="573" y="300" width="230" height="68" rx="10"/>
+  <text class="sans ttl" x="595" y="332">final answer</text>
+  <text class="sans sub" x="595" y="355">cited + disclaimer</text>
+
+  <rect x="56" y="300" width="280" height="68" rx="10" fill="#f5f4f1" stroke="#d6d3cc" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text class="sans ttl" x="78" y="332">round cap</text>
+  <text class="sans sub" x="78" y="355">forced stop · answer says so</text>
+
+  <!-- edges -->
+  <path class="edge" d="M 266 184 H 294"  marker-end="url(#a)"/>
+  <path class="edge" d="M 552 184 H 580"  marker-end="url(#a)"/>
+  <path class="edge" d="M 788 184 H 832"  marker-end="url(#a)"/>
+  <text class="mono lbl" x="810" y="166" text-anchor="middle">yes</text>
+
+  <path class="edge" d="M 975 244 V 292"  marker-end="url(#a)"/>
+
+  <path class="edge" d="M 688 218 V 292"  marker-end="url(#a)"/>
+  <text class="sans lbl" x="676" y="262" text-anchor="end">no · the only normal exit</text>
+
+  <!-- back edge: the appended result returns to the same decision operation -->
+  <path class="edge" d="M 975 368 V 404 H 427 V 226" marker-end="url(#a)"/>
+  <text class="sans lbl" x="689" y="392" text-anchor="middle">the trajectory only grows</text>
+
+  <!-- the cap is an aside, not a step in the loop -->
+  <path class="edge" stroke-dasharray="5 4" d="M 380 218 V 268 H 196 V 292" marker-end="url(#a)"/>
+</svg>

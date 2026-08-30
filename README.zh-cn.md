@@ -1,42 +1,177 @@
 [English](README.md) | [简体中文](README.zh-cn.md)
 
+<!-- ROUND 2 占位：assets/readme/hero.svg
+     左右分栏 —— 左：类目行 "AI AGENT · US EQUITIES RESEARCH"、
+     Invest+ 字标（复用 logo.svg 的上升折线 + 加号，蓝绿渐变 #3B82F6→#10B981 只用在这里）、
+     一句话价值。
+     右：只增不改的轨迹 motif —— 每轮追加一行，末行写 "no tool_calls → stop"。
+     配色取自 frontend/src/styles/tokens.css。自带 #fafaf9 底，rx 26。 -->
+
 # Invest+ — AI 金融研究助手
 
-Invest+ 是一个面向美股的自主研究 Agent。用中文或英文问它一支股票的情况，它会自己规划研究步骤、拉取实时行情、检索 SEC 财报和新闻，并流式返回一份带引用来源的答案——用什么工具、什么时候信息够了可以收尾，全部由它自己判断。
+用中文或英文问它一支美股。它自己规划研究步骤、拉取实时行情、检索 SEC 财报和新闻，并流式返回一份带来源的答案——用哪个工具、什么时候信息够了可以收尾，全部由它自己判断。
+
+循环、混合检索、跨会话记忆全部手写，没有 Agent 框架。下面每一条效果都是实测的；那些测出来不可信的，也照原样写在这里。
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-35322e.svg)](LICENSE)
+
+<!-- ROUND 2 占位：其余 badge（CI 状态、在线体验、Python/React），排成一行。
+     上面的 MIT badge 已改用项目强调色 #35322e（取自 frontend/src/styles/tokens.css）
+     而非 shields 默认蓝，整行保持在中性色板内。 -->
 
 ## 在线体验
 
-**[https://investplus-agent.com](https://investplus-agent.com)**
+### [investplus-agent.com](https://investplus-agent.com)
 
-部署在单一 Docker Compose 技术栈上（Elasticsearch + PostgreSQL + backend + frontend，前面挂一个带 Let's Encrypt TLS 的 nginx 网关），托管在非中国大陆节点，每次 push 到 `master` 都会经 GitHub Actions CI/CD 自动部署。限流（20次/分钟）只是挡随手访问/自动化爬虫的轻量摩擦，不是真正的访问控制层——详见[生产部署](#生产部署)。
+无需注册。可以直接点首页的示例问题，也可以粘贴自己的问题。限流 20 次/分钟，只是挡自动化流量的轻量摩擦，不是真正的访问控制层。
 
-## 功能特性
+本地跑起来需要 Docker、Elasticsearch、PostgreSQL、两个 API key，外加一次语料索引。[快速开始](#快速开始)给的是最短路径。
 
-- **自主 Agent 循环** — 一个决策操作在一条只增不改的轨迹上迭代。Agent 自己决定调用哪些工具、把问题拆成子问题，并持续补充信息直到自己判断答案完整（设了安全上限防止无限循环，如果在模型发出"完成"信号前先触达上限，最终答案会明确说明信息可能不完整，而不是把部分结果当作详尽结果呈现）。没有写死的决策树，每一次"继续/停止/重试"的判断都来自模型自己输出的原生 `tool_calls`。
-- **三个研究工具**：
-  - `rag_search` — 对 SEC 财报（10-K/10-Q/8-K）、新闻和科普参考文章知识库做混合检索（BM25 + 向量）
-  - `finance_query` — 通过 yfinance 获取实时行情（报价、基本面、近期新闻）
-  - `web_search` — 通用网络搜索，补充知识库里没有的最新市场动态
-- **流式、可见的推理过程** — SSE 流式传输，Agent 的实时思考/推理链跟最终答案一起展示，不只是给结果。
-- **中英双语** — 自动识别输入是中文还是英文并用同种语言回复；界面自带中/EN切换。
-- **多轮对话** — 按session区分的聊天历史。
-- **文件上传** — 上传自己的 `.txt`/`.md`/`.pdf` 文件（PDF用带表格识别能力的版式/OCR流水线解析）；在Docs页面管理。
-- **真正能用的跨语言检索** — 混合BM25+向量检索能召回纯关键词检索完全漏掉的口语化查询结果（详见[工作原理](#工作原理)）。
-- **跨会话记忆** — Agent不只在单次对话内记住你是谁，跨会话也记得：一份用户画像（风险偏好、投资风格、关注的股票代码）和一套分级TTL的调研结论存储（基本面/财报类事实约90天，新闻约30天；实时行情从不作为"记忆"持久化——每次都是实时召回）。两者都在每次请求时被召回，并且真正影响最终答案，不只是影响规划步骤（详见[工作原理](#工作原理)）。
-- **LLM记忆抽取** — 每5轮对话，一个后台任务（不增加请求延迟）读取最近的对话内容并抽取结构化事实，抽取LLM的输出到真正落库之间，有确定性的schema校验和不可信内容围栏把关。
-- **技能SOP库** — 四套研究playbook（估值、财务报表、行业对比、风险扫描）。它们的元数据目录常驻静态 system 前缀，模型自己判断哪份适用、再用 `load_sop` 工具取回正文，而不是靠一次独立的分类往返提前加载。这套机制究竟在多大程度上改变了实际问出的子问题，**目前无法量化**——见[量化评测](#量化评测)里的 SOP 一条。
-- **免责声明，强制保证** — 每个回答末尾都会在生成之后由代码强制追加固定免责声明，不是靠prompt指令要求模型自己加，所以不会被模型漏掉。
+<!-- ROUND 2 占位：assets/readme/showcase.png
+     线上站的真实截图：思考链 + 最终答案 + 来源三段同框。
+     需要你授权采集，仓库里目前一张都没有。 -->
+
+## 实测数据
+
+下面每个数字都来自 [`eval/`](eval/) 里可复跑的评测脚本，驱动真实后端端到端运行——真 agent、真检索、真 Elasticsearch，无 mock。
+
+| 测了什么 | 结果 | 测量条件 | 出处 |
+|---|---|---|---|
+| 跨语言检索召回 | 纯 BM25 **0/10** → 混合 **10/10** | 10 道中文口语化金融问题，打在本项目纯英文语料上；走的是 `rag_search` 生产环境同一套查询构造代码 | [`eval/recall_validation.py`](eval/recall_validation.py) |
+| 工具路由命中率 | 平均 **74.5%** | 17 题 × 3 次采样。稳定命中 10 题、稳定失败 3 题、**翻转 4 题**（同一份代码上时对时错）。单次采样的数字有约 ±24 个百分点的摆动，因此不报 | [`eval/report.md`](eval/report.md) |
+| 首个实质判断 | **2.93s** 均值（p50 2.63s / p90 4.86s） | `POST /chat` 到第一条工具调用事件，n=24。衡量响应性要用这个数 | [`eval/report.md`](eval/report.md) |
+| 全程响应延迟 | **32.6s** 均值（p50 31.9s / p90 55.0s） | 32 次真实流式请求，从开始到流式回答结束 | [`eval/results.json`](eval/results.json) |
+| RAG 回答准确率 | **13/15** | 事实型问答对，对照已索引语料核实。按问出去的全部 15 题计。其中 1 题（`rag-11`）被判定测试设计有缺陷——它的 ground truth 是时间快照，问题问的却是相对当前日期的浮动概念——剔除后为 13/14；这里报的是保守口径 | [`eval/report.md`](eval/report.md) |
+| 边界输入鲁棒性 | **5/5** | 空输入、超长输入、无效 ticker、跑题问题、不存在的会话 | [`eval/report.md`](eval/report.md) |
+| 循环重构前 → 后 | 工具调用 **77 → 34**，平均耗时 **108.7s → 75.3s** | 同一批 5 道题，各跑一次，两次都压进了补充轮（补充调用分别为 23 次和 19 次）。严格重复与近似重复在**两次里都是 0**——见[重构那一节](#1-真正的-agent-循环不是写死的流水线) | [`repeat_probe_master-original.md`](eval/repeat_probe_master-original.md)、[`repeat_probe_increment-2.md`](eval/repeat_probe_increment-2.md) |
+
+对着运行中的后端自己复跑：
+
+```bash
+python eval/run_eval.py --routing-samples 3
+```
+
+### 延迟到底花在哪
+
+上面两行延迟说的是"要多久"，这一节说的是"那该动哪里"。同样这 32 次请求里，思考内容均值 **1810 字符**，可见回答均值 **486 字符**，相差 3.7 倍。而可见回答也不是时间的去处：全程 32.6s 里，回答开始流式输出之后只占 **11%**。
+
+两个长度对延迟的贡献并不对等。思考长度与总延迟的相关系数是 **r = 0.90**，可见回答长度只有 **r = 0.68**。所以"把回答写短一点"这个最直觉的动作几乎买不到什么，真正的杠杆是回答调用上的 `enable_thinking`。
+
+两个相关系数都由 [`eval/results.json`](eval/results.json) 里逐条的 `thinking_chars`、`answer`、`total_latency` 字段算出，可以重算复核，不必采信。
+
+### 本项目不主张的数字
+
+有三个指标建好、跑过，然后被判定作废。它们记录在这里而不是被悄悄丢掉，因为每一个作废前都是往好看的方向偏的。
+
+- **"首 token 延迟"。**自 `448b831` 起，第一个 SSE 事件是后端在任何 LLM 调用**之前**就发出的受理确认，测出来恒为 0.00s。它只能证明连接已建立，对模型、检索、工具都不说明任何事情。要谈响应性请引用"首个实质判断"。
+- **单次采样的路由准确率。**17 题里有 4 题在同一份代码上跑一次对一次错，给任何单次采样的数字带来约 **±24 个百分点**的摆动。任何前后对照只要差异小于这个幅度就读不出结论，所以只报多次采样的平均值。
+- **SOP 注入的覆盖提升。**两把尺子都是坏的。旧的那把数生成子问题里的关键词，但 `finance_query` 并不解析具体指标——`"AAPL PE ratio"` 和 `"AAPL fundamentals"` 返回逐字节相同的结果，所以它奖励的是啰嗦而不是信息量。改用工具实际返回的内容重新打分，提升从 +52.8pp 掉到 +11.1pp——但新尺子同样会饱和，因为基本面卡片恒定包含 5 个估值概念里的 2 个。重新设计评分维度是尚未完成的工作。
+
+**语料真实性声明：**`data/` 是项目自带的测试语料，部分由 AI 生成、日期为未来虚构日期。RAG 准确率衡量的是回答对已索引语料的忠实度，不代表对真实世界财务数据的验证。
+
+## 它是什么
+
+一个跑在三个工具和一个知识库之上的研究 Agent。`rag_search` 对 SEC 财报（10-K/10-Q/8-K）、新闻和科普参考文章做混合检索；`finance_query` 通过 yfinance 取实时行情、基本面和新闻；`web_search` 覆盖知识库没有的全市场动态。还有第四个工具 `load_sop`，它加载研究 playbook，不取外部数据。
+
+它自动识别输入是中文还是英文并用同种语言回答，通过 SSE 把推理链和答案一起流式推出，跨会话记住你，并接受你自己的 `.txt` / `.md` / `.pdf` 文件作为补充上下文。每个回答末尾的免责声明由代码在生成之后追加——不是靠提示词要求，所以模型漏不掉。
+
+## 它有什么不一样
+
+### 1. 真正的 Agent 循环，不是写死的流水线
+
+<!-- ROUND 2 占位：assets/readme/agent-loop.svg
+     从 diagrams/invest-plus-agent-loop.workflow.json 重新渲染 ——
+     改 meta.locale 与各 label 字段做英文化、套项目配色、导出静态图。
+     不要从已构建的 HTML 里抠 SVG。 -->
+
+```text
+用户问题
+      ↓
+  静态前缀            ── system 提示词 + 工具定义 + SOP 元数据目录；
+      ↓                   跨请求逐字节稳定，因此可被缓存
+  决策操作            ── 循环：一次 LLM 调用同时回答"还要不要继续取数"和
+      ↓  （有界循环）      "调哪个工具、传什么参数"，以原生 tool_calls 输出
+  process_actions()   ── 调用 rag_search / finance_query / web_search / load_sop；
+      ↓                   工具报错会暴露给 LLM，不被吞掉
+      ↓                 结果作为 tool 角色消息追加进轨迹，
+      ↓                   与各自的 tool_call_id 配对；这个列表只增不改
+  final_answer()      ── 换更强的模型单独调一次；经 SSE 流式输出
+      ↓
+  前端渲染思考链 + 最终答案
+```
+
+每一次继续/停止/重试的决策都来自模型自己输出的原生 `tool_calls`，不是硬编码分支——某一轮没有工具调用**本身就是**停止信号。循环只在三种条件下退出：没有新的工具调用、触达轮次上限、或某次调用报错。安全上限是 6 轮决策（`MAX_DECISION_ROUNDS`，`agent.py:894`），给失控循环兜底——即 1 轮规划加最多 5 轮补充。触达上限而停止与模型主动发出停止信号，在日志里分开记录，两者不会被混淆；当上限先触发时，最终答案会明确声明信息可能不完整，而不是把部分结果当作详尽结果呈现。工具失败会追加进模型自己能读到的轨迹，所以它能重试、降级，或者把缺口标出来。
+
+`final_answer()` 刻意不挂在轨迹上——它用一次额外往返、外加一个与循环不共享缓存的模型，换来更高质量的答案。
+
+**工具选择规则：**
+
+| 问题形态 | 工具 |
+|---|---|
+| 实时行情 / 市值 / 市盈率 / 基本面 / 新闻标题 | `finance_query` |
+| 财报内容 / 风险因素 / 新闻分析 / 概念解释 | `rag_search` |
+| 知识库没覆盖的最新全市场动态 | `web_search` |
+| 与金融无关的话题 | 拒绝回答 |
+
+<details>
+<summary><b>这个形态是重构的结果。第一版错在哪。</b></summary>
+
+第一版把工具说明写在提示词正文里，让模型吐 JSON 文本由后端解析，并且每一轮都把攒下来的工具结果重新序列化成一条新的 user 消息。
+
+最后那一点正是现在这套设计要避开的失效模式：模型看到的从来不是自己的调用历史，而是被应用层重新格式化过的文字，于是它会重新发起已经调过的调用。当时加了两层去重来压住这个现象，轨迹做实之后两层都被删掉了。
+
+"起作用的是轨迹而不是去重代码"这条论断是可证伪的，于是就用删掉去重、再探测重复会不会回来的方式验证了它。重复没有回来：旧形态 23 次补充调用、新形态 19 次补充调用，严格重复与近似重复都是 0。真正变化的是量和时间——同样五道题、各跑一次，工具调用总数 77 → 34，平均耗时 108.7s → 75.3s。
+
+在证明这次运行**有能力**测到重复之前，上面这些都不算数。一批题里如果没有任何请求进入过补充轮，就不可能产生重复调用，那么在它上面测出的"零重复"不是弱证据，而是没有证据——它支持和反驳这条论断的力度完全相等。早先确实有过这样一次运行：5 个请求里 0 个进入补充轮，它的判定被记为**未测到**，而不是**未复现**。上面引用的两次运行都先过了这一关，都是 5/5。
+
+样本量仍然只有五道题，而且这是模型行为而非确定性属性，所以即便是通过的那次，判定也只写成"在本样本内未复现"，不写成已证明。
+
+</details>
+
+### 2. 换一种语言问也召得回来的混合检索
+
+`rag_search` 在同一个 Elasticsearch 索引上组合两路信号——原生 ES 8.11 `knn` + `query`，手写实现，不依赖 RAGFlow：
+
+- **BM25**（`content_ltks` 全文匹配）—— 精确的关键词命中。
+- **向量 kNN**（`q_1024_vec`，text-embedding-v3，余弦）—— 语义与跨语言命中。
+
+两路的分数相加，向量那一路做了 boost 以平衡量纲；如果查询 embedding 失败，会优雅降级为纯 BM25。合并后的候选交给 qwen3-vl-rerank 精排，再按用户最近上传做 boost，最终截断为 top 5。
+
+这就是上表里 0/10 → 10/10 那一行背后的机制：面对纯英文语料，中文口语化问题对关键词检索是完全不可见的，加上向量那一路之后则全部可召回。
+
+### 3. 真正进到答案里的记忆，不只是进到规划里
+
+进入决策循环之前，`final_answer()` 会召回用户画像（`recall_user_profile`，`service/memory/profile.py`），以及问题里提到的 ticker 对应的、尚未过期的调研结论。ticker 提取用的是一个能容忍 CJK 的正则（`_extract_tickers_loose`，`agent.py:416`），因为 `_TICKER_RE` 的 `\b` 词边界会漏掉贴着中文的 ticker——例如 `AAPL的股价`。
+
+两者都会织进规划提示词，好让 agent 跳过冗余的取数；而召回的结论**还会**同时拼进最终答案的提示词——所以一条从上次会话里记下来的事实，能真的出现在这一轮的答案里，而不只是影响调了哪些工具。召回内容被 `<untrusted_context>` 包裹，并附一条"若与实时数据冲突，以实时数据为准"的明确指令，与工具结果用的是同一套约定。
+
+结论带分级 TTL —— 基本面和财报类事实约 90 天，新闻约 30 天。实时行情从不作为记忆持久化，每次都实时召回。
+
+<details>
+<summary><b>事实是怎么写进去的，以及抽取 LLM 和数据库之间隔着什么</b></summary>
+
+每 5 轮对话，一个由 `BackgroundTasks` 调度的任务（`service/memory/extraction.py`）读取最近的对话，请 LLM 抽取结构化事实——更新后的偏好、带时间戳的结论。它不增加请求延迟。
+
+实时行情数据在进入校验之前就被代码丢弃了，它没有理由被当作长期"记忆"缓存。活下来的内容要经过确定性的 schema 校验——枚举、ticker 与指标名正则、长度上限——才会落库。因此，一次针对抽取 LLM 的成功提示注入可以产出令人困惑的**内容**，但写不出越界的字段值，也逃不出被沙箱化的提示词字符串。
+
+</details>
+
+### 4. 由模型主动取用的技能库，而不是后端强行推送的
+
+四份研究 playbook 以纯 Markdown 存放在 `service/agent/skills/` 下——`valuation.md`、`financial_statement.md`、`industry_comparison.md`、`risk_scan.md`，各带 YAML frontmatter 和一份指标清单。常驻决策 system 提示词的只有它们的 `name` + `description` 组成的元数据目录；正文只有在模型调用 `load_sop` 时才进入上下文。这个拆分的实测成本是：常驻 813 字符，对应正文 3082 字符，占 26%。
+
+它替代的是一次在每轮规划前无条件执行的 `classify_skill()` 往返。省下来的不是需要 playbook 的那些问题——那些是打平的，一次分类调用变成一次 `load_sop` 调用——而是不需要 playbook 的问题从此完全不用付这笔钱。
+
+如实地说，这次切换损失了一些路由召回：正例从 19/19 降到 16/19，假正例保持 0/16，而这三个里只有一个是干净的回退——一个是数据集标注自相矛盾，另一个是打分口径不匹配，因为旧调用把输出硬上限设成了两个技能，而 `load_sop` 没有这个上限。耗时则悬而未决：这条路径结构上少了一整次 LLM 往返，但几次测量在采样噪声之内互相矛盾，所以两个方向的结论都不作主张。
+
+SOP 正文刻意永远不进入记忆通道——它们是给模型的指令，不是关于世界的事实，放进去等于把用户自己的方法论清单当作被引用的参考资料再喂回给他。有一个测试把这条钉死了。
 
 ## 快速开始
 
-### 前置条件
-- Docker Desktop（如果是WSL2，需要开启WSL集成）
-- Python 3.11+（推荐用conda环境）
-- Node.js 18+
-- 一个DashScope（阿里云）API key 和一个Serper API key
+**前置条件：** Docker Desktop（若在 WSL2 上需开启 WSL 集成）、Python 3.11+、Node.js 18+、一个 DashScope API key（阿里云）、一个 Serper API key。
 
-### 1. 配置环境变量
-把 `.env.example` 复制成 `.env` 并填入你自己的key：
+**1. 环境变量。** 复制 `.env.example` 为 `.env` 并填入你的 key：
+
 ```env
 DASHSCOPE_API_KEY=your_dashscope_key
 DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
@@ -50,32 +185,31 @@ POSTGRES_PASSWORD=your_postgres_password
 DATABASE_URL=postgresql://postgres:your_postgres_password@localhost:5432/investplus
 ```
 
-### 2. 启动基础设施
+**2. 基础设施与依赖。**
+
 ```bash
 docker compose up -d
-```
-
-### 3. 安装Python依赖
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. 抓取并索引金融语料
+**3. 构建知识库。** 抓取语料并索引进 Elasticsearch 的 `finance_kb` 索引。一次性操作，也是最慢的一步。
+
 ```bash
-python scripts/fetch_filings.py       # SEC EDGAR财报(10-K/10-Q/8-K) -> data/filings/
-python scripts/fetch_news.py          # 各股票的近期新闻 -> data/news/
-python scripts/fetch_educational.py   # 精选科普参考文章 -> data/educational/
-python scripts/index_finance.py       # 分块+向量化+把三者一起索引进ES的`finance_kb`
+python scripts/fetch_filings.py       # SEC EDGAR 10-K/10-Q/8-K  -> data/filings/
+python scripts/fetch_news.py          # 各 ticker 近期新闻        -> data/news/
+python scripts/fetch_educational.py   # 科普参考文章              -> data/educational/
+python scripts/index_finance.py       # 切块 + embedding + 索引三者
 ```
 
-### 5. 启动后端
+**4. 后端。** 注意工作目录——导入是扁平的，所以必须从 `backend/app` 起，不是 `backend/`。
+
 ```bash
 cd backend/app
 uvicorn app_main:app --reload --port 8000
 ```
 
-### 6. 启动前端
-把 `frontend/.env.example` 复制成 `frontend/.env`：
+**5. 前端。**
+
 ```bash
 cd frontend
 cp .env.example .env
@@ -85,184 +219,157 @@ npm run dev
 
 打开 [http://localhost:5181](http://localhost:5181)。
 
-## 生产部署
-
-[在线demo](#在线体验)跑在同一个仓库里，在开发用的compose文件之上叠加了一层：
-
-- `docker-compose.prod.yml` — 新增`backend`/`frontend`/`gateway`三个服务（分别由`backend/Dockerfile`、`frontend/Dockerfile`、`gateway/Dockerfile`构建），给每个服务钉死了`mem_limit`（基于真实负载下实测的容器内存校准出来的，不是拍脑袋估的），并且去掉了开发环境里`es01`/`pg`对宿主机端口的暴露。
-- `gateway/` — 单一nginx容器是唯一的公网入口：TLS（Let's Encrypt，通过`certbot`两阶段引导解决证书和nginx启动顺序的鸡生蛋问题）、`/ai-search/*`反代到backend并支持SSE直通（关闭缓冲）、请求限流。
-- `.github/workflows/deploy.yml` — 每次push：构建`backend`/`frontend`/`gateway`三个镜像；只有push到`master`时才会额外推送到GHCR并SSH登进服务器执行`pull`+`up -d`。部署用的SSH密钥只会跑这两条命令；业务密钥（`.env`）是一次性手动放到服务器上的，从不经过CI传输。
-
-这不是一份"到处都能直接用"的通用部署模板——compose文件和网关配置是针对这个项目具体的服务结构写的，`mem_limit`的数值也是针对某一档特定虚拟机规格校准出来的。可以当作一个完整的实操范例参考，不建议直接照搬套用到别的项目上。
-
-## 工作原理
-
-```
-用户提问
-      ↓
-  静态前缀             ── system prompt + 工具定义 + SOP 元数据目录；
-      ↓                   跨请求字节稳定，因而可缓存
-  决策操作             ── 循环：一次 LLM 调用同时回答「还要不要继续取数」和
-      ↓  (有上限的循环)    「调哪个工具、传什么参数」，输出是原生 tool_calls
-  process_actions()    ── 调用 rag_search/finance_query/web_search/load_sop；
-      ↓                   工具报错直接暴露给 LLM，不会被吞掉
-      ↓                  结果以 tool 角色消息配对 tool_call_id 追加进轨迹，
-      ↓                   这条列表只增不改
-  final_answer()       ── 另起一次调用，切更强的模型，通过 SSE 流式输出
-      ↓
-  前端渲染思考链+最终答案
-```
-
-循环的退出条件有三条：模型不再发起工具调用、触达轮次上限、或调用出错。`final_answer()` 有意不在轨迹上，好处是终答质量更高，代价是多一次往返，而且这次调用与决策循环用的模型不同，缓存完全不共享。
-
-**工具选择规则：**
-- 实时报价/市值/市盈率/基本面/新闻标题 → `finance_query`
-- 财报内容/风险因素/新闻分析/概念解释 → `rag_search`
-- 知识库没覆盖的最新市场动态 → `web_search`
-- 与金融无关的话题 → 拒绝回答
-
-**为什么这个循环是真正的agent循环，而不是写死的流水线：** 每一次继续/停止/重试的决策都来自模型自己输出的原生 `tool_calls`，不是靠硬编码分支，某一轮没有工具调用**本身就是**停止信号。一个安全上限（5次迭代）给失控循环兜底，但不会被误当成真正的模型判断，触达上限而停止的情况跟模型主动发出停止信号的情况在日志里是分开记录的。工具调用失败会追加进模型自己能读到的轨迹里，所以它能重试、换个方式，或者在最终答案里标注信息不完整，而不是后端悄悄把失败吞掉。
-
-**这个形态是重构的结果，不是最初的设计。**第一版把工具说明写在提示词正文里，让模型吐 JSON 文本由后端解析，并且每一轮都把攒下来的工具结果重新序列化成一条新的 user 消息。最后那一点正是现在这套设计要避开的失效模式：模型看到的从来不是自己的调用历史，而是被应用层重新格式化过的文字，于是它会重新发起已经调过的调用。当时加了两层去重来压住这个现象，轨迹做实之后这两层都删掉了。拿五道需要多轮取数的深题实测：在补充调用深度相当的前提下，重复尝试从 3 次降到 0 次，工具调用总数从 77 次降到 34 次，平均耗时从 108.7 秒降到 75.3 秒。
-
-**跨语言混合检索：** `rag_search`在同一个Elasticsearch索引上组合两路信号（原生ES 8.11的`knn`+`query`，手写实现——不依赖RAGFlow）：
-- **BM25**（`content_ltks`全文检索）——精确关键词匹配。
-- **向量kNN**（`q_1024_vec`，text-embedding-v3，余弦相似度）——语义匹配和跨语言匹配。
-
-两路的分数相加（向量分支做了加权平衡量级差异）；如果查询向量化失败，会优雅降级成只用BM25。合并后的候选结果再用qwen3-vl-rerank重排，最后用一个"上传时间新近度"加权把最终结果收窄到前5条。这套机制直接用[`eval/recall_validation.py`](eval/recall_validation.py)针对`finance_kb`语料库验证过，该脚本调用的正是`rag_search`生产环境实际用的同一套query构造代码：针对这个项目纯英文语料库（SEC财报、新闻、科普文章）的10个中文口语化金融问题，纯BM25召回率是**0%**（0/10），而混合检索（BM25+向量）召回率是**100%**（10/10）——具体查询和命中数见脚本。
-
-**跨会话记忆：** 在进入决策循环之前，`final_answer()`会召回用户画像(`recall_user_profile`，`service/memory/profile.py`)，并且通过一个对中日韩文字容忍的正则(`_extract_tickers_loose`，`agent.py:416`，能捕获跟中文粘在一起的股票代码，因为`_TICKER_RE`的`\b`单词边界会漏掉比如"AAPL的股价"这种写法)从原始问题里提取股票代码，进而召回任何相关的、尚未过期的调研结论(`recall_all_conclusions`，`agent.py:429`)。两者都会被编织进规划prompt（这样agent可以跳过重复的数据获取），而且同一批召回的结论**同时也**会被拼接进最终答案的prompt——上一次会话里召回的一个事实真的可能出现在这一轮的答案里，不只是影响调用哪些工具。召回的内容都包在`<untrusted_context>`里，并带有"如果跟实时数据冲突，以实时数据为准"的明确指令，跟工具返回结果的处理方式一致。
-
-每5轮对话，一个由`BackgroundTasks`调度的任务(`service/memory/extraction.py`)会读取最近的对话内容，让LLM抽取结构化事实（更新后的偏好、带时间戳的结论）。实时行情数据在进入校验之前就已经被代码层直接丢弃——它没道理被缓存成长期"记忆"。能存活下来的内容都经过确定性的schema校验（枚举值、股票代码/指标名称的正则、长度上限）才会落库，所以即便对抽取用的LLM发起一次成功的prompt注入，产出的最多是让人困惑的*内容*，没法写入不符合schema的值，也逃不出被沙箱化的prompt字符串。
-
-**技能SOP库：** 四套playbook以纯Markdown文件的形式放在`service/agent/skills/`下（`valuation.md`、`financial_statement.md`、`industry_comparison.md`、`risk_scan.md`），各带YAML frontmatter和一份指标检查清单。常驻的只有它们的 `name` 加 `description`，作为元数据目录追加在决策 system prompt 里；正文只有在模型调用 `load_sop` 工具时才进入上下文，以 tool 消息的形式返回。这个切分的实测成本是目录 813 字符对正文合计 3082 字符，也就是常驻部分占 26%。
-
-这取代了原来一次无条件先跑的独立 `classify_skill()` 往返。要说准确，省下的不是需要方法论的那些题的往返，那些是打平的，一次分类换成一次 `load_sop`；真正省的是不需要方法论的题彻底不付这笔钱。如实记录代价：这次切换让路由召回有小幅回退，正例从 19/19 掉到 16/19，误触发保持 0/16，而且三个掉的里只有一个是干净的回退（一个是数据集自身标注矛盾，一个是评分口径错配，因为旧的分类调用在代码里硬性截断到两份而 `load_sop` 没有这个上限）。耗时未决：结构上确实少了一整次 LLM 往返，但实测数字互相打架且差值都落在采样噪声里，所以两个方向都不声称。
-
-SOP 正文有意不进记忆通道，因为它是给模型的操作指令而非关于世界的事实，一旦进去，最终回答会把用户自己的方法论清单当成参考资料引用回给他。这条有测试钉住。
-
 ## 技术栈
 
-| 层次 | 技术 | 作用 |
+| 层 | 技术 | 职责 |
 |---|---|---|
-| LLM | Qwen — qwen3.7-max（最终答案）、qwen-plus（决策操作），通过`openai` SDK对接DashScope的OpenAI兼容接口 | 推理 + 工具决策 |
-| Agent框架 | 自研循环：静态前缀 + 只增不改的轨迹 + 原生工具调用（不用LangChain） | 工具编排 + 自我纠错 |
-| 知识库 | Elasticsearch `finance_kb`（SEC财报+新闻+科普文章+用户上传文件）；text-embedding-v3做向量嵌入，qwen3-vl-rerank（原生`dashscope` SDK）做重排 | 混合检索（BM25+向量）+ 重排 |
-| 实时数据 | yfinance（`service/finance/finance_tool.py`） | 报价/基本面/新闻 |
-| 文档解析 | DeepDoc（版式/表格识别/OCR，基于onnxruntime） | PDF财报上传 → 表格感知的分块 |
-| 网络搜索 | Serper API | 最新市场动态/兜底检索 |
-| 后端 | FastAPI + PostgreSQL | API、SSE、会话与消息；`user_profiles`/`conclusion_memory`承载跨会话记忆 |
-| 记忆与技能 | `service/memory/{profile,conclusion,extraction}.py`、`service/agent/skills/*.md` | 跨会话召回、LLM抽取流水线、SOP驱动的规划 |
-| 前端 | React + TypeScript + Vite + Ant Design + Valtio | 聊天界面、流式渲染、文档管理 |
-| 基础设施 | Docker Compose（本地开发用ES+PG；生产用完整技术栈+nginx网关+Let's Encrypt） | 本地依赖 / 生产托管 |
-| CI/CD | GitHub Actions + GHCR | 每次push构建/推送镜像；`master`分支额外触发SSH部署（`pull`+`up -d`） |
+| LLM | Qwen —— qwen3.7-max（最终回答）、qwen-plus（决策操作），经 `openai` SDK 打到 DashScope 的 OpenAI 兼容端点 | 推理 + 工具决策 |
+| Agent | 手写循环：静态前缀 + 只增不改的轨迹 + 原生工具调用（无 LangChain） | 工具编排 + 自我纠错 |
+| 知识库 | Elasticsearch `finance_kb`（财报 + 新闻 + 科普 + 用户上传）；向量用 text-embedding-v3，精排用 qwen3-vl-rerank（原生 `dashscope` SDK） | 混合检索（BM25 + 向量）+ 精排 |
+| 实时数据 | yfinance（`service/finance/finance_tool.py`） | 行情 / 基本面 / 新闻 |
+| 文档解析 | DeepDoc（版式 / table-transformer / OCR，onnxruntime） | PDF 财报上传 → 带表格结构的分块 |
+| 网络搜索 | Serper API | 最新市场动态 / 兜底 |
+| 后端 | FastAPI + PostgreSQL | API、SSE、会话与消息；`user_profiles` / `conclusion_memory` |
+| 记忆与技能 | `service/memory/{profile,conclusion,extraction}.py`、`service/agent/skills/*.md` | 跨会话召回、抽取流水线、SOP 驱动的规划 |
+| 前端 | React + TypeScript + Vite + Ant Design + Valtio | 聊天 UI、流式渲染、文档管理 |
+| 基础设施 | Docker Compose（开发环境 ES + PG；生产环境全栈 + nginx 网关 + Let's Encrypt） | 本地依赖 / 生产托管 |
+| CI/CD | GitHub Actions + GHCR | 每次 push 构建并推送镜像；`master` 上 SSH 部署 |
+
+## 生产部署
+
+<!-- ROUND 2 占位：assets/readme/deployment.svg
+     从 diagrams/invest-plus-deployment.architecture.json 重新渲染 ——
+     英文化 label、套项目配色、导出静态图。不适合放首屏。 -->
+
+[在线体验](#在线体验)就跑在这个仓库上，方式是在开发用的 Compose 之上再叠一层：
+
+- **`docker-compose.prod.yml`** —— 增加 `backend` / `frontend` / `gateway` 三个服务，为每个服务钉死 `mem_limit`（依据真实负载下实测的容器内存标定，不是拍的），并去掉 `es01` / `pg` 仅供开发用的宿主端口映射。
+- **`gateway/`** —— 唯一的公网入口是一个 nginx 容器：TLS（Let's Encrypt 经 `certbot`，两阶段引导以打破证书与 nginx 启动顺序的先有鸡还是先有蛋）、`/ai-search/*` 反向代理到后端并放行 SSE（关闭缓冲）、以及请求限流。
+- **`.github/workflows/deploy.yml`** —— push 到 `master` 时：构建 `backend` / `frontend` / `gateway` 三个镜像并推到 GHCR，然后 SSH 进服务器执行 `pull` + `up -d`。部署用的 SSH key 只会执行这两条命令；业务密钥（`.env`）由人工一次性放到服务器上，从不经过 CI 传输。
+
+这不是一套通用的"到哪都能部署"模板。compose 文件和网关配置是针对本项目特定的服务布局写的，`mem_limit` 的取值也是对着某一个特定规格的虚拟机标定的。请把它们当作一个做完了的样例，而不是可以直接套用的现成件。
+
+<!-- ROUND 2 占位：assets/readme/chat-sequence.svg（可选，折叠放置）
+     来自 diagrams/invest-plus-chat-sequence.json。信息密度高 —— 6 个参与者、
+     5 个耗时区段。嵌入前须在 900px / 360px 两档验证可读性；
+     不达标就不要放，别靠缩小标签硬塞。 -->
+
+## 已知局限
+
+### 路由与检索
+
+- **三个稳定的路由失败** —— 三次采样全错的那几个，所以是真实缺陷而非采样噪声。
+- **召回路径上 ticker 与缩写的歧义** —— 容忍 CJK 的那个提取器无法区分金融缩写和同名的真实 ticker（`AI` 既是"人工智能"也是 C3.ai）。
+
+<details>
+<summary>两条的细节</summary>
+
+`route-05`（"什么是自由现金流？"）给一个知识库本就能回答的概念问题多加了一次不必要的 `web_search`。`route-11`（"今天有什么重要的全球财经新闻？"）一个工具都没调。`route-17` 把一个复合问题里属于新闻的那一半发给了 `rag_search` 而不是 `web_search`。
+
+有一次修复尝试被回退了：按时间词（"最近"、"最新"、"今天"）来路由，修好了 `route-11` 和 `route-17`，却改坏了一道问"最近的 8-K"的对照题——那是归档文件，不是实时新闻。边界必须按答案存放在哪里来划——归档文档给 `rag_search`，真实世界的实时状态给 `web_search`——而不是按问题听起来是不是很"新"。
+
+关于缩写撞车：宽松的那个提取器只用于结论召回，`finance_tool()` 并不用它，后者对已经拆解过的子问题用的是更严格的一个。最坏情况是一条不相关的旧结论作为背景浮现出来，而召回提示词本来就把这类内容当作可能已过期来处理。
+
+</details>
+
+### 记忆
+
+- **抽取按轮次触发，不按会话结束触发** —— 请求-响应架构里没有可靠的"会话已结束"信号，所以它每 5 轮触发一次。一段在窗口内第 *N*-1 轮结束的对话，尾巴永远不会被抽取。
+- **`BackgroundTasks` 抽取不做持久化也不重试** —— 若进程在调度与执行之间重启，那一批事实就丢了。窗口之间不重叠，所以影响边界是"有些记忆没被记下来"，不是数据损坏。
+- **单用户假设** —— `chat_rt.py` 里硬编码的 `USER_ID` 用于画像召回，而抽取是从会话自己的行里推导写入用户。两者今天恰好一致，但在支持真正的多用户之前必须先对齐。
+
+### 数据接入
+
+- **PDF 解析覆盖的是上传件，不是批量语料** —— DeepDoc 流水线接的是 `/upload_files` 的用户上传，而 `scripts/index_finance.py` 走的是 SEC 财报原生的 HTML（iXBRL），因为 EDGAR 并不以 PDF 形式提供现代财报。详见该模块的 docstring。
+
+### 前端
+
+- **聊天界面只支持桌面** —— `components/page-layout` 有一个硬性的 `min-width: 600px` 外加固定 `408px` 的侧栏，而 `layout/base` 给每个路由都套了固定 `100px` 的侧边栏。没有任何 `@media` 断点覆盖聊天页；在手机视口下它是溢出而不是重排。落地页本身的响应式还算可以。
+- **没有会话历史界面** —— `session_id` 只存在于 URL（`/chat/:id`），不写 `localStorage`。服务端有 `DELETE /sessions` 接口，但前端没有任何地方调它。每次访问都是新会话，旧会话在 Postgres 里无限期留存，没有 TTL。
+
+## 路线图
+
+当前 MVP 覆盖的是单支股票的行情与市场分析（AAPL / MSFT / GOOGL）。从架构上讲，这是一个更宽的投研 copilot 的地基——组合层面的推理、多资产对比——复用同一套工具与检索层。
 
 ## 项目结构
+
+<details>
+<summary><b>完整目录树，含逐文件注释</b></summary>
 
 ```
 InvestPlus/
 ├── backend/
-│   ├── Dockerfile                   # 生产镜像：依赖 → tiktoken/nltk预烘 → 应用代码（这个层顺序是为了让纯改代码时命中缓存）
-│   └── app/
-│       ├── app_main.py              # FastAPI入口
-│       ├── router/
-│       │   ├── chat_rt.py           # /chat SSE、/upload_files（.txt/.md/.pdf）、/get_files、/delete_file
-│       │   └── history_rt.py        # /sessions、/messages
-│       ├── service/
-│       │   ├── agent/
-│       │   │   ├── agent.py         # Agent循环（决策操作在轨迹上迭代）+ 记忆/技能召回与注入
-│       │   │   └── skills/          # SOP playbook：valuation/financial_statement/industry_comparison/risk_scan.md
-│       │   ├── memory/
-│       │   │   ├── profile.py       # recall_user_profile / upsert_user_profile
-│       │   │   ├── conclusion.py    # recall_conclusion_facts / upsert_conclusion_fact（分级TTL）
-│       │   │   └── extraction.py    # extract_memory() —— 每5轮触发的LLM抽取流水线
-│       │   ├── finance/              # finance_tool.py —— 实时yfinance报价/基本面/新闻
-│       │   ├── web_search/          # Serper网络搜索工具
-│       │   └── core/
-│       │       ├── file_parse.py    # .txt/.md分块器 + .pdf DeepDoc流水线 -> ES索引器
-│       │       ├── deepdoc/         # PDF解析器（版式/表格/OCR）
-│       │       └── rag/             # 分词器/nlp工具 + res/deepdoc模型权重
-│       ├── models/memory.py         # SQLAlchemy模型：UserProfile、ConclusionMemory
-│       ├── schemas/chat.py
-│       └── utils/database.py
+│   ├── Dockerfile                   # 生产镜像：依赖 → tiktoken/nltk 预烤 → 应用代码（这个层序让只改代码时能命中缓存）
+│   ├── app/
+│   │   ├── app_main.py              # FastAPI 入口
+│   │   ├── router/
+│   │   │   ├── chat_rt.py           # /chat SSE、/upload_files (.txt/.md/.pdf)、/get_files、/delete_file
+│   │   │   └── history_rt.py        # /sessions、/messages
+│   │   ├── service/
+│   │   │   ├── agent/
+│   │   │   │   ├── agent.py         # Agent 循环（轨迹上的决策操作）+ 记忆/技能的召回与注入
+│   │   │   │   └── skills/          # SOP playbook：valuation/financial_statement/industry_comparison/risk_scan.md
+│   │   │   ├── memory/
+│   │   │   │   ├── profile.py       # recall_user_profile / upsert_user_profile
+│   │   │   │   ├── conclusion.py    # recall_conclusion_facts / upsert_conclusion_fact（分级 TTL）
+│   │   │   │   └── extraction.py    # extract_memory() —— 每 5 轮触发的 LLM 抽取流水线
+│   │   │   ├── finance/             # finance_tool.py —— yfinance 实时行情/基本面/新闻
+│   │   │   ├── web_search/          # Serper 网络搜索工具
+│   │   │   └── core/
+│   │   │       ├── file_parse.py    # .txt/.md 切块器 + .pdf DeepDoc 流水线 -> ES 索引
+│   │   │       ├── deepdoc/         # PDF 解析器（版式/表格/OCR）
+│   │   │       └── rag/             # 分词/NLP 工具 + res/deepdoc 模型权重
+│   │   ├── models/memory.py         # SQLAlchemy 模型：UserProfile、ConclusionMemory
+│   │   ├── schemas/chat.py
+│   │   └── utils/database.py
 │   └── tests/
-│       ├── test_agent_loop.py       # 循环机制单元测试（should_continue、错误传播）+ 合流步骤测试
+│       ├── test_agent_loop.py       # 循环机制单测（should_continue、错误传播）+ 合并步骤测试
 │       ├── test_chat_router.py      # /chat SSE + 相关路由端点
 │       ├── test_history_router.py   # /sessions、/messages
-│       ├── test_finance_tool.py     # yfinance封装、失败降级、股票代码缓存
-│       ├── test_file_parse.py       # .txt/.md/.pdf分块 + ES索引
-│       ├── test_pdf_parser.py       # DeepDoc PDF解析器
-│       ├── test_es_client.py        # Elasticsearch客户端单例/配置
+│       ├── test_finance_tool.py     # yfinance 封装、失败降级、ticker 缓存
+│       ├── test_file_parse.py       # .txt/.md/.pdf 切块 + ES 索引
+│       ├── test_pdf_parser.py       # DeepDoc PDF 解析器
+│       ├── test_es_client.py        # Elasticsearch 客户端单例/配置
 │       ├── test_knowledgebase_operations.py
 │       ├── test_index_finance.py    # 批量语料索引器
-│       ├── test_e2e_finance.py      # 针对运行中后端的真实端到端冒烟测试
-│       ├── test_memory_layer.py     # 画像/结论的读写 + 抽取校验
-│       ├── test_memory_recall.py    # 中日韩文字容忍的股票代码提取 + 召回接线
-│       ├── test_memory_scheduling.py # 判别性的BackgroundTasks触发测试
+│       ├── test_e2e_finance.py      # 打到运行中后端的端到端冒烟测试
+│       ├── test_memory_layer.py     # 画像/结论读写 + 抽取校验
+│       ├── test_memory_recall.py    # 容忍 CJK 的 ticker 提取 + 召回接线
+│       ├── test_memory_scheduling.py # BackgroundTasks 触发的判别性测试
 │       └── test_skill_sop_and_disclaimer.py
-├── eval/                             # 量化Agent/RAG评测框架（见下文）
+├── eval/                            # Agent/RAG 量化评测脚本
 ├── frontend/
-│   ├── Dockerfile                   # 多阶段构建：npm build -> 静态资源由nginx托管
+│   ├── Dockerfile                   # 多阶段：npm 构建 -> 静态资源由 nginx 托管
 │   └── src/
-│       ├── i18n.tsx                 # 中英双语文案
+│       ├── i18n.tsx                 # 双语文案（zh/en）
+│       ├── styles/tokens.css        # 设计 token —— 唯一真源，在 tokens.ts 有镜像
 │       ├── components/
-│       │   ├── header-bar/          # 带中/EN切换的头部
-│       │   └── sender/              # 输入框 + 文件附件
+│       │   ├── header-bar/          # 顶栏，含中/EN 切换
+│       │   └── sender/              # 输入框 + 附件
 │       └── pages/
-│           ├── chat/                # 带SSE流式的聊天页
+│           ├── chat/                # 聊天页，SSE 流式
 │           └── repository/          # 文档管理
-├── gateway/                          # 生产入口：nginx TLS/反代/限流/Basic Auth
-│   ├── Dockerfile
-│   ├── nginx.conf                   # 生产配置（TLS，真实域名）
-│   └── nginx.local.conf             # 本地栈对应版本（纯HTTP，无certbot）
-├── .github/workflows/deploy.yml     # CI：每次push构建全部3个镜像；master分支额外推送到GHCR + SSH部署
-├── scripts/                          # 金融语料抓取/索引脚本（fetch_filings/news/educational、index_finance）
-├── data/                             # 抓取到的金融语料（filings/news/educational），已索引进`finance_kb`
-├── docker-compose.yml                # ES + PostgreSQL（共享基础）
-├── docker-compose.local.yml          # + backend/frontend/gateway，用于本地全栈开发（纯HTTP）
-├── docker-compose.prod.yml           # + backend/frontend/gateway/certbot，用于生产（TLS、mem_limit钉死）
-└── .env                              # API key和配置
+├── gateway/                         # 生产入口：nginx TLS/反向代理/限流
+│   ├── nginx.conf                   # 生产配置（TLS、真实域名）
+│   └── nginx.local.conf             # 本地全栈等价配置（纯 HTTP，无 certbot）
+├── diagrams/                        # 架构 / 流程 / 时序图的源文件与渲染产物
+├── .github/workflows/deploy.yml     # CI：每次 push 构建 3 个镜像；master 上还会推 GHCR + SSH 部署
+├── scripts/                         # 语料抓取/索引脚本
+├── data/                            # 抓取到的金融语料，索引进 `finance_kb`
+├── docker-compose.yml               # ES + PostgreSQL（共享基座）
+├── docker-compose.local.yml         # + backend/frontend/gateway，本地全栈开发（纯 HTTP）
+├── docker-compose.prod.yml          # + backend/frontend/gateway/certbot，生产（TLS、mem_limit 钉死）
+└── .env                             # API key 与配置
 ```
 
-## 量化评测
-
-一套可复现的评测框架（`eval/`）用真实的agent/RAG/Elasticsearch逻辑（不mock）端到端驱动运行中的后端，针对从实际索引语料构建的标注数据集评测：
-
-| 指标 | 结果 | 依据 |
-|---|---|---|
-| 工具路由平均命中率 | **74.5%** | 17 题 × **3 次采样**。其中稳定命中 10 题、稳定失败 3 题、**翻转 4 题**（同一份代码上时对时错） |
-| 首个实质判断延迟 | **均值 2.93s**（p50 2.63s / p90 4.86s） | 从 `POST /chat` 到第一条工具调用事件。这是衡量响应性的那个数 |
-| 完整响应延迟 | 均值 32.6s（p50 31.9s / p90 55.0s） | 32 次真实流式请求，从取数循环到回答流式结束的全程 |
-| RAG 检索/回答准确率 | 13/15 | 基于事实的问答对，针对实际的财报/新闻/科普语料核对 |
-| 边界场景健壮性 | 5/5 | 空输入、超长输入、无效股票代码、无关话题、不存在的 session |
-
-**下列数字不可引用，理由写在这里而不是省略：**
-
-- **「首字延迟」/「首次反馈延迟」**：自 [`448b831`](.) 起，第一条 SSE 事件是后端在任何 LLM 调用之前发出的受理回执，实测恒为 0.00s。它只证明连接已建立，不度量模型、检索或工具的任何行为。要谈响应性请用上表的「首个实质判断延迟」。
-- **单次采样的路由严格准确率**：4/17 的题在同一份代码上会翻转，使单次数字带有约 **±24 个百分点**的摆动。任何小于该幅度的前后对照都读不出结论，因此本 README 只给多次采样的平均命中率。
-- **SOP 注入的覆盖率提升**：两把尺子都已知失效。旧口径在子问题文字里数关键词，而 `finance_tool` 不解析具体指标——`"AAPL PE ratio"` 与 `"AAPL fundamentals"` 返回逐字节相同的结果，于是它奖励啰嗦而非信息量。改成按工具实际返回内容打分之后，同一批数据的提升从 +52.8pp 降到 +11.1pp，但新口径又会饱和（基本面卡固定只含 5 个估值概念中的 2 个，得分只有两档刻度）。评分维度重设待办。
-
-**延迟的构成值得单独说一句。**思考内容均值 1810 字符，可见回答均值 486 字符，前者是后者的 **3.7 倍**，与总延迟相关 r=0.90。全程 32.6s 里，回答开始流式输出之后只剩 3.7s。因此压缩可见回答长度几乎动不了总延迟，真正的杠杆是回答调用的 `enable_thinking`。
-
-方法论、完整数据集和原始记录：[`eval/report.md`](eval/report.md)、[`eval/dataset.py`](eval/dataset.py)、[`eval/results.json`](eval/results.json)。用 `python eval/run_eval.py --routing-samples 3` 针对运行中的后端重新跑一遍。
-
-**诚实说明：** 语料库是这个项目自带的测试数据（部分由AI生成，日期设定在未来）——RAG准确率衡量的是对已索引语料的忠实度，不是针对真实世界金融数据的验证。
-
-## 已知局限
-
-- **三道稳定失败的路由题** — 3 次采样全错的那三道，所以是真问题而不是采样抖动。`route-05`（"什么是自由现金流？"）给一道知识库本就能答的概念题多调了 `web_search`；`route-11`（"今天全球有什么重要的财经新闻？"）一个工具都不调；`route-17` 把复合题里的新闻半边发给了 `rag_search` 而不是 `web_search`。已经试过一次并回退：按"最近/最新/今天"这类时间词划边界，修好了 `route-11` 和 `route-17`，却把一道问"谷歌**最近的** 8-K"的对照题改坏了——8-K 是归档文件，不是真实世界的时效动态。边界必须按答案的载体划（归档文档走 `rag_search`，当下动态走 `web_search`），不能按题面听起来时不时效划。
-- **文件上传的PDF解析** — DeepDoc PDF流水线接在了用户通过`/upload_files`上传财报的路径上，但批量语料索引器（`scripts/index_finance.py`）是直接从SEC EDGAR原生的HTML（iXBRL）格式解析财报，而不是走PDF流水线，因为EDGAR不以PDF格式提供现代财报（见`index_finance.py`模块文档字符串）。
-- **抽取只按轮数触发，不按会话结束触发** — 这套请求-响应架构里没有可靠的"会话已结束"信号（没有可以挂钩的持久连接），所以记忆抽取是每5轮触发一次，而不是按早期设计草图设想的"会话结束 或 满N轮"这种或条件触发。一段在窗口内第*N*-1轮就结束的对话，尾部内容永远不会被抽取。
-- **`BackgroundTasks`抽取任务不持久化也不重试** — 如果进程在任务调度和实际执行之间重启，那一批事实就丢了；同一会话里下一个5轮边界不受影响（窗口之间不重叠），所以影响范围是"部分记忆没被捕获"，不是数据损坏。
-- **召回路径里股票代码和缩写的歧义** — 用于调研结论召回的中日韩文字容忍股票代码提取器（不是`finance_tool()`用在已拆解子问题上的那个更严格的版本）无法区分一个常见金融缩写和拼写相同的真实股票代码（`AI`既是"人工智能"也是C3.ai的股票代码）；最坏情况是一条不相关的旧结论作为背景信息被带出来，而召回prompt本来就已经把这类内容当作"可能过时"来处理。
-- **记忆召回里写死了单用户假设** — `chat_rt.py`里硬编码的`USER_ID`被用于画像召回，而抽取环节则是从session自己的记录里推导出写入用的用户——这两者目前恰好一致，但如果以后要支持真正的多用户，需要重新梳理。
-- **聊天界面没有适配手机** — 核心聊天布局（`components/page-layout`）在主内容区域写死了`min-width: 600px`，右侧还有一个固定`408px`的侧栏；在真实手机屏幕宽度下会溢出/被挤压，而不是自适应重排。落地页本身的响应式做得还算合理，但全局布局外壳（`layout/base`）会给所有路由套上一个固定`100px`宽度的侧边栏，跟屏幕宽度无关。目前聊天页没有任何`@media`断点覆盖——桌面端是唯一被完整支持的目标。
-- **没有对话历史管理界面** — `session_id`只存在URL里（`/chat/:id`），不写入`localStorage`；应用本身没有浏览或删除历史会话的入口（服务端有一个`DELETE /sessions`接口，但前端没有任何地方调用它）。每次访问都是全新会话，旧会话会无限期留在Postgres里，没有TTL或清理机制。
-
-## 路线图
-
-目前的MVP覆盖单支股票/市场分析（AAPL/MSFT/GOOGL）。这在架构上是一个更广泛的投研copilot的基础——组合层面的推理、多资产对比——可以复用同一套工具/RAG层。
+</details>
 
 ## 许可 / 版权说明
 
-应用和Agent代码为原创；混合检索（`agent.py`里的`rag_search`）是直接手写在原生Elasticsearch之上，不依赖RAGFlow。但PDF解析流水线（`service/core/deepdoc`、`service/core/rag`）是从[RAGFlow](https://github.com/infiniflow/ragflow)移植而来（Apache License 2.0，版权归The InfiniFlow Authors所有）——具体见该目录下的license头。财报数据来自[SEC EDGAR](https://www.sec.gov/edgar)，行情数据来自[yfinance](https://github.com/ranaroussi/yfinance)。LLM通过阿里云DashScope提供。
+以 [MIT License](LICENSE) 发布 —— Copyright (c) 2026 Thomas Lee。它覆盖原创的应用与 Agent 代码，包括混合检索（`agent.py` 里的 `rag_search`）——那部分是直接基于原生 Elasticsearch 手写的，不依赖 RAGFlow。
+
+有一个目录不在它的覆盖范围内：
+
+PDF 解析流水线（`service/core/deepdoc`、`service/core/rag`）移植自 [RAGFlow](https://github.com/infiniflow/ragflow)，仍然适用 Apache License 2.0，Copyright The InfiniFlow Authors。这两棵树里每个带代码的文件都保留了原始许可头——两个空的 `__init__.py` 包标记文件除外——完整的许可副本就放在它们旁边：[`backend/app/service/core/LICENSE-APACHE-2.0`](backend/app/service/core/LICENSE-APACHE-2.0)。这两棵树下随附的 `.onnx` 模型权重不在本说明覆盖范围内，其许可以上游 RAGFlow 为准，本仓库未做核实。
+
+财报来自 [SEC EDGAR](https://www.sec.gov/edgar)，行情数据来自 [yfinance](https://github.com/ranaroussi/yfinance)，LLM 来自阿里云 DashScope。

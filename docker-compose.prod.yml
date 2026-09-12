@@ -76,6 +76,7 @@ services:
       - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - certs:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot
+      - /opt/who-is-thomas/dist:/var/www/letsgothomas:ro
     ports:
       - "80:80"
       - "443:443"
